@@ -20,7 +20,8 @@ for (const table of ["erp_invoices", "cash_book", "marketplace_orders", "gateway
   let cursor: string | null = null;
   do {
     const out = run("seed:resetCounterparts", { table, cursor });
-    cursor = out === "null" ? null : (JSON.parse(out) as string);
+    // `convex run` prints nothing when the function returns null
+    cursor = !out || out === "null" ? null : (JSON.parse(out) as string);
   } while (cursor);
   console.log(`reopened ${table}`);
 }
