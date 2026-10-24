@@ -184,7 +184,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   const jump = (i: number) => { const m = marks.current[i]; if (m) scrollToY(m.getBoundingClientRect().top + window.scrollY); };
   useEffect(() => withLenis((l) => {
     const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-    let locked = false, landed = true, lastInput = 0, timer = 0, dir = 0;
+    let held = false, gliding = false, lastInput = 0, lastSize = 0, timer = 0, dir = 0;
     const where = () => {
       const el = track.current;
       if (!el || !el.offsetParent) return null;
@@ -192,23 +192,26 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
       return { step, start: el.getBoundingClientRect().top + window.scrollY - HEAD, last: (n - 1) * step };
     };
     const glide = (y: number) => {
-      locked = true; landed = false;
-      l.scrollTo(y, { duration: 0.8, easing: ease, lock: true, force: true, onComplete: () => { landed = true; } });
+      held = true; gliding = true;
+      l.scrollTo(y, { duration: 0.6, easing: ease, force: true, onComplete: () => { gliding = false; } });
     };
 
-    // Wheel and touch input: inside the section every gesture turns exactly one beat, and the rest of that gesture,
-    // momentum included, is swallowed until it dies out. A fling that would cross the section from either side is
-    // caught on its first or last beat. Moving on past the last beat, or back above the first, is let through.
+    // Wheel and touch input: inside the section each gesture turns exactly one beat, however hard it is. The rest of
+    // that gesture is swallowed: trackpad momentum only ever slows down, so input that grows again, or arrives after a
+    // pause, is a new gesture and turns the next beat straight away, even mid-glide. A fling that would cross the
+    // section from either side is caught on its first or last beat. Moving on past the last beat, or back above the
+    // first, is let through.
     const removeGate = addScrollGate(({ deltaY }) => {
       const g = where();
       if (!g) return true;
-      const now = performance.now(), gap = now - lastInput;
-      lastInput = now;
-      if (locked) {
-        if (!landed || gap < 220) return false;
-        locked = false;
+      const now = performance.now(), size = Math.abs(deltaY);
+      const fresh = now - lastInput > 140 || size > lastSize * 1.4 + 6;
+      lastInput = now; lastSize = size;
+      if (held) {
+        if (!fresh) return false;
+        held = false;
       }
-      if (Math.abs(deltaY) < 2) return true;
+      if (size < 2) return true;
       const at = l.targetScroll - g.start, d = Math.sign(deltaY), ahead = at + deltaY;
       if (d > 0 && at < -1 && ahead >= -1) { glide(g.start); return false; }
       if (d < 0 && at > g.last + 1 && ahead <= g.last + 1) { glide(g.start + g.last); return false; }
@@ -223,7 +226,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
     const settle = () => {
       timer = 0;
       const g = where();
-      if (!g || locked) return;
+      if (!g || gliding) return;
       const pos = window.scrollY - g.start;
       if (pos < -g.step * 0.4 || pos > g.last + 1) return;
       const target = dir >= 0 ? Math.min(g.last, Math.ceil((pos - 2) / g.step) * g.step) : Math.max(0, Math.floor((pos + 2) / g.step) * g.step);
@@ -231,7 +234,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
       glide(window.scrollY + target - pos);
     };
     const onScroll = () => {
-      if (locked) return;
+      if (gliding) return;
       if (l.direction) dir = l.direction;
       if (Math.abs(l.velocity) > 3) { window.clearTimeout(timer); timer = 0; }
       else if (!timer) timer = window.setTimeout(settle, 90);
