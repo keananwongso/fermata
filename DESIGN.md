@@ -182,7 +182,9 @@ recording, so it works on the hosted site with no Convex, and a re-export update
 * **Three metric cards** (`.card`, eyebrow, `.figure` that `Roll`s, one sub line, then a small picture pinned to the
   bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through),
   the first pass share by month as a sparkline that draws in with `pathLength`, and the close as twelve month bars.
-  On a phone each card puts its picture beside the figure instead of under it.
+  On a phone each card puts its picture beside the figure instead of under it. The first pass card ("Settled on its
+  own") states the recorded year as it happened and says nothing about why it rose; the learning claim lives in the
+  comparison (see Honest claims about learning).
 * **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
   `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
   (Claude or Code). The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
@@ -268,9 +270,12 @@ uses the same tokens, type classes, components and motion as the screens it intr
 * **One idea per slide.** A slide is a `Frame` (chapter eyebrow top left, the mark and page number below), a
   `.title` heading in sentence case, then one visual. Chapters use the judges' words (Why, How it works,
   Case rooms, How it's built, Self improving, Proves every step, The result).
-* **Every figure comes from the recording** through `pitch/data.ts`; assumptions (minutes per match, per
-  decision) are printed on the slide that uses them. Something not yet measured shows a `.hatch` placeholder,
-  never a typed number.
+* **Every figure comes from the recording or the learning year** through `pitch/data.ts` (`D.learning` is
+  `learningYear.ts`); assumptions (minutes per match, per decision) are printed on the slide that uses them. Something
+  not yet measured shows a `.hatch` placeholder, never a typed number. Spoken notes that quote a figure interpolate it
+  from `D` too.
+* **Self improving** is the `LearningChart` (stage size, `zoom`) under the first pass and the lines left for people,
+  with and without learning. It never draws the recorded year's curve.
 * **Builds** use `In` (rise with a short blur, optional delay, or shown from a build step). Charts draw in with
   `pathLength`; numbers `Roll`.
 * App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
@@ -325,6 +330,16 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 * **Every number is synthetic, and the UI says so** (notice bar, footer). Never put real company
   names, people or figures on screen, in the code or in comments.
+* **Honest claims about learning.** Never present the recorded year's curve as learning: its first pass rates are an
+  input to the generator, and a no-learning baseline of the same year climbs too. The learning claim is the with and
+  without comparison from the learning year (`LearningChart`, `learningYear.ts`), always labelled "Simulated on the
+  same engine". The recorded curve may still show what happened (the demo, the dashboard), with a 𝄐 where an answer
+  became a rule, but no copy says it climbs because of them. Claims round toward the cautious side (the "times fewer"
+  figure rounds down), and a figure the data does not hold is left out, not typed (the wrong store count is not in
+  `learning.json`, so the site does not show it).
+* **The website carries what the pitch carries.** A visitor who never sees the deck meets the same claims and figures
+  on the site: the side by side comparison, what keeps a mistake small, the headline figures with dollars beside the
+  rupiah. When a slide gains a claim or a figure, the landing page gets it too, read from the same data module.
 * **Held is amber, everywhere.** Settled is green, blocked is red, actions are blue. Never reuse
   those colours for anything else.
 * **Refusals are visible.** A denied transition or a refusal by the meeting manager is shown in red
