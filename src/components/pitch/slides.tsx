@@ -3,11 +3,12 @@
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { BANK_ACCOUNTS, MONTH_LABELS } from "../../../convex/lib/domain";
+import { BANK_ACCOUNTS } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
 import { ROLES, type Role } from "../../../convex/lib/transition";
 import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
+import { LearningChart } from "../learningChart";
 import { Pill } from "../ui";
 import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
@@ -311,56 +312,21 @@ function Built() {
   );
 }
 
-// 8 · Self improving: the share settled on first pass climbs while meetings per month fall to none.
+// 8 · Self improving: the learning claim. Not the recorded year's curve (its baseline climbs too), but one year
+// simulated on the same engine twice, learning from people's answers and with the rules frozen at onboarding.
 function Curve() {
-  const w = 1680, top = 70, lineH = 270, barTop = 450, barH = 100;
-  const x = (i: number) => 60 + i * ((w - 120) / 11);
-  const y = (v: number) => top + (1 - (v - 0.75) / 0.25) * lineH;
-  const path = D.shares.map((v, i) => `${i ? "L" : "M"}${x(i)} ${y(v)}`).join(" ");
-  const maxMeet = Math.max(...D.meetings);
+  const L = D.learning;
   return (
     <Frame chapter="Self improving" n={8}>
       <div className="flex items-end justify-between gap-10">
-        <In><h2 className="title text-[72px]">It gets better every month.</h2></In>
-        <In delay={0.2} className="flex gap-16 text-right">
-          <div><div className="figure text-[64px] text-heading">{pct(D.first, 0)} → {pct(D.last, 0)}</div><div className="mt-1 text-[22px] text-secondary">settled on first pass</div></div>
-          <div><div className="figure text-[64px] text-hold">{D.meetings[0]} → {D.meetings[11]}</div><div className="mt-1 text-[22px] text-secondary">meetings a month</div></div>
+        <In><h2 className="title text-[72px]">Learning makes it better.</h2></In>
+        <In delay={0.2} className="flex shrink-0 gap-14 whitespace-nowrap text-right">
+          <div><div className="figure text-[56px] text-heading">{pct(L.first, 0)} → {pct(L.last, 0)}</div><div className="mt-1 text-[22px] text-secondary">first pass with learning · {pct(L.baselineLast, 0)} without</div></div>
+          <div><div className="figure text-[56px] text-hold">{num(L.heldLearned)} <span className="text-[34px] text-secondary">vs</span> {num(L.heldBaseline)}</div><div className="mt-1 text-[22px] text-secondary">lines left for people at year end</div></div>
         </In>
       </div>
       <In delay={0.3} className="mt-10">
-        <svg width={w} height={590} role="img" aria-label="Share settled on first pass by month, and meetings per month">
-          {[0.8, 0.9, 1].map((g) => <g key={g}><line x1={40} x2={w - 40} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" /><text x={0} y={y(g) + 6} fontSize="18" fill="var(--color-faint)" fontFamily="var(--font-mono)">{Math.round(g * 100)}</text></g>)}
-          {D.learned.map((r) => {
-            const i = r.learnedInMonth - 1;
-            return (
-              <motion.g key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6, duration: 0.4 }}>
-                <line x1={x(i)} x2={x(i)} y1={22} y2={y(D.shares[i]) - 44} stroke="var(--color-accent)" strokeDasharray="4 6" strokeWidth="2" />
-                <rect x={x(i) - 16} y={0} width={r.id.length * 13 + 104} height={30} rx={15} fill="var(--color-accent-tint)" />
-                <text x={x(i)} y={21} fontSize="18" fill="var(--color-accent)" fontFamily="var(--font-mono)">{r.id} learned</text>
-              </motion.g>
-            );
-          })}
-          <motion.path d={path} fill="none" stroke="var(--color-accent)" strokeWidth="4" strokeLinejoin="round"
-            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.4, delay: 0.4, ease: EASE_OUT }} />
-          {D.shares.map((v, i) => (
-            <motion.g key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + (i / 11) * 1.4 }}>
-              <circle cx={x(i)} cy={y(v)} r={7} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth="3" />
-              <text x={x(i)} y={y(v) - 20} textAnchor="middle" fontSize="20" fill="var(--color-heading)" fontFamily="var(--font-mono)">{Math.round(v * 100)}</text>
-            </motion.g>
-          ))}
-          <text x={0} y={barTop - 52} fontSize="16" fill="var(--color-faint)" fontFamily="var(--font-mono)">MEETINGS</text>
-          {D.meetings.map((m, i) => {
-            const h = m ? (m / maxMeet) * barH : 3;
-            return (
-              <g key={i}>
-                <motion.rect x={x(i) - 26} width={52} rx={4} fill="var(--color-hold)" fillOpacity={0.85}
-                  initial={{ height: 0, y: barTop + barH }} animate={{ height: h, y: barTop + barH - h }} transition={{ duration: 0.6, delay: 0.8 + i * 0.06, ease: EASE_OUT }} />
-                {m ? <text x={x(i)} y={barTop + barH - h - 10} textAnchor="middle" fontSize="18" fill="var(--color-hold-ink)" fontFamily="var(--font-mono)">{m}</text> : null}
-                <text x={x(i)} y={barTop + barH + 34} textAnchor="middle" fontSize="20" fill="var(--color-secondary)" fontFamily="var(--font-sans)">{MONTH_LABELS[i]}</text>
-              </g>
-            );
-          })}
-        </svg>
+        <div style={{ zoom: 1.6 }}><LearningChart learned={L.learned} baseline={L.baseline} stage /></div>
       </In>
     </Frame>
   );
@@ -486,7 +452,8 @@ export const SLIDES: Slide[] = [
 
 Video: cut to the demo here (close the year, then story A's room and story B's room).` },
   { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood: a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. The permissions are a table in code, checked on every step, and every change is written together with its record, in Convex."` },
-  { id: "curve", chapter: "Self improving", render: Curve, notes: `"And it gets better every month. Eighty one percent settled on its own in January, ninety eight by December. The meetings fall the other way: eight in January, none from October, because every answer became a rule."` },
+  { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is one year, simulated on the same engine twice: once learning from people's answers, once with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
+(Say "simulated": here the answers come from the simulator's answer key and its Learner is code. Never present the demo's recorded curve as learning.)` },
   { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is tested on last year before a person sees it: the school fee rule got two thousand three hundred and three of two thousand three hundred and ten right, and its seven counterexamples went to the CFO. Then we scored the whole year against the hidden truth: a week it never saw, wrong stores, and a fuzzer that alters real lines to see if any slip through." (Read the three bottom numbers from the slide; never say a number that is not on it.)` },
   { id: "result", chapter: "The result", render: Result, notes: `"A hundred and four thousand bank lines became about forty decisions for people. About a month of the team's work, down to an afternoon."` },
   { id: "end", chapter: "Fermata", render: End, notes: `"My family's business is the first design partner. Next is shadow mode at one store: it proposes, people still decide. Then a cash report a bank can trust." (Hold on the card for three seconds.)` },
