@@ -231,7 +231,7 @@ function systemPrompt(speaker: string, spec: StorySpec): string {
     "Voice: calm, plainspoken, sentence case, no emoji, no exclamation marks, short sentences. Money like 'Rp 9.8bn' or 'Rp 412m'. " +
     "End your turn by calling the say tool once. In its text, address one colleague by name, and set `to` to match.";
   const role: Record<string, string> = {
-    investigator: `Your job: find out what these lines are. Run queries, form a hypothesis, and once the case is clear, propose the one question in the question field for the right person: the Accountant for bookkeeping facts, the CFO for business relationships and policy. Option ids must be exactly ${spec.optionIds.join(", ")}, in that order. Each option's impact says concretely what will happen, with counts and rupiah. Before any person is asked, ask the Auditor to try to break your case. If the Auditor objects, answer the objection and narrow your proposal. If a rule would follow from a yes, ask the Learner to draft it.`,
+    investigator: `Your job: find out what these lines are. Run queries, form a hypothesis, and once the case is clear, propose the one question in the question field for the right person: the Accountant for bookkeeping facts, the CFO for business relationships and policy. Option ids must be exactly ${spec.optionIds.join(", ")}, in that order. Each option's impact says concretely what will happen, with counts and rupiah. Whenever you hand your case to the Auditor, attach your proposed question in the question field, so the Auditor checks the case and the wording together. Before any person is asked, ask the Auditor to try to break your case. If the Auditor objects, answer the objection and narrow your proposal. If a rule would follow from a yes, ask the Learner to draft it.`,
     auditor: "Your job: try to break the case and any draft rule. Look for counterexamples, double matches and missing history, and say plainly whether you object or pass. You can send work back to a colleague. When the question and any draft rule both hold up, tell the room you agree (to: room).",
     learner: `Your job: draft the rule a yes would create, as a program in the rule language, put it in the rule field, and backtest it with backtest_rule before you speak. The rule id must be ${spec.ruleId}. Shape: ${spec.ruleShape}. Then ask the Auditor to check it.`,
   };
@@ -397,7 +397,16 @@ export const finishTurn = internalMutation({
       return await close(ctx, fresh, lastQ, after, true);
     }
     if (turns >= MAX_TURNS) {
-      if (lastQ && lastAuditor && (!lastProposal || lastAuditor.seq > lastProposal.seq)) { await manager(`Turn limit reached. The question the Auditor checked goes out.`); return await close(ctx, fresh, lastQ, after, true); }
+      const checked = lastQ && lastAuditor && (!lastProposal || lastAuditor.seq > lastProposal.seq);
+      // The Auditor objected in its closing check: the unchecked question does not go out.
+      if (turns > MAX_TURNS && speaker === "auditor") {
+        await manager(`The Auditor did not pass the question in its last check. The story falls back to the scripted question.`);
+        await closeRoom(ctx, fresh, month, draftQuestion(fresh), false);
+        return null;
+      }
+      if (checked) { await manager(`Turn limit reached. The question the Auditor checked goes out.`); return await close(ctx, fresh, lastQ!, after, true); }
+      // A question arrived on the last turn: the Auditor gets one closing check, nothing else.
+      if (lastQ && turns === MAX_TURNS) { await manager(`Turn limit reached. One last turn: Auditor, check the question before it goes out.`); return await next(ctx, a.storyKey, "auditor"); }
       await manager(`Turn limit reached without a checked question. The story falls back to the scripted question.`);
       await closeRoom(ctx, fresh, month, draftQuestion(fresh), false);
       return null;
