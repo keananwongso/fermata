@@ -52,7 +52,7 @@ export async function engineOpening(ctx: MutationCtx, story: Doc<"stories">): Pr
     const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
     if (b) rows.push([`${b.date} · ${b.memo}`, rp(b.amount)]);
   }
-  const where = story.stores.length ? ` across ${story.stores.length === 1 ? storeName(story.stores[0]) : `${story.stores.length} stores`}` : "";
+  const where = story.stores.length === 1 ? ` at ${storeName(story.stores[0])}` : story.stores.length ? ` across ${story.stores.length} stores` : "";
   const why: Partial<Record<Gap, string>> = {
     unknown_lender: `No approved rule knows ${story.counterparty}, so I may not settle these.`,
     placement_conflict: "The bank and the school's receipts point to different stores, so I cannot place them.",

@@ -126,6 +126,12 @@ export const story = query({
   },
 });
 
+// One case room: every message in order, live.
+export const room = query({
+  args: { key: v.string() },
+  handler: async (ctx, a) => await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", a.key)).take(300),
+});
+
 export const rules = query({
   args: {},
   handler: async (ctx) => (await ctx.db.query("rules").take(100)).sort((a, b) => Number(a.ruleId.slice(1)) - Number(b.ruleId.slice(1))),
