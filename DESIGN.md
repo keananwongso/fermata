@@ -223,7 +223,7 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 ## Layout
 
-* Content width 1440px (`max-w-page`, the `--container-page` token; the header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
+* Content width 1440px (`max-w-page`, the `--container-page` token; the console header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
 * **Workspaces that play over time** (the demo) have a fixed height on wide screens and scroll inside each panel, so the page
   stays still while they run. Starting the run scrolls the page once to bring the whole workspace into view.
   In the demo, a meeting takes the workspace: the engine column (paused) collapses so the transcript gets the width,
@@ -233,7 +233,9 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.
 * Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
-  (Accountant / CFO). On mobile the tabs fold into a menu.
+  (Accountant / CFO). On the site pages the card hugs its contents and sits centred (wordmark, two links, the GitHub
+  icon, the demo button, with modest gaps), never stretched to the page; the console's card keeps the page width
+  (60px narrower) for its five tabs and the switch. On mobile both are full width and the links fold into a menu.
   The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
   to an anchor; give anchor targets `scroll-mt-36` so they land below it.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.

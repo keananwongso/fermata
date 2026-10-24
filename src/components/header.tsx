@@ -33,14 +33,15 @@ export function Header() {
         A fictional Indonesian music retailer. Every store, amount and person here is synthetic.
       </div>
       <header className="mt-3 px-4 lg:px-6">
-        <div className="mx-auto max-w-[calc(var(--container-page)-60px)] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)]">
-          <div className="flex h-14 items-center gap-6 pl-4 pr-2 lg:pr-3">
+        {/* On the site the card hugs its contents, centred; the console's tabs and role switch keep the page width. */}
+        <div className={`mx-auto max-w-[calc(var(--container-page)-60px)] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)] ${site ? "lg:w-fit" : ""}`}>
+          <div className={`flex h-14 items-center pl-4 pr-2 ${site ? "gap-3 lg:pr-2.5" : "gap-6 lg:pr-3"}`}>
             <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, home">
               <span className="text-[20px] leading-none text-hold" aria-hidden>𝄐</span>
               <span className="display text-[19px] tracking-[-0.03em]">Fermata</span>
             </Link>
-            <Tabs path={path} links={links} />
-            <div className="ml-auto hidden items-center gap-3 lg:flex">
+            <Tabs path={path} links={links} site={site} />
+            <div className={`ml-auto hidden items-center lg:flex ${site ? "gap-2" : "gap-3"}`}>
               {site ? <>
                 <GitHub />
                 {cta ? <LinkButton href="/demo">Watch the live demo</LinkButton> : null}
@@ -82,14 +83,14 @@ export function Header() {
 }
 
 // Labels turn blue on hover, and the current page stays blue.
-function Tabs({ path, links }: { path: string; links: { href: string; label: string }[] }) {
+function Tabs({ path, links, site }: { path: string; links: { href: string; label: string }[]; site: boolean }) {
   return (
     <nav className="hidden h-9 items-stretch lg:flex">
       {links.map((t) => {
         const active = isActive(path, t.href);
         return (
           <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined}
-            className={`flex items-center px-4 text-[14px] transition-colors duration-400 ease-brand hover:text-accent ${active ? "text-accent" : "text-ink"}`}>
+            className={`flex items-center text-[14px] ${site ? "px-3.5" : "px-4"} transition-colors duration-400 ease-brand hover:text-accent ${active ? "text-accent" : "text-ink"}`}>
             {t.label}
           </Link>
         );
