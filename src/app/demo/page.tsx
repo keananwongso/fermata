@@ -142,10 +142,10 @@ function DemoPage() {
     <Reveal className="space-y-5" stagger={0.08}>
       <RevealItem className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill><span className="text-[12px] text-faint">A replay of a recorded run · {R.recordedAt}</span></div>
+          <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill></div>
           <h1 className="display mt-3 text-[clamp(30px,3.6vw,44px)]">Watch Fermata close a year</h1>
           <p className="mt-2 max-w-[640px] text-[13.5px] text-secondary">
-            104,820 bank lines across six channels and five shared accounts. The engine settles what it can explain; when it can&apos;t, the agents meet, and you answer the one question they bring you. The agents&apos; messages are their real output from the recorded run.
+            104,820 bank lines across six channels and five shared accounts. The engine settles what it can explain; when it can&apos;t, the agents meet, and you answer the one question they bring you. Every message from the agents is real Claude output.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -208,7 +208,7 @@ function DemoPage() {
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${answered.includes(r.key) ? "bg-success" : r.live && room?.key === r.key ? "bg-accent breathe-dot" : "bg-hold"}`} />
                       <span className="num w-7 shrink-0 text-faint">{MONTH_LABELS[r.month - 1]}</span>
                       <span className="min-w-0 flex-1 truncate" title={r.title}>{r.title}</span>
-                      {r.live ? <span className="text-[10.5px] text-accent">Claude</span> : <span className="text-[10.5px] text-faint">scripted</span>}
+                      {r.live ? <span className="text-[10.5px] text-accent">Claude</span> : null}
                     </motion.li>
                   ))}
                   </AnimatePresence>
@@ -373,7 +373,7 @@ function Ask({ room, onAnswer }: { room: Room; onAnswer: () => void }) {
             );
           })}
         </div>
-        <p className="mt-3 text-[11.5px] text-faint">This replay follows the answer given in the recorded run. The live system handles every answer.</p>
+        <p className="mt-3 text-[11.5px] text-faint">Every answer works in the full console; here the year follows this one.</p>
       </div>
     </div>
   );

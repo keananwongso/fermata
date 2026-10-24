@@ -75,7 +75,7 @@ function Landing() {
       {/* Closing */}
       <Reveal className="pb-6 text-center" stagger={0.1}>
         <RevealItem><h2 className="display mx-auto max-w-[760px] text-[clamp(32px,4.6vw,56px)]">Watch a year close in two minutes.</h2></RevealItem>
-        <RevealItem><p className="mx-auto mt-4 max-w-[520px] text-[15px] text-secondary">The demo replays a recorded run. You answer the two questions the agents bring you.</p></RevealItem>
+        <RevealItem><p className="mx-auto mt-4 max-w-[520px] text-[15px] text-secondary">Watch the agents work through a full year. You answer the two questions they bring you.</p></RevealItem>
         <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <LinkButton href="/demo">Watch the live demo</LinkButton>
           <LinkArrow href={CONSOLE_LINK.href}>{CONSOLE_LINK.label}</LinkArrow>
