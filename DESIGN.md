@@ -155,6 +155,19 @@ recording, so it works on the hosted site with no Convex, and a re-export update
   asked, the largest first, each with a `Review` link. A person with nothing open says so and shows their last answer.
 * **Honest by construction:** a figure the recording does not hold is left out rather than invented (there is no
   monthly cash series, so cash is a bank against books comparison, not a sparkline).
+* **Views switch inside the window** (`src/components/dashboard/*`). The sidebar is a `tablist`: choosing an item swaps
+  the content area in place, with a sliding highlight (`layoutId`), and nothing in the window navigates away. Dashboard is
+  the overview; Case rooms lists every room by month (live rooms marked Claude, other narrated ones by story letter) and
+  opens a room's transcript (`ChatList`) beside its question and recorded answer; Rules shows each rule's source,
+  backtest, audit and code; Run, Evaluation and Record are one card each (what the screen is, a real preview where the
+  recording has one, a link to the demo and, off the hosted site, to the console). A Review link opens its room.
+* **The window keeps its size.** On wide screens the overview sets the height and every other view sits over it and
+  scrolls inside (`data-lenis-prevent`, so the landing page's smooth scrolling leaves it alone). On a phone the views
+  are a row of tabs that scrolls sideways inside the window, and each view takes its own height, because a scroll box
+  taller than the screen traps the finger.
+* `/dashboard?view=rules` (or `case-rooms`, `run`, `evaluation`, `record`, or `room=<key>`) opens a view, and the address
+  follows the window there. The landing page's hero keeps its view to itself. Add a view with one entry in `VIEWS` in
+  `dashboard.tsx`.
 
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
