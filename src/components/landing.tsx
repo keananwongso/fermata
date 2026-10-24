@@ -1,6 +1,7 @@
 "use client";
 // Illustrations for the landing page, built from the recorded run so every number on the page is real.
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
@@ -143,7 +144,10 @@ export function CurveAndMeetings() {
       {R.months.map((m, i) => (
         <div key={m.month} className="flex flex-col items-center gap-1">
           <span className="num text-[10.5px] text-accent">{Math.round((m.firstSettled / m.total) * 100)}</span>
-          <div className="flex h-20 w-full items-end"><div className="w-full rounded-t-[3px] bg-hold/80" style={{ height: byMonth[i] ? `${Math.max(8, (byMonth[i] / max) * 100)}%` : "2px" }} /></div>
+          <div className="flex h-20 w-full items-end">
+            <motion.div className="w-full rounded-t-[3px] bg-hold/80" initial={{ height: 0 }} whileInView={{ height: byMonth[i] ? `${Math.max(8, (byMonth[i] / max) * 100)}%` : "2px" }}
+              viewport={{ once: true }} transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }} />
+          </div>
           <span className="text-[10.5px] text-faint">{MONTH_LABELS[i][0]}</span>
         </div>
       ))}
