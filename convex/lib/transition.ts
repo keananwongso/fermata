@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { MONTH_LABELS } from "./domain";
 
 export type State = "NEW" | "PROPOSED" | "APPROVED" | "POSTED" | "NEEDS_INFO" | "HELD" | "WAITING";
-export type Role = "sync" | "engine" | "investigator" | "learner" | "auditor" | "accountant" | "cfo" | "gateway";
+export type Role = "sync" | "engine" | "investigator" | "learner" | "auditor" | "accountant" | "cfo" | "gateway" | "manager";
 export type Action = "create" | "propose" | "wait" | "hold" | "ask" | "answer" | "approve" | "post" | "flag" | "block" | "annotate";
 export type ItemTable = "work_items" | "stories" | "rules" | "questions";
 
@@ -22,7 +22,12 @@ export const ROLES: Record<Role, { label: string; actions: Partial<Record<Action
   accountant: { label: "Accountant", actions: { answer: ["questions"], approve: ["work_items", "stories", "questions"], hold: ["work_items", "stories"], propose: ["work_items"] } },
   cfo: { label: "CFO", actions: { answer: ["questions"], approve: ["work_items", "stories", "questions", "rules"], hold: ["work_items", "stories"], block: ["rules"] } },
   gateway: { label: "Gateway", actions: { post: ["work_items", "stories"] } },
+  // The case room's chair. Code, not an LLM: it records, closes the meeting and sends its one question out.
+  manager: { label: "Meeting manager", actions: { create: ["questions"], ask: ["stories", "questions"], annotate: ["stories"] } },
 };
+
+// Who may speak in a case room. People and the gateway are outside the room.
+export const ROOM_SPEAKERS: Role[] = ["engine", "investigator", "auditor", "learner"];
 
 // TRANSITIONS: which state changes exist at all. `to: null` keeps the state (an annotation).
 export const TRANSITIONS: { action: Action; from: (State | null)[]; to: State | null }[] = [

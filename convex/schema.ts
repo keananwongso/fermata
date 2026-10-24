@@ -7,7 +7,7 @@ export const state = v.union(
 );
 export const role = v.union(
   v.literal("sync"), v.literal("engine"), v.literal("investigator"), v.literal("learner"),
-  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"),
+  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"), v.literal("manager"),
 );
 const store = v.string();
 const channel = v.string();
@@ -103,6 +103,8 @@ export default defineSchema({
     askOf: v.optional(role), resolution: v.optional(v.string()), heldAtYearEnd: v.optional(v.number()), proposer: v.optional(role),
     investigation: v.optional(v.object({ summary: v.string(), hypothesis: v.string(), real: v.boolean() })),
     auditorOpinion: v.optional(v.object({ text: v.string(), real: v.boolean() })),
+    // The case room for this story: meeting -> asked (one question out) -> closed (answered).
+    room: v.optional(v.object({ state: v.union(v.literal("meeting"), v.literal("asked"), v.literal("closed")), turns: v.number(), live: v.boolean() })),
   })
     .index("by_key", ["key"])
     .index("by_month", ["month"]),
@@ -118,6 +120,20 @@ export default defineSchema({
     real: v.boolean(), // written by Claude (true) or seeded/scripted (false)
   })
     .index("by_ruleId", ["ruleId"]),
+  // One row per thing said in a case room. Agents talk to each other; the manager (code) gives the floor and records.
+  room_messages: defineTable({
+    storyKey: v.string(), month: v.number(), seq: v.number(), turn: v.number(),
+    speaker: v.string(), to: v.string(),
+    kind: v.union(v.literal("message"), v.literal("manager"), v.literal("denied")),
+    status: v.union(v.literal("working"), v.literal("done")),
+    source: v.union(v.literal("claude"), v.literal("code"), v.literal("scripted")),
+    staged: v.optional(v.boolean()),
+    think: v.array(v.string()),
+    tools: v.array(v.object({ name: v.string(), input: v.string(), rows: v.array(v.array(v.string())) })),
+    text: v.string(),
+    code: v.optional(v.string()),
+    at: v.number(),
+  }).index("by_story_seq", ["storyKey", "seq"]),
   precedents: defineTable({ storyKey: v.string(), answer: v.string(), actor: role, effect: v.string(), at: v.number() })
     .index("by_story", ["storyKey"]),
   questions: defineTable({

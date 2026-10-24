@@ -23,7 +23,7 @@ function run(args: string[]) {
   execFileSync("npx", ["convex", ...args], { stdio: "inherit" });
 }
 
-const empty = ["stores", "bank_accounts", "ledger_accounts", "work_items", "stories", "rules", "precedents", "questions", "trace_events", "journal_entries", "eval_runs", "audit_log"];
+const empty = ["stores", "bank_accounts", "ledger_accounts", "work_items", "stories", "rules", "precedents", "questions", "trace_events", "journal_entries", "eval_runs", "audit_log", "room_messages"];
 if (!only) {
   for (const t of empty) {
     const f = `${dir}/${t}.jsonl`;

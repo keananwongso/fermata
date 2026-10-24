@@ -19,7 +19,7 @@ export const init = internalMutation({
 });
 
 // Clears everything the close produced so it can run again on the same synced data.
-const DERIVED = ["work_items", "stories", "questions", "trace_events", "journal_entries", "audit_log", "precedents", "eval_runs"] as const;
+const DERIVED = ["work_items", "stories", "questions", "trace_events", "journal_entries", "audit_log", "precedents", "eval_runs", "room_messages"] as const;
 export const resetBatch = internalMutation({
   args: {},
   returns: v.object({ deleted: v.number(), done: v.boolean() }),

@@ -1,13 +1,12 @@
-// The close: month by month, re-check what was waiting, run the first pass, investigate new stories,
+// The close: month by month, re-check what was waiting, run the first pass, open a case room per new story,
 // pause where a person must decide, then continue. Each step is a scheduled mutation.
 import { v } from "convex/values";
 import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import { runFirstPass, runRecheck, type BatchStats } from "./engine";
 import { YEAR, isoDate, monthEnd } from "./lib/domain";
-import { draftQuestion } from "./lib/investigate";
-import { transition, type ItemTable } from "./lib/transition";
+import { openRoom } from "./rooms";
 
 const YEAR_END_AS_OF = isoDate(YEAR + 1, 1, 20);
 export const STORY_A_KEY = "placement_conflict|S03|school_va";
@@ -87,7 +86,7 @@ export const step = internalMutation({
     }
     if (run.phase === "stories") {
       const fresh = (await ctx.db.query("stories").withIndex("by_month", (q) => q.eq("month", m)).take(100)).filter((s) => s.state === "NEW");
-      for (const s of fresh) await investigate(ctx, s, m);
+      for (const s of fresh) await openRoom(ctx, s, m, false);
       await addStats(ctx, m, { questions: fresh.length, stories: fresh.length });
       await ctx.db.insert("trace_events", { agent: "engine", month: m, kind: "result", text: `Month closed on first pass. ${fresh.length} new ${fresh.length === 1 ? "story" : "stories"}.`, real: true, at: Date.now() });
       const pauseFor = m === 3 ? "A" : m === 6 ? "B" : null;
@@ -136,35 +135,4 @@ export async function resume(ctx: MutationCtx, rerun: { storyKey: string; ruleId
     await ctx.db.patch(close._id, { run: nextRun });
   }
   await ctx.scheduler.runAfter(0, internal.run.step, {});
-}
-
-// Investigator: one question per story. Story B is written by Claude in a scheduled action.
-async function investigate(ctx: MutationCtx, s: Doc<"stories">, m: number) {
-  const now = Date.now();
-  const id = s._id as Id<ItemTable>;
-  if (s.key === STORY_B_KEY) {
-    await transition(ctx, { table: "stories", id, action: "ask", actor: "investigator", month: m, reason: "Investigating with Claude", patch: { askOf: "cfo" } });
-    const q = await transition(ctx, {
-      table: "questions", id: null, action: "create", actor: "investigator", month: m, reason: "Question placeholder while Claude investigates",
-      insert: { storyKey: s.key, askOf: "cfo", text: "The Investigator is still reading the evidence.", options: [], real: true, month: m }, patch: {},
-    });
-    if (q.ok) await transition(ctx, { table: "questions", id: q.id, action: "ask", actor: "investigator", month: m, reason: "Asked the CFO", patch: {} });
-    await ctx.db.insert("trace_events", { agent: "investigator", month: m, storyKey: s.key, kind: "tool", text: "handing the evidence for this story to Claude", real: true, at: now });
-    await ctx.scheduler.runAfter(0, internal.agents.investigateStoryB, { storyKey: s.key });
-    return;
-  }
-  const d = draftQuestion(s);
-  await transition(ctx, {
-    table: "stories", id, action: "ask", actor: "investigator", month: m, reason: "One question for the whole story",
-    patch: { askOf: d.askOf, investigation: { summary: d.summary, hypothesis: d.hypothesis, real: false } },
-  });
-  for (let i = 0; i < d.trace.length; i++)
-    await ctx.db.insert("trace_events", { agent: "investigator", month: m, storyKey: s.key, kind: i === d.trace.length - 1 ? "decision" : "thought", text: d.trace[i], real: false, at: now + i });
-  await transition(ctx, { table: "stories", id, action: "annotate", actor: "auditor", month: m, reason: "Second opinion", patch: { auditorOpinion: { text: d.auditor, real: false } } });
-  await ctx.db.insert("trace_events", { agent: "auditor", month: m, storyKey: s.key, kind: "result", text: d.auditor, real: false, at: now + 20 });
-  const q = await transition(ctx, {
-    table: "questions", id: null, action: "create", actor: "investigator", month: m, reason: "Drafted the question",
-    insert: { storyKey: s.key, askOf: d.askOf, text: d.text, options: d.options, real: false, month: m }, patch: {},
-  });
-  if (q.ok) await transition(ctx, { table: "questions", id: q.id, action: "ask", actor: "investigator", month: m, reason: `Asked the ${d.askOf === "cfo" ? "CFO" : "Accountant"}`, patch: {} });
 }

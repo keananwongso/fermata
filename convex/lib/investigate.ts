@@ -1,4 +1,4 @@
-// Scripted Investigator text for stories other than story B (story B is written by Claude).
+// Scripted meeting content: used for rooms that do not meet live, and as the fallback when Claude is unavailable.
 // Every line here is labelled "scripted" in the trace.
 import { STORE_BY_CODE } from "./domain";
 import { rp, rpShort, num } from "./format";
@@ -69,6 +69,20 @@ export function draftQuestion(s: Doc<"stories">): QuestionDraft {
         hypothesis: "Money deposited into our account by mistake, or belonging to someone else.",
         trace: ["no slip in the memo, so no sub account evidence", "tried every store's cash days for the matching weekday: no match", "ask the Accountant before anything is booked"],
         auditor: "Agree. Booking these as sales would overstate income.",
+      };
+    case "unknown_lender":
+      return {
+        askOf: "cfo",
+        text: `Is ${s.counterparty} a new financing partner?`,
+        options: [
+          { id: "yes", label: "Yes", impact: `Writes a rule for ${s.counterparty} and settles the payouts it explains. The rest stay held.` },
+          { id: "no", label: "No, not ours", impact: `Keeps all ${n} held.` },
+          { id: "unsure", label: "I don't know", impact: `Keeps all ${n} held and asks the Accountant to check contracts.` },
+        ],
+        summary: `${n} payouts (${amt}) from ${s.counterparty}, a lender no approved rule knows.`,
+        hypothesis: `${s.counterparty} may be a new financing partner.`,
+        trace: [`read ${n} held payouts from ${s.counterparty}`, "the lender is not in any approved rule", "a new lender is a business relationship, so ask the CFO"],
+        auditor: "A new lender is a business question, not a bookkeeping one. Agree the CFO should be asked.",
       };
     default:
       return smallQuestion(s, n, amt, at);

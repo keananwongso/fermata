@@ -5,6 +5,7 @@ import { internalMutation, mutation, type MutationCtx } from "./_generated/serve
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getClose, resume, STORY_A_KEY, STORY_B_KEY } from "./run";
+import { markRoomClosed } from "./rooms";
 import { transition, type ItemTable, type Role } from "./lib/transition";
 import { LENDER_TRUE_CUT, STORE_BY_CODE, addDays, type StoreCode } from "./lib/domain";
 import { parseMemo } from "./lib/engineCore";
@@ -54,6 +55,7 @@ async function doConfirm(ctx: MutationCtx, questionId: Id<"questions">, actor: R
   if (!story) return null;
   await ctx.db.insert("precedents", { storyKey: story.key, answer: q.answer, actor, effect: q.options.find((o) => o.id === q.answer)?.impact ?? "", at: Date.now() });
   await applyAnswer(ctx, story, q.answer, actor, q.month);
+  await markRoomClosed(ctx, story.key);
   return null;
 }
 

@@ -97,7 +97,7 @@ export function StateBadge({ state, label }: { state: string; label?: string }) 
 }
 
 export const AGENT_LABEL: Record<string, string> = {
-  investigator: "Investigator", learner: "Learner", auditor: "Auditor", accountant: "Accountant", cfo: "CFO", engine: "Engine", gateway: "Gateway", sync: "Sync",
+  investigator: "Investigator", learner: "Learner", auditor: "Auditor", accountant: "Accountant", cfo: "CFO", engine: "Engine", gateway: "Gateway", sync: "Sync", manager: "Meeting manager",
 };
 
 export interface TraceLine { _id: string; kind: string; text: string; real: boolean; staged?: boolean }
