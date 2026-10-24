@@ -70,7 +70,7 @@ function CaseFile({ storyKey }: { storyKey: string }) {
           <div className="mt-3 space-y-3">
             {d.sample.map((x) => (
               <div key={x.ref} className="text-[12px]">
-                <div className="flex justify-between"><span className="num text-secondary">{shortDate(x.date)} · {x.account}</span><span className="num font-medium">{rp(x.amount)}</span></div>
+                <div className="flex items-baseline justify-between gap-2"><span className="num truncate text-secondary">{shortDate(x.date)} · {x.account}</span><span className="num shrink-0 whitespace-nowrap font-medium">{rp(x.amount)}</span></div>
                 <div className="num mt-0.5 truncate text-faint" title={x.memo}>{x.memo}</div>
               </div>
             ))}
@@ -102,7 +102,7 @@ function CaseFile({ storyKey }: { storyKey: string }) {
             <div className="mt-3 space-y-3">
               {d.sample.slice(0, 3).map((x) => (
                 <div key={x.ref} className="text-[12px]">
-                  {(x.placement?.votes ?? []).map((v) => <div key={v.store} className="flex justify-between"><span>{STORE_BY_CODE[v.store]?.name}</span><span className="num text-secondary">{v.score.toFixed(2)} · {v.reasons.join(", ")}</span></div>)}
+                  {(x.placement?.votes ?? []).map((v) => <div key={v.store}><div className="flex justify-between gap-2"><span className="whitespace-nowrap font-medium">{STORE_BY_CODE[v.store]?.name}</span><span className="num text-secondary">{v.score.toFixed(2)}</span></div><div className="text-faint">{v.reasons.join(", ")}</div></div>)}
                   {!x.placement?.votes.length ? <div className="text-faint">No store evidence</div> : null}
                 </div>
               ))}

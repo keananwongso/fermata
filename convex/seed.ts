@@ -1,6 +1,7 @@
 // Master data, month items and the run controller. Bulk rows are loaded with `npx convex import` (npm run seed).
 import { v } from "convex/values";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalAction, internalMutation, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { BANK_ACCOUNTS, MONTHLY_TOTALS, STORES, YEAR } from "./lib/domain";
 
 export const init = internalMutation({
@@ -63,3 +64,23 @@ export const resetRunState = internalMutation({
 });
 
 export const ping = mutation({ args: {}, returns: v.string(), handler: async () => "ok" });
+
+// Full reset in one call: npx convex run seed:resetAll
+export const resetAll = internalAction({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    let total = 0;
+    for (;;) {
+      const r: { deleted: number; done: boolean } = await ctx.runMutation(internal.seed.resetBatch, {});
+      total += r.deleted;
+      if (r.done) break;
+    }
+    for (const table of ["erp_invoices", "cash_book", "marketplace_orders", "gateway_settlements", "dealer_invoices", "school_receipts"] as const) {
+      let cursor: string | null = null;
+      do { cursor = await ctx.runMutation(internal.seed.resetCounterparts, { table, cursor }); } while (cursor);
+    }
+    await ctx.runMutation(internal.seed.resetRunState, {});
+    return total;
+  },
+});
