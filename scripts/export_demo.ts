@@ -109,7 +109,10 @@ async function convexRun() {
     program: JSON.parse(r.program) as RuleProgram, backtest: r.backtest ?? null, audit: r.audit ? { result: r.audit.result, note: r.audit.note } : null,
   }));
   const ov = await c.query(api.queries.overview, {});
-  return { rooms, rules, headOffice: ov.headOffice, headOfficeBank: ov.headOfficeBank };
+  // The latest evaluation run (held out week, wrong stores, fuzzer), for the pitch's proof slide. Run it from the
+  // Evaluation screen before exporting, or the slide shows placeholders.
+  const evaluation = (await c.query(api.queries.evaluation, {}))[0]?.result ?? null;
+  return { rooms, rules, headOffice: ov.headOffice, headOfficeBank: ov.headOfficeBank, evaluation };
 }
 
 async function main() {
@@ -118,6 +121,6 @@ async function main() {
   mkdirSync("src/demo", { recursive: true });
   const json = JSON.stringify(out);
   writeFileSync("src/demo/recording.json", json);
-  console.log(`wrote src/demo/recording.json: ${(json.length / 1024).toFixed(0)} KB, ${run.rooms.length} rooms, ${run.rules.length} rules, final ${JSON.stringify(engine.final)}`);
+  console.log(`wrote src/demo/recording.json: ${(json.length / 1024).toFixed(0)} KB, ${run.rooms.length} rooms, ${run.rules.length} rules, final ${JSON.stringify(engine.final)}${run.evaluation ? "" : ", no evaluation run (the pitch's proof slide will show placeholders)"}`);
 }
 main().catch((e) => { console.error(e); process.exit(1); });

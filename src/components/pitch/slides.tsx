@@ -3,14 +3,13 @@
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import type { Doc } from "../../../convex/_generated/dataModel";
-import { BANK_ACCOUNTS } from "../../../convex/lib/domain";
+import { BANK_ACCOUNTS, MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
 import { ROLES, type Role } from "../../../convex/lib/transition";
 import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
 import { Pill } from "../ui";
-import { D } from "./data";
+import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -312,6 +311,171 @@ function Built() {
   );
 }
 
+// 8 · Self improving: the share settled on first pass climbs while meetings per month fall to none.
+function Curve() {
+  const w = 1680, top = 70, lineH = 270, barTop = 450, barH = 100;
+  const x = (i: number) => 60 + i * ((w - 120) / 11);
+  const y = (v: number) => top + (1 - (v - 0.75) / 0.25) * lineH;
+  const path = D.shares.map((v, i) => `${i ? "L" : "M"}${x(i)} ${y(v)}`).join(" ");
+  const maxMeet = Math.max(...D.meetings);
+  return (
+    <Frame chapter="Self improving" n={8}>
+      <div className="flex items-end justify-between gap-10">
+        <In><h2 className="title text-[72px]">It gets better every month.</h2></In>
+        <In delay={0.2} className="flex gap-16 text-right">
+          <div><div className="figure text-[64px] text-heading">{pct(D.first, 0)} → {pct(D.last, 0)}</div><div className="mt-1 text-[22px] text-secondary">settled on first pass</div></div>
+          <div><div className="figure text-[64px] text-hold">{D.meetings[0]} → {D.meetings[11]}</div><div className="mt-1 text-[22px] text-secondary">meetings a month</div></div>
+        </In>
+      </div>
+      <In delay={0.3} className="mt-10">
+        <svg width={w} height={590} role="img" aria-label="Share settled on first pass by month, and meetings per month">
+          {[0.8, 0.9, 1].map((g) => <g key={g}><line x1={40} x2={w - 40} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" /><text x={0} y={y(g) + 6} fontSize="18" fill="var(--color-faint)" fontFamily="var(--font-mono)">{Math.round(g * 100)}</text></g>)}
+          {D.learned.map((r) => {
+            const i = r.learnedInMonth - 1;
+            return (
+              <motion.g key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6, duration: 0.4 }}>
+                <line x1={x(i)} x2={x(i)} y1={22} y2={y(D.shares[i]) - 44} stroke="var(--color-accent)" strokeDasharray="4 6" strokeWidth="2" />
+                <rect x={x(i) - 16} y={0} width={r.id.length * 13 + 104} height={30} rx={15} fill="var(--color-accent-tint)" />
+                <text x={x(i)} y={21} fontSize="18" fill="var(--color-accent)" fontFamily="var(--font-mono)">{r.id} learned</text>
+              </motion.g>
+            );
+          })}
+          <motion.path d={path} fill="none" stroke="var(--color-accent)" strokeWidth="4" strokeLinejoin="round"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.4, delay: 0.4, ease: EASE_OUT }} />
+          {D.shares.map((v, i) => (
+            <motion.g key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + (i / 11) * 1.4 }}>
+              <circle cx={x(i)} cy={y(v)} r={7} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth="3" />
+              <text x={x(i)} y={y(v) - 20} textAnchor="middle" fontSize="20" fill="var(--color-heading)" fontFamily="var(--font-mono)">{Math.round(v * 100)}</text>
+            </motion.g>
+          ))}
+          <text x={0} y={barTop - 52} fontSize="16" fill="var(--color-faint)" fontFamily="var(--font-mono)">MEETINGS</text>
+          {D.meetings.map((m, i) => {
+            const h = m ? (m / maxMeet) * barH : 3;
+            return (
+              <g key={i}>
+                <motion.rect x={x(i) - 26} width={52} rx={4} fill="var(--color-hold)" fillOpacity={0.85}
+                  initial={{ height: 0, y: barTop + barH }} animate={{ height: h, y: barTop + barH - h }} transition={{ duration: 0.6, delay: 0.8 + i * 0.06, ease: EASE_OUT }} />
+                {m ? <text x={x(i)} y={barTop + barH - h - 10} textAnchor="middle" fontSize="18" fill="var(--color-hold-ink)" fontFamily="var(--font-mono)">{m}</text> : null}
+                <text x={x(i)} y={barTop + barH + 34} textAnchor="middle" fontSize="20" fill="var(--color-secondary)" fontFamily="var(--font-sans)">{MONTH_LABELS[i]}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </In>
+    </Frame>
+  );
+}
+
+// 9 · Proof: each learned rule's backtest, then the evaluation against the hidden truth when it has been run.
+function Proof() {
+  const e: Evaluation | null = D.evaluation;
+  const n = (k: string) => Number(e?.[k] ?? 0);
+  const backtests = D.learned.filter((r) => r.backtest);
+  return (
+    <Frame chapter="Proves every step" n={9}>
+      <In><h2 className="title text-[72px]">Tested before anyone is asked to trust it.</h2></In>
+      <div className="mt-14 grid grid-cols-2 gap-6">
+        {backtests.map((r, i) => (
+          <In key={r.id} delay={0.2 + i * 0.12}>
+            <div className="card p-9">
+              <div className="eyebrow text-[17px]">{r.id} · backtest before approval</div>
+              <div className="mt-4 text-[28px] font-medium text-ink">{r.title}</div>
+              <div className="mt-6 flex items-baseline gap-5">
+                <span className="figure text-[76px] text-heading">{num(r.backtest!.correct)}</span>
+                <span className="text-[26px] text-secondary">of {num(r.backtest!.covered)} right ({pct(r.backtest!.precision)})</span>
+              </div>
+              <div className="mt-3 text-[21px] text-faint">{r.backtest!.scope}</div>
+            </div>
+          </In>
+        ))}
+      </div>
+      <div className="mt-6 grid grid-cols-3 gap-6">
+        {e ? (
+          <>
+            <ProofCard delay={0.5} label="A week it never saw" figure={pct(n("weekSettled") ? n("weekCorrect") / n("weekSettled") : 1)} sub={`precision on ${num(n("weekSettled"))} lines settled from ${e.weekFrom} to ${e.weekTo}`} />
+            <ProofCard delay={0.62} label="Wrong store" figure={num(n("wrongStore"))} sub={`of ${num(n("withStore"))} lines placed at a store, checked against the hidden truth`} />
+            <ProofCard delay={0.74} label="Fuzzer" figure={num(n("fuzzSettled"))} sub={`of ${num(n("fuzzTried"))} altered lines slipped through; ${num(n("fuzzHeld") + n("fuzzWaiting"))} were held`} />
+          </>
+        ) : (
+          ["A week it never saw", "Wrong store", "Fuzzer"].map((l, i) => (
+            <In key={l} delay={0.5 + i * 0.12}>
+              <div className="hatch rounded-[10px] border border-dashed border-strong p-9">
+                <div className="eyebrow text-[17px]">{l}</div>
+                <div className="mt-4 text-[24px] text-faint">Filled in by the final recording (run the evaluation, then export).</div>
+              </div>
+            </In>
+          ))
+        )}
+      </div>
+    </Frame>
+  );
+}
+
+function ProofCard({ label, figure, sub, delay }: { label: string; figure: string; sub: string; delay: number }) {
+  return (
+    <In delay={delay}>
+      <div className="card p-9">
+        <div className="eyebrow text-[17px]">{label}</div>
+        <div className="figure mt-4 text-[76px] text-heading">{figure}</div>
+        <div className="mt-3 text-[21px] leading-snug text-faint">{sub}</div>
+      </div>
+    </In>
+  );
+}
+
+// 10 · The result: before and after, with the assumptions on the slide.
+function Result() {
+  const hours = Math.round(D.fermataHours);
+  return (
+    <Frame chapter="The result" n={10} tone="warm">
+      <div className="flex h-full flex-col justify-center">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-16">
+          <In>
+            <div className="eyebrow text-[20px]">By hand</div>
+            <div className="figure mt-6 text-[140px] text-secondary"><Roll value={D.total} /></div>
+            <div className="mt-3 text-[30px] text-secondary">bank lines to match</div>
+            <div className="mt-10 text-[34px] text-secondary">~{D.manualDays} working days for {D.team} people</div>
+          </In>
+          <In delay={0.3}><svg width="120" height="60" aria-hidden><path d="M0 30h104M84 8l24 22-24 22" fill="none" stroke="var(--color-accent)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" /></svg></In>
+          <In delay={0.5}>
+            <div className="eyebrow text-[20px]">With Fermata</div>
+            <div className="figure mt-6 text-[140px] text-heading"><Roll value={D.decisions} prefix="~" /></div>
+            <div className="mt-3 text-[30px] text-body">decisions for people: {D.rooms.length} answers, {D.rules.length} rule approvals</div>
+            <div className="mt-10 text-[34px] text-heading">about {hours} hours, one afternoon</div>
+          </In>
+        </div>
+        <In delay={0.9}><p className="mt-24 text-[22px] text-faint">Assumes {D.minutesPerMatch} minutes per manual match, {D.minutesPerDecision} minutes per decision and 8 hour days.</p></In>
+      </div>
+    </Frame>
+  );
+}
+
+// 11 · The end card: the name, the line, what is next, where to find it.
+function End() {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-night text-white">
+      <span aria-hidden className="pointer-events-none absolute -bottom-[260px] -right-[60px] select-none text-[1100px] leading-none text-white/[0.05]" style={MUSIC}>𝄐</span>
+      <div className="relative flex h-full flex-col justify-center px-[160px]">
+        <In><div className="flex items-center gap-6"><span className="text-[80px] leading-none text-hold" aria-hidden>𝄐</span><span className="display text-[140px]" style={{ color: "white" }}>Fermata</span></div></In>
+        <In delay={0.2}><p className="mt-10 max-w-[1500px] text-[44px] leading-snug text-white/85">Every line settles on its own. Fermata only holds where it should.</p></In>
+        <In delay={0.45}>
+          <div className="mt-20 max-w-[1300px] space-y-4 text-[30px] text-white/70">
+            <p>My family&apos;s business is the first design partner.</p>
+            <p>Next: shadow mode at one store, where it proposes and people still decide. Then a cash report a bank can trust.</p>
+          </div>
+        </In>
+        <In delay={0.7}>
+          <div className="mt-20 flex gap-16 text-[28px]">
+            <span className="text-white">getfermata.tech</span>
+            <span className="text-white/70">github.com/keananwongso/fermata</span>
+            <span className="text-white/50">Built with Claude and Convex</span>
+          </div>
+        </In>
+      </div>
+    </div>
+  );
+}
+
 export const SLIDES: Slide[] = [
   { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus forty eight point six billion rupiah." (click) "It isn't." (click) "The bank holds three point two four billion."` },
   { id: "mess", chapter: "Why", render: Mess, notes: `"This is built from what I've seen in my family's music business in Indonesia. Money comes in six ways: fourteen stores, Shopee, Tokopedia, a website, dealers and a music school. None of them pays one sale at a time: one Shopee payout covers eight hundred and forty orders. And it all lands in five bank accounts shared by fourteen stores. The books pretend each store has its own, so they keep seventy balances no bank holds."` },
@@ -322,4 +486,8 @@ export const SLIDES: Slide[] = [
 
 Video: cut to the demo here (close the year, then story A's room and story B's room).` },
   { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood: a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. The permissions are a table in code, checked on every step, and every change is written together with its record, in Convex."` },
+  { id: "curve", chapter: "Self improving", render: Curve, notes: `"And it gets better every month. Eighty one percent settled on its own in January, ninety eight by December. The meetings fall the other way: eight in January, none from October, because every answer became a rule."` },
+  { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is tested on last year before a person sees it: the school fee rule got two thousand three hundred and three of two thousand three hundred and ten right, and its seven counterexamples went to the CFO. Then we scored the whole year against the hidden truth: a week it never saw, wrong stores, and a fuzzer that alters real lines to see if any slip through." (Read the three bottom numbers from the slide; never say a number that is not on it.)` },
+  { id: "result", chapter: "The result", render: Result, notes: `"A hundred and four thousand bank lines became about forty decisions for people. About a month of the team's work, down to an afternoon."` },
+  { id: "end", chapter: "Fermata", render: End, notes: `"My family's business is the first design partner. Next is shadow mode at one store: it proposes, people still decide. Then a cash report a bank can trust." (Hold on the card for three seconds.)` },
 ];
