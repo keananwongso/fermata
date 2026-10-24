@@ -45,7 +45,7 @@ export default defineSchema({
     .index("by_key", ["key"])
     .index("by_store_kind_date", ["store", "kind", "date"])
     .index("by_kind_lender_date", ["kind", "lender", "date"]),
-  cash_book: defineTable({ key: v.string(), year: v.number(), store, date: v.string(), cashSales: v.number(), pettyCashKept: v.number(), recordedOn: v.string(), applied: v.number() })
+  cash_book: defineTable({ key: v.string(), year: v.number(), store, date: v.string(), cashSales: v.number(), pettyCashKept: v.number(), recordedOn: v.string(), applied: v.number(), reversed: v.optional(v.boolean()) })
     .index("by_key", ["key"])
     .index("by_store_date", ["store", "date"]),
   marketplace_orders: defineTable({ key: v.string(), year: v.number(), platform: v.string(), store, week: v.string(), date: v.string(), amount: v.number(), refund: v.number(), applied: v.number() })
@@ -109,6 +109,10 @@ export default defineSchema({
     auditorOpinion: v.optional(v.object({ text: v.string(), real: v.boolean() })),
     // The case room for this story: meeting -> asked (one question out) -> closed (answered).
     room: v.optional(v.object({ state: v.union(v.literal("meeting"), v.literal("asked"), v.literal("closed")), turns: v.number(), live: v.boolean() })),
+    // The shape of the evidence when the story opened (codeLearner.ts): which answer could teach a rule, and which rule.
+    shape: v.optional(v.string()),
+    // Set while a rule learned from this story's answer is being written or waits for the CFO; the close waits for it.
+    learning: v.optional(v.string()),
     scenario: v.optional(v.string()),
   })
     .index("by_key", ["key"])
@@ -123,6 +127,7 @@ export default defineSchema({
     audit: v.optional(v.object({ result: v.union(v.literal("pass"), v.literal("flag"), v.literal("block")), note: v.string(), counterexamples: v.number(), real: v.boolean() })),
     learnedInMonth: v.optional(v.number()),
     real: v.boolean(), // written by Claude (true) or seeded/scripted (false)
+    fittedBy: v.optional(v.literal("code")), // parameters fitted from the data by the Learner's code (convex/lib/learn.ts), not Claude
     scenario: v.optional(v.string()),
   })
     .index("by_ruleId", ["ruleId"]),
