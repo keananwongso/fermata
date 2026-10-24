@@ -7,7 +7,7 @@ export const state = v.union(
 );
 export const role = v.union(
   v.literal("sync"), v.literal("engine"), v.literal("investigator"), v.literal("learner"),
-  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"), v.literal("manager"),
+  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"), v.literal("manager"), v.literal("assistant"),
 );
 const store = v.string();
 const channel = v.string();

@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { MONTH_LABELS } from "./domain";
 
 export type State = "NEW" | "PROPOSED" | "APPROVED" | "POSTED" | "NEEDS_INFO" | "HELD" | "WAITING";
-export type Role = "sync" | "engine" | "investigator" | "learner" | "auditor" | "accountant" | "cfo" | "gateway" | "manager";
+export type Role = "sync" | "engine" | "investigator" | "learner" | "auditor" | "accountant" | "cfo" | "gateway" | "manager" | "assistant";
 export type Action = "create" | "propose" | "wait" | "hold" | "ask" | "answer" | "approve" | "post" | "flag" | "block" | "annotate";
 export type ItemTable = "work_items" | "stories" | "rules" | "questions";
 
@@ -24,6 +24,8 @@ export const ROLES: Record<Role, { label: string; actions: Partial<Record<Action
   gateway: { label: "Gateway", actions: { post: ["work_items", "stories"] } },
   // The case room's chair. Code, not an LLM: it records, closes the meeting and sends its one question out.
   manager: { label: "Meeting manager", actions: { create: ["questions"], ask: ["stories", "questions"], annotate: ["stories"] } },
+  // Ask the books. It explains the books and may do nothing to them: every attempt is refused here and recorded.
+  assistant: { label: "Assistant", actions: {} },
 };
 
 // Who may speak in a case room. People and the gateway are outside the room.
