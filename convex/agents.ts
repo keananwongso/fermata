@@ -7,7 +7,7 @@ import { transition } from "./lib/transition";
 import { afterword } from "./rooms";
 import { parseMemo } from "./lib/engineCore";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
-import { LAST_YEAR, addDays } from "./lib/domain";
+import { LAST_YEAR, MONTH_LABELS, addDays } from "./lib/domain";
 import { num, pct } from "./lib/format";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
@@ -56,12 +56,14 @@ export const backtestPage = internalQuery({
 });
 
 export const learnRuleR8 = internalAction({
-  args: { storyKey: v.string() },
+  // month and the story's facts come from the close; absent, they are the recorded default world's story A.
+  args: { storyKey: v.string(), month: v.optional(v.number()), count: v.optional(v.number()), vaStore: v.optional(v.string()), receiptStore: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, a) => {
+    const count = a.count ?? 1186, va = a.vaStore ?? "Store 3", rec = a.receiptStore ?? "Store 11";
     const system = "You are the Learner inside Fermata. You turn a person's correction into a rule: a small JSON program the engine interprets. " +
       "You never approve rules; the CFO does after a backtest. Reply with JSON only.";
-    const user = `Correction: the Accountant said 1,186 school fee payments paid into Store 3's virtual accounts belong to Store 11, because the school's receipts (same student, same amount) are at Store 11. The bank's virtual account range is stale when students change branch.
+    const user = `Correction: the Accountant said ${num(count)} school fee payments paid into ${va}'s virtual accounts belong to ${rec}, because the school's receipts (same student, same amount) are at ${rec}. The bank's virtual account range is stale when students change branch.
 
 Write the rule program. Schema:
 {"id": "r8", "version": 1, "title": string (sentence case, under 60 chars), "channels": ["school_va"],
@@ -100,23 +102,23 @@ Also add a top-level key "why": one sentence for the CFO. Return one JSON object
       }
       cursor = page.cursor;
     } while (cursor);
-    await ctx.runMutation(internal.agents.writeR8, { programJson: JSON.stringify(program), why, real, covered, correct, total, examples, storyKey: a.storyKey });
+    await ctx.runMutation(internal.agents.writeR8, { programJson: JSON.stringify(program), why, real, covered, correct, total, examples, storyKey: a.storyKey, month: a.month ?? 3, count });
     return null;
   },
 });
 
 export const writeR8 = internalMutation({
-  args: { programJson: v.string(), why: v.string(), real: v.boolean(), covered: v.number(), correct: v.number(), total: v.number(), examples: v.array(v.string()), storyKey: v.string() },
+  args: { programJson: v.string(), why: v.string(), real: v.boolean(), covered: v.number(), correct: v.number(), total: v.number(), examples: v.array(v.string()), storyKey: v.string(), month: v.optional(v.number()), count: v.optional(v.number()) },
   returns: v.null(),
   handler: async (ctx, a) => {
     const program = JSON.parse(a.programJson) as RuleProgram;
-    const month = 3;
+    const month = a.month ?? 3;
     const now = Date.now();
     const errors = a.covered - a.correct;
     const precision = a.covered ? a.correct / a.covered : 0;
     const c = await transition(ctx, {
       table: "rules", id: null, action: "create", actor: "learner", month, reason: a.real ? "Written by Claude from the Accountant's correction" : "Scripted fallback",
-      insert: { ruleId: "r8", version: 1, title: program.title, program: a.programJson, origin: "Accountant's correction of 1,186 school fees (March)", proposer: "learner", settledCount: 0, learnedInMonth: month, real: a.real }, patch: {},
+      insert: { ruleId: "r8", version: 1, title: program.title, program: a.programJson, origin: `Accountant's correction of ${num(a.count ?? 1186)} school fees (${MONTH_LABELS[month - 1]})`, proposer: "learner", settledCount: 0, learnedInMonth: month, real: a.real }, patch: {},
     });
     if (!c.ok) return null;
     await ctx.db.insert("trace_events", { agent: "learner", month, ruleId: "r8", storyKey: a.storyKey, kind: "result", text: `rule written${a.real ? " by Claude" : " (fallback)"}: ${program.title}. ${a.why}`, real: a.real, at: now });

@@ -11,6 +11,7 @@
 import type * as agents from "../agents.js";
 import type * as ask from "../ask.js";
 import type * as askData from "../askData.js";
+import type * as codeLearner from "../codeLearner.js";
 import type * as engine from "../engine.js";
 import type * as evaluation from "../evaluation.js";
 import type * as humans from "../humans.js";
@@ -23,6 +24,7 @@ import type * as lib_engineCore from "../lib/engineCore.js";
 import type * as lib_format from "../lib/format.js";
 import type * as lib_generate from "../lib/generate.js";
 import type * as lib_investigate from "../lib/investigate.js";
+import type * as lib_learn from "../lib/learn.js";
 import type * as lib_rules from "../lib/rules.js";
 import type * as lib_transition from "../lib/transition.js";
 import type * as lib_voiceMatch from "../lib/voiceMatch.js";
@@ -44,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   ask: typeof ask;
   askData: typeof askData;
+  codeLearner: typeof codeLearner;
   engine: typeof engine;
   evaluation: typeof evaluation;
   humans: typeof humans;
@@ -56,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   "lib/format": typeof lib_format;
   "lib/generate": typeof lib_generate;
   "lib/investigate": typeof lib_investigate;
+  "lib/learn": typeof lib_learn;
   "lib/rules": typeof lib_rules;
   "lib/transition": typeof lib_transition;
   "lib/voiceMatch": typeof lib_voiceMatch;

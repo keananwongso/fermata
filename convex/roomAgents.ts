@@ -16,7 +16,7 @@ import { closeRoom, openRoom, roleName, roomMessages, say, scriptedMeeting } fro
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
 export const MAX_TURNS = 6;
-export const LIVE_ROOMS = new Set([STORY_A_KEY, STORY_B_KEY]);
+// Which rooms meet live with Claude is decided by the story's shape, in specOf.
 
 const storeName = (s: string | null | undefined) => (s ? STORE_BY_CODE[s]?.name ?? s : "no store");
 
@@ -35,9 +35,15 @@ const SPECS: Record<string, StorySpec> = {
 
 // Rooms beyond A and B meet live by the shape of their story: a scenario's unknown lender meets like B, with its own
 // lender and rule id; a scenario's deposits that no store recorded meet with the Accountant and make no rule.
+// The year's own stories meet live by shape too: school fees whose receipts sit at another store meet like A, a lender
+// no rule knows meets like B. Every other story of the year meets from the scripted drafts.
 export async function specOf(ctx: QueryCtx, story: Doc<"stories">): Promise<StorySpec | null> {
   if (SPECS[story.key]) return SPECS[story.key];
-  if (!story.scenario) return null;
+  if (!story.scenario) {
+    if (story.gap === "placement_conflict" && story.channel === "school_va") return SPECS[STORY_A_KEY];
+    if (story.gap === "unknown_lender") return { ...SPECS[STORY_B_KEY], brief: `The lender here is ${story.counterparty}. A yes creates rule r9 for ${story.counterparty}; a no or I don't know keeps every payout held.` };
+    return null;
+  }
   const scn = await ctx.db.query("scenarios").withIndex("by_sid", (q) => q.eq("sid", story.scenario!)).first();
   if (story.gap === "unknown_lender" && scn?.ruleId) return {
     optionIds: ["yes", "no", "unsure"], askOf: "cfo", ruleId: scn.ruleId, draftFirst: true, ruleShape: lenderShape(scn.ruleId),

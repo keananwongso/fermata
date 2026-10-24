@@ -33,11 +33,24 @@ export const overview = query({
       rulesLearned: rules.filter((r) => r.learnedInMonth).map((r) => ({ ruleId: r.ruleId, month: r.learnedInMonth ?? 0, state: r.state })),
       roomsByMonth: Array.from({ length: 12 }, (_, i) => stories.filter((s) => s.month === i + 1).length),
       openRooms: allStories.filter((s) => s.room && s.room.state !== "closed").sort((a, b) => b.month - a.month).slice(0, 5).map((s) => ({ key: s.key, title: s.title, state: s.room!.state })),
-      pausedQuestion: close?.run?.pausedFor ? questions.find((x) => x.storyKey === (close.run!.pausedFor === "A" ? "placement_conflict|S03|school_va" : "unknown_lender|FIN_Z")) ?? null : null,
-      pausedRule: close?.run?.pausedFor === "A" ? rules.find((r) => r.ruleId === "r8") ?? null : null,
+      // While paused: the question at this close the close waits on (one whose answer could teach a rule first), and a
+      // rule waiting for the CFO.
+      ...paused(close?.run ?? null, stories, questions, rules),
     };
   },
 });
+
+function paused(run: Doc<"work_items">["run"] | null, stories: Doc<"stories">[], questions: Doc<"questions">[], rules: Doc<"rules">[]) {
+  if (!run?.pausedFor) return { pausedQuestion: null, pausedRule: null, pausedStory: null };
+  const pausedRule = rules.find((r) => r.learnedInMonth && r.state === "PROPOSED") ?? null;
+  const open = questions.filter((q) => (q.state === "NEEDS_INFO" || q.state === "PROPOSED") && q.month <= run.month);
+  const byKey = new Map(stories.map((s) => [s.key, s]));
+  open.sort((a, b) => Number(!!byKey.get(b.storyKey)?.shape) - Number(!!byKey.get(a.storyKey)?.shape) || (byKey.get(b.storyKey)?.count ?? 0) - (byKey.get(a.storyKey)?.count ?? 0));
+  const learning = stories.find((s) => s.learning);
+  const pausedQuestion = open[0] ?? null;
+  const s = pausedQuestion ? byKey.get(pausedQuestion.storyKey) : learning ?? stories.find((x) => x.room?.state === "meeting" && x.month <= run.month);
+  return { pausedQuestion, pausedRule, pausedStory: s ? { key: s.key, title: s.title, month: s.month, count: s.count, amount: s.amount, shape: s.shape ?? null, live: !!s.room?.live, meeting: s.room?.state === "meeting" } : null };
+}
 
 export const showcase = query({
   args: {},

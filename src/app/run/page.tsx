@@ -126,17 +126,21 @@ function Controls({ o }: { o: Overview }) {
 }
 
 function PausePanel({ o }: { o: Overview }) {
-  const which = o.run?.pausedFor;
+  const s = o.pausedStory;
+  const month = s ? MONTH_LABELS[Math.min(s.month, 12) - 1] : MONTH_LABELS[Math.min(o.run?.month ?? 1, 12) - 1];
+  const teaches = !!s?.shape;
   return (
-    <section key={which} className="enter space-y-4">
+    <section key={s?.key ?? "close"} className="enter space-y-4">
       <div className="flex items-baseline gap-3">
         <span className="breathe text-[24px]" aria-hidden>𝄐</span>
-        <h2 className="title text-[clamp(22px,2.6vw,30px)]">{which === "A" ? "Held in March: a correction becomes a rule" : "Held in June: a question only the CFO can answer"}</h2>
+        <h2 className="title text-[clamp(22px,2.6vw,30px)]">{s ? `Held in ${month}: ${s.title}` : `Waiting at the ${month} close`}</h2>
       </div>
       <p className="max-w-[720px] text-body">
-        {which === "A"
-          ? "1,186 school fees landed in Store 3’s virtual accounts while the school’s receipts put the students at Store 11. Fermata will not guess where money belongs. It asks the Accountant once, then turns the answer into a rule and tests it on last year before the CFO approves it."
-          : "742 payouts arrived from FIN_Z, a lender that was not in last year’s books. Fermata asks the CFO one question instead of settling them on a pattern alone."}
+        {s?.meeting
+          ? `The case room for these ${num(s.count)} lines (${rpShort(s.amount)}) is still meeting. The close waits for its one question.`
+          : teaches
+            ? `${s ? `${num(s.count)} lines, ${rpShort(s.amount)}. ` : ""}Fermata will not guess. It asks one person once. If the answer names a pattern, the Learner writes a rule from it and backtests it, and nothing settles until the CFO approves it.`
+            : "One question for one person. A one-off is settled or kept held by their decision, and no rule follows from it."}
       </p>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {o.pausedQuestion ? <QuestionCard q={o.pausedQuestion} /> : null}
@@ -150,7 +154,7 @@ function Counters({ o }: { o: Overview }) {
   return (
     <Reveal className="frame">
       <Card className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5">
-        <RevealItem><Metric label="Processed" value={<Roll value={o.counters.processed} format={WHOLE} />} sub="of 104,820 bank lines" /></RevealItem>
+        <RevealItem><Metric label="Processed" value={<Roll value={o.counters.processed} format={WHOLE} />} sub={`of ${num(o.months.reduce((a, m) => a + (m.stats.total ?? 0), 0))} bank lines`} /></RevealItem>
         <RevealItem><Metric label="Settled automatically" value={<Roll value={o.counters.settledAuto} format={WHOLE} />} sub={o.counters.processed ? pct(o.counters.settledAuto / o.counters.processed) : "—"} tone="success" /></RevealItem>
         <RevealItem><Metric label="Waiting" value={<Roll value={o.counters.waiting} format={WHOLE} />} sub="records not in the books yet" /></RevealItem>
         <RevealItem><Metric label="Held" value={<Roll value={o.counters.held} format={WHOLE} />} sub={`${num(o.counters.everHeld)} held at some point`} tone="hold" /></RevealItem>
