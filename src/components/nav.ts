@@ -15,6 +15,7 @@ export const REPO_URL = "https://github.com/keananwongso/fermata";
 export const SITE_LINKS = [
   { href: "/#how", label: "How it works" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/ask", label: "Ask the books" },
   { href: "/demo", label: "Live demo" },
   PUBLIC_SITE ? { href: REPO_URL, label: "Run it yourself" } : { href: "/run", label: "Console" },
 ];

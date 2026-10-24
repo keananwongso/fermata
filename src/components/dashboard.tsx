@@ -16,6 +16,8 @@ import { Overview } from "./dashboard/overview";
 import { CaseRooms } from "./dashboard/rooms";
 import { Rules } from "./dashboard/rules";
 import { Evaluation, Record, Run } from "./dashboard/screens";
+import { ViewHead } from "./dashboard/parts";
+import { AskPanel } from "./ask/panel";
 
 // ---- The views ---------------------------------------------------------------------------------------------------
 
@@ -28,8 +30,18 @@ const PANELS: Record<string, { id: string; Panel: View["Panel"]; count?: ReactNo
   "/evaluation": { id: "evaluation", Panel: Evaluation },
   "/record": { id: "record", Panel: Record },
 };
+// Ask the books sits right under the overview: the one view where a visitor can ask the window anything.
+function Ask() {
+  return (
+    <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-6">
+      <ViewHead title="Ask the books">Read only. Hold to ask out loud, or type; the answer is shown and spoken, and every number comes from the books.</ViewHead>
+      <AskPanel className="!p-4 lg:!p-5" />
+    </div>
+  );
+}
 const VIEWS: View[] = [
   { id: HOME.view, label: "Dashboard", Panel: Overview },
+  { id: "ask", label: "Ask the books", Panel: Ask },
   ...TABS.flatMap((t) => (PANELS[t.href] ? [{ ...PANELS[t.href], label: t.label, console: t.href }] : [])),
 ];
 const valid = (n?: Nav): Nav => (n && VIEWS.some((v) => v.id === n.view) && (!n.room || R.rooms.some((r) => r.key === n.room)) ? n : n?.room ? { ...n, room: null } : HOME);

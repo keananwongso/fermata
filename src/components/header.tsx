@@ -12,7 +12,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 export function Header() {
   const path = usePathname();
   // The landing page, the public demo and the dashboard get the site navigation; the console gets its tabs and role switch.
-  const site = path === "/" || path.startsWith("/demo") || path.startsWith("/dashboard");
+  const site = path === "/" || ["/demo", "/dashboard", "/ask", "/pitch"].some((p) => path.startsWith(p));
   const links = site ? SITE_LINKS : TABS;
   const [open, setOpen] = useState(false);
   useEffect(() => {
