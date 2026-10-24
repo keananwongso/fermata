@@ -2,9 +2,14 @@
 // The pitch, one slide per beat of the video plan. Copy follows the philosophy doc's words; every figure comes
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import { BANK_ACCOUNTS } from "../../../convex/lib/domain";
-import { num } from "../../../convex/lib/format";
+import { num, pct } from "../../../convex/lib/format";
+import { ROLES, type Role } from "../../../convex/lib/transition";
+import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
+import { Pill } from "../ui";
 import { D } from "./data";
 import { Frame, In, type Slide } from "./deck";
 
@@ -121,7 +126,7 @@ function Cost() {
   );
 }
 
-function Big({ figure, label, delay }: { figure: React.ReactNode; label: string; delay: number }) {
+function Big({ figure, label, delay }: { figure: ReactNode; label: string; delay: number }) {
   return (
     <In delay={delay}>
       <div className="figure text-[140px] text-heading">{figure}</div>
@@ -147,9 +152,174 @@ function Title() {
   );
 }
 
+
+// 5 · How it works: the five things Fermata does, each with what it did in the recorded year.
+function How() {
+  const steps: { verb: string; line: string; figure: string; sub: string; hold?: boolean }[] = [
+    { verb: "Settle", line: "every line an approved rule explains", figure: pct(D.last, 0), sub: "settled on first pass by December" },
+    { verb: "Hold", line: "the rest, grouped by cause", figure: num(D.heldEver), sub: `lines held, in ${D.rooms.length} stories`, hold: true },
+    { verb: "Meet", line: "agents work out each story together", figure: String(D.rooms.length), sub: "case rooms in the year" },
+    { verb: "Ask", line: "one person, one checked question", figure: "1", sub: "question per story, never twice" },
+    { verb: "Learn", line: "the answer becomes a tested rule", figure: String(D.learned.length), sub: "rules learned during the year" },
+  ];
+  return (
+    <Frame chapter="How it works" n={5}>
+      <In><h2 className="title text-[72px]">Settle, hold, meet, ask, learn.</h2></In>
+      <div className="mt-20 grid grid-cols-5 gap-6">
+        {steps.map((st, i) => (
+          <In key={st.verb} delay={0.25 + i * 0.14}>
+            <div className={`card flex h-[460px] flex-col p-8 ${st.hold ? "border-hold-tint-strong" : ""}`}>
+              <div className="flex items-center gap-3">
+                <span className={`num grid size-11 place-items-center rounded-full text-[20px] ${st.hold ? "bg-hold-tint text-hold-ink" : "bg-accent-tint text-accent"}`}>{i + 1}</span>
+                {st.hold ? <span className="text-[30px] leading-none text-hold" aria-hidden>𝄐</span> : null}
+              </div>
+              <div className="title mt-8 text-[48px]">{st.verb}</div>
+              <p className="mt-3 text-[26px] leading-snug text-body">{st.line}</p>
+              <div className="mt-auto border-t border-hairline pt-6">
+                <div className={`figure text-[60px] ${st.hold ? "text-hold" : "text-heading"}`}>{st.figure}</div>
+                <div className="mt-2 text-[21px] leading-snug text-faint">{st.sub}</div>
+              </div>
+            </div>
+          </In>
+        ))}
+      </div>
+    </Frame>
+  );
+}
+
+// 6 · Case rooms: the cast, and the opening of a real meeting from the recording.
+const CAST: { who: Role; does: string; source: "Claude" | "Code" }[] = [
+  { who: "investigator", does: "finds the pattern, drafts the one question", source: "Claude" },
+  { who: "auditor", does: "tries to break it; can block, never approves", source: "Claude" },
+  { who: "learner", does: "writes the rule as code, backtests it on last year", source: "Claude" },
+  { who: "manager", does: "gives the floor, stops at 6 turns, asks a person once", source: "Code" },
+];
+function meetingOf(): { title: string; msgs: ChatMessage[] } | null {
+  const room = D.rooms.find((r) => r.messages.some((m) => m.kind === "denied")) ?? D.storyB ?? D.storyA;
+  if (!room) return null;
+  const end = room.messages.findIndex((m) => m.kind === "manager");
+  const msgs = room.messages.slice(0, end < 0 ? 5 : end + 1).map((m) => ({ ...m, think: m.think, tools: m.tools.map((t) => ({ ...t, rows: t.rows })) }));
+  return { title: room.title, msgs: msgs as unknown as ChatMessage[] };
+}
+function Rooms() {
+  const meeting = meetingOf();
+  return (
+    <Frame chapter="Case rooms" n={6}>
+      <div className="grid h-full grid-cols-[1fr_960px] gap-16">
+        <div className="min-w-0">
+          <In><h2 className="title text-[64px]">{num(D.total - D.heldEver)} lines never need a meeting. {D.rooms.length} stories do.</h2></In>
+          <ul className="mt-14 space-y-7">
+            {CAST.map((c, i) => (
+              <In key={c.who} delay={0.3 + i * 0.12}>
+                <li className="flex items-start gap-5">
+                  <span style={{ zoom: 1.75 }}><Avatar who={c.who} size={32} /></span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3"><span className="text-[30px] font-medium text-ink">{ROLES[c.who].label}</span><span style={{ zoom: 1.45 }}><Pill tone={c.source === "Claude" ? "accent" : "neutral"}>{c.source}</Pill></span></div>
+                    <div className="mt-1 text-[24px] text-secondary">{c.does}</div>
+                  </div>
+                </li>
+              </In>
+            ))}
+          </ul>
+        </div>
+        <In delay={0.5} className="min-h-0">
+          {meeting ? (
+            <div className="frame h-[800px] overflow-hidden">
+              <div className="card relative h-full overflow-hidden">
+                <div className="border-b border-hairline px-7 py-5 text-[24px] font-medium text-heading">{meeting.title}</div>
+                <div className="bg-canvas px-4 pb-6" style={{ zoom: 1.45 }}><ChatList msgs={meeting.msgs} animate={false} /></div>
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-canvas to-transparent" />
+              </div>
+            </div>
+          ) : null}
+        </In>
+      </div>
+    </Frame>
+  );
+}
+
+// 7 · How it's built: the two paths through the system, and who may do what, read from the roles table.
+function Node({ x, y, w, title, sub, dark }: { x: number; y: number; w: number; title: string; sub: string; dark?: boolean }) {
+  return (
+    <div className={`absolute rounded-[10px] border px-6 py-4 ${dark ? "border-heading bg-heading text-white" : "border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05)]"}`} style={{ left: x, top: y, width: w }}>
+      <div className={`text-[26px] font-medium ${dark ? "text-white" : "text-ink"}`}>{title}</div>
+      <div className={`mt-0.5 text-[19px] ${dark ? "text-white/70" : "text-faint"}`}>{sub}</div>
+    </div>
+  );
+}
+const COLS = ["propose", "ask", "block", "approve", "post"] as const;
+const TABLE_ROLES: Role[] = ["engine", "investigator", "auditor", "learner", "manager", "accountant", "cfo", "gateway"];
+function Built() {
+  const arrow = (d: string, k: number, label?: [number, number, string]) => (
+    <g key={k}>
+      <motion.path d={d} fill="none" stroke="var(--color-mute)" strokeWidth="2.5" markerEnd="url(#arrowhead)"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 0.5 + k * 0.15, ease: EASE_OUT }} />
+      {label ? <text x={label[0]} y={label[1]} fontSize="19" fill="var(--color-secondary)" fontFamily="var(--font-sans)">{label[2]}</text> : null}
+    </g>
+  );
+  return (
+    <Frame chapter="How it's built" n={7}>
+      <In><h2 className="title text-[64px]">Agents propose. People approve. Only the gateway writes.</h2></In>
+      <div className="mt-14 grid grid-cols-[1040px_1fr] gap-16">
+        <In delay={0.2}>
+          <div className="relative h-[560px]">
+            <svg aria-hidden className="absolute inset-0" width="1040" height="560">
+              <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--color-mute)" /></marker></defs>
+              {arrow("M210 50 H268", 0)}
+              {arrow("M490 50 H548", 1, [430, 22, ""])}
+              {arrow("M770 50 H828", 2)}
+              {arrow("M380 112 V288", 3, [396, 210, `the ${pct(D.heldEver / D.total, 0)} it can't explain`])}
+              {arrow("M712 430 H828", 4, [722, 414, "asks once"])}
+              {arrow("M935 380 C935 250 700 230 660 112", 5, [868, 520, "approves"])}
+            </svg>
+            <Node x={0} y={0} w={210} title="Bank lines" sub={`and ${D.channels.length} sources`} />
+            <Node x={270} y={0} w={220} title="Engine" sub="code · under a rule" />
+            <Node x={550} y={0} w={220} title="Gateway" sub="code · only writer" dark />
+            <Node x={830} y={0} w={210} title="Books" sub="and the record" />
+            <div className="absolute left-[150px] top-[290px] w-[560px] rounded-[16px] border border-hairline bg-warm p-[6px]">
+              <div className="card px-6 py-5">
+                <div className="flex items-center justify-between"><span className="text-[26px] font-medium text-ink">Case room</span><span className="text-[19px] text-faint">one per held story</span></div>
+                <div className="mt-4 flex gap-6">
+                  {(["investigator", "auditor", "learner", "manager"] as Role[]).map((r) => (
+                    <div key={r} className="flex flex-col items-center gap-2"><span style={{ zoom: 1.6 }}><Avatar who={r} size={32} /></span><span className="text-[18px] text-secondary">{r === "manager" ? "Manager" : ROLES[r].label}</span></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Node x={830} y={380} w={210} title="Accountant or CFO" sub="people" />
+          </div>
+        </In>
+        <In delay={0.4}>
+          <table className="w-full table-fixed text-[22px]">
+            <colgroup><col className="w-[190px]" />{COLS.map((c) => <col key={c} />)}</colgroup>
+            <thead><tr>{["", ...COLS].map((c) => <th key={c} className="eyebrow pb-4 text-left text-[14px] font-normal">{c}</th>)}</tr></thead>
+            <tbody>
+              {TABLE_ROLES.map((r) => (
+                <tr key={r} className="border-t border-hairline">
+                  <td className="py-[11px] pr-4 text-ink">{r === "manager" ? "Manager" : ROLES[r].label}</td>
+                  {COLS.map((c) => {
+                    const yes = c in ROLES[r].actions;
+                    return <td key={c} className={`py-[11px] ${yes ? (c === "approve" ? "text-success" : "text-accent") : "text-mute"}`}>{yes ? (c === "approve" && r === "engine" ? "rule" : "✓") : "·"}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-6 text-[20px] leading-snug text-faint">From the roles table in code, checked on every step. Each change and its record are written in one Convex transaction.</p>
+        </In>
+      </div>
+    </Frame>
+  );
+}
+
 export const SLIDES: Slide[] = [
   { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus forty eight point six billion rupiah." (click) "It isn't." (click) "The bank holds three point two four billion."` },
   { id: "mess", chapter: "Why", render: Mess, notes: `"This is built from what I've seen in my family's music business in Indonesia. Money comes in six ways: fourteen stores, Shopee, Tokopedia, a website, dealers and a music school. None of them pays one sale at a time: one Shopee payout covers eight hundred and forty orders. And it all lands in five bank accounts shared by fourteen stores. The books pretend each store has its own, so they keep seventy balances no bank holds."` },
   { id: "cost", chapter: "Why", render: Cost, notes: `"A twenty person accounting team spends about a month matching it by hand. Until they finish, nobody sees the real number."` },
   { id: "title", chapter: "Fermata", render: Title, notes: `"In music, a fermata is the mark that tells you to hold. Fermata closes the year on its own, and only holds where it should."` },
+  { id: "how", chapter: "How it works", render: How, notes: `"It settles every line an approved rule can explain. It holds the rest and groups it by cause. Then its agents meet on each story, ask one person one checked question, and turn the answer into a tested rule."` },
+  { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"A hundred and two thousand lines never need a meeting. Thirty one stories do, and the agents hold that meeting themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns and only lets them ask a person once."
+
+Video: cut to the demo here (close the year, then story A's room and story B's room).` },
+  { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood: a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. The permissions are a table in code, checked on every step, and every change is written together with its record, in Convex."` },
 ];
