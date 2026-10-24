@@ -31,6 +31,7 @@ import type * as queries from "../queries.js";
 import type * as roomAgents from "../roomAgents.js";
 import type * as rooms from "../rooms.js";
 import type * as run from "../run.js";
+import type * as scenario from "../scenario.js";
 import type * as seed from "../seed.js";
 
 import type {
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   roomAgents: typeof roomAgents;
   rooms: typeof rooms;
   run: typeof run;
+  scenario: typeof scenario;
   seed: typeof seed;
 }>;
 
