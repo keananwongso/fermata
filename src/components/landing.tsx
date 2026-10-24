@@ -1,5 +1,6 @@
 "use client";
-// Illustrations for the landing page, built from the recorded run so every number on the page is real.
+// Illustrations for the landing page, built from the recorded run (and, for learning, the learning year) so every
+// number on the page is real.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { LinkArrow, Tag } from "./ui";
@@ -8,11 +9,12 @@ import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
 import { Avatar } from "./caseRoom";
+import { LY } from "./learningYear";
 
 type Line = { date: string; memo: string; amount: number; outcome: string; rule: string | null; store: string | null; fanout: number };
 type Rule = { id: string; title: string; learnedInMonth: number; origin: string; backtest: { covered: number; precision: number } | null };
 type Room = { key: string; month: number; live: boolean; narrated: string | null; messages: { speaker: string; to: string; kind: string; source: string; text: string }[] };
-const R = recording as unknown as { lines: Record<string, Line[]>; rules: Rule[]; rooms: Room[]; months: { month: number; firstSettled: number; total: number }[] };
+const R = recording as unknown as { lines: Record<string, Line[]>; rules: Rule[]; rooms: Room[] };
 
 // The hero card: an agent closing March, line by line, until something needs a person.
 export function AgentWorking() {
@@ -137,22 +139,27 @@ export function RecordSample() {
   );
 }
 
-// Proof: the curve and the meetings, side by side.
-export function CurveAndMeetings() {
-  const byMonth = Array.from({ length: 12 }, (_, i) => R.rooms.filter((r) => r.month === i + 1).length);
-  const max = Math.max(...byMonth);
+// Trust: the rules the learning year learned from answers, each with its backtest and the most it settles a payment.
+export function LearnedRules() {
   return (
-    <div className="grid grid-cols-12 items-end gap-1.5" role="img" aria-label="Meetings per month falling as the share settled automatically rises">
-      {R.months.map((m, i) => (
-        <div key={m.month} className="flex flex-col items-center gap-1">
-          <span className="num text-[10.5px] text-accent">{Math.round((m.firstSettled / m.total) * 100)}</span>
-          <div className="flex h-20 w-full items-end">
-            <motion.div className="w-full rounded-t-[3px] bg-hold/80" initial={{ height: 0 }} whileInView={{ height: byMonth[i] ? `${Math.max(8, (byMonth[i] / max) * 100)}%` : "2px" }}
-              viewport={{ once: true }} transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }} />
-          </div>
-          <span className="text-[10.5px] text-faint">{MONTH_LABELS[i][0]}</span>
-        </div>
-      ))}
+    <div className="frame">
+      <div className="card">
+        <div className="eyebrow border-b border-hairline px-4 py-2.5">Rules learned in the simulated year</div>
+        <ul className="divide-y divide-hairline">
+          {LY.rules.map((r) => (
+            <li key={`${r.id}v${r.version}`} className="px-4 py-3">
+              <div className="flex items-baseline gap-3">
+                <span className="num w-7 shrink-0 text-[12px] font-medium text-hold-ink">{r.id}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-body" title={r.title}>{r.title}</span>
+                <span className="shrink-0 text-[11.5px] text-faint">{MONTH_LABELS[r.month - 1]}</span>
+              </div>
+              <div className="mt-1 pl-10 text-[11.5px] leading-snug text-secondary">
+                Backtest <span className="num text-ink">{num(r.backtest.covered - r.backtest.wrong)}</span> of <span className="num">{num(r.backtest.covered)}</span> right · <span className="whitespace-nowrap">nothing over <span className="num">{rpShort(r.program.limitIdr)}</span></span> a payment
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

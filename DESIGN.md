@@ -144,7 +144,18 @@ The transcript of the agents' meeting on one held story.
   `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off under reduced
   motion, where the page scrolls natively. Do not add CSS scroll snap on top of it.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
-  `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
+  `scripts/export_demo.ts`), or for learning from the learning year (`src/demo/learning.json`, through
+  `src/components/learningYear.ts`). Never type a figure into the page by hand; read it from the data.
+* **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
+  people with learning, rounded down, then both year-end counts in a quieter line); **Proof** is a white card with a
+  `Tag`, a `.title`, one paragraph, four figures (a figure can carry a `faint` sub line, the without-learning number) and
+  the `LearningChart` across the full width; **Trust** ("What if it gets one wrong?") follows the page rhythm with the
+  learned rules in a `.frame` beside it, each with its backtest and per-payment limit.
+* **US dollars beside headline rupiah** (`usdApprox` in `src/components/money.ts`): one fixed, approximate rate of
+  Rp 16,000 per dollar, rounded to two significant figures, in `faint` after the figure: "−Rp 48.6bn (about $3M)". Headline
+  figures only, never table rows, and never inside the product window (the dashboard stays in rupiah, as the
+  business would see it). Where Shopee and Tokopedia first appear on the page, say once what they are (Southeast
+  Asia's Amazon and eBay).
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
@@ -238,8 +249,10 @@ page's proof, the pitch's Self improving slide and the What if screen, so the co
   rule, and that month turns `accent` on the axis. This is the demo curve's mark, "an answer became a rule".
 * **A small legend** above (With learning, Without learning, 𝄐 An answer became a rule) and **the caption** under it,
   always: "Simulated on the same engine: the same year, with and without learning." (`SIM_CAPTION`).
-* Below `sm` it draws a narrower phone chart (single letter months); `stage` draws only the wide one, for the pitch,
-  which scales it with CSS `zoom`. Lines draw in with `pathLength` the first time it scrolls into view.
+* Three widths keep its labels near 11px: a phone chart below `sm` (single letter months), a mid one, and a wide one
+  from `lg`. `stage` draws only the mid one, for the pitch, which scales it with CSS `zoom`.
+* Both lines draw in left to right behind a growing clip the first time it scrolls into view (not `pathLength`, which
+  would overwrite the baseline's dashes).
 * Feed it `{ months, learned }` per run: a run from `/api/simulate`, or `src/demo/learning.json` through
   `src/components/learningYear.ts`.
 
