@@ -119,7 +119,7 @@ The transcript of the agents' meeting on one held story.
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
 * `/` is the site; `/dashboard` is the overview; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
-  `/evaluation`, `/record`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
+  `/evaluation`, `/record`, `/whatif`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
   links (How it works, Dashboard; plus Console when run locally), the GitHub icon and the **Watch the live demo**
   button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
   there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
@@ -191,6 +191,22 @@ recording, so it works on the hosted site with no Convex, and a re-export update
   follows the window there. The landing page's hero keeps its view to itself. Add a view with one entry in `VIEWS` in
   `dashboard.tsx`.
 
+## What if (`src/app/whatif`, `src/app/api/simulate`)
+
+A console screen for what-ifs: knobs for the generated world, then the real engine over the year twice, learning and
+with the rules frozen at onboarding. A route handler runs it on the local server (no Convex, no Claude); the hosted
+site redirects it to the demo like the rest of the console.
+
+* **Knobs in one card inside a `.frame`**, grouped under eyebrows (World, the off-by-default card fee knobs, New lender,
+  Learning). Number fields are the record page's field (hairline border, `focus-within:border-accent`), months are a
+  plain select, the world is a segmented radiogroup, stores are pressed toggles (`aria-pressed`, accent when on).
+* **One chart, two lines:** learning in `accent` (solid, with points), the baseline in `mute`, dashed. Learned rules are
+  accent pills under it and their months turn accent on the axis. Below it four `Metric`s; year-end held is the hold tone.
+* **The month table and what it learned** sit side by side on wide screens. Each learned rule shows who answered and
+  that the answer came from the answer key, a `Code` pill (never Claude: the simulator's Learner is code), and its fit
+  and backtest as `›` lines in a `.panel`. Rules that failed to fit or failed their backtest are listed in red.
+* Every number on the screen comes from the run; the source line repeats that the Learner here is code.
+
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
 `/pitch` is the deck for the Devpost video and any live pitch. It is a page of the app, not a slide file, so it
@@ -250,7 +266,7 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
   (Accountant / CFO). On the site pages the card hugs its contents and sits centred (wordmark, two links, the GitHub
   icon, the demo button, with modest gaps), never stretched to the page; the console's card keeps the page width
-  (60px narrower) for its five tabs and the switch. On mobile both are full width and the links fold into a menu.
+  (60px narrower) for its six tabs and the switch. On mobile both are full width and the links fold into a menu.
   The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
   to an anchor; give anchor targets `scroll-mt-36` so they land below it.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.
