@@ -1,6 +1,9 @@
 "use client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { MotionConfig } from "motion/react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { REPO_URL } from "./nav";
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 const url = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -17,10 +20,26 @@ function readRole(): HumanRole { const s = window.localStorage.getItem("fermata.
 export function Providers({ children }: { children: ReactNode }) {
   const role = useSyncExternalStore(subscribe, readRole, () => "cfo" as HumanRole);
   const setRole = (r: HumanRole) => { window.localStorage.setItem("fermata.role", r); listeners.forEach((l) => l()); };
-  if (!convex) return <div className="p-10 text-secondary">Set NEXT_PUBLIC_CONVEX_URL to connect to Convex.</div>;
+  const path = usePathname();
+  const consolePage = !["/", "/demo"].includes(path);
+  const page = !convex && consolePage ? <ConsoleIsLocal /> : children;
+  const inner = <RoleContext.Provider value={{ role, setRole }}><MotionConfig reducedMotion="user">{page}</MotionConfig></RoleContext.Provider>;
+  // The hosted site has no Convex URL at all: the landing page and demo replay a recording, and the console
+  // pages redirect to the demo (next.config.ts), so nothing on it can reach the deployment.
+  return convex ? <ConvexProvider client={convex}>{inner}</ConvexProvider> : inner;
+}
+
+// Shown instead of a console page when there is no Convex deployment to talk to (the hosted site).
+function ConsoleIsLocal() {
   return (
-    <ConvexProvider client={convex}>
-      <RoleContext.Provider value={{ role, setRole }}><MotionConfig reducedMotion="user">{children}</MotionConfig></RoleContext.Provider>
-    </ConvexProvider>
+    <div className="mx-auto max-w-[560px] py-16 text-center">
+      <div className="text-[34px] text-hold" style={{ fontFamily: "var(--font-music)" }} aria-hidden>𝄐</div>
+      <h1 className="title mt-3 text-[26px]">The console runs on your own machine</h1>
+      <p className="mt-3 text-[14px] text-secondary">It makes real Claude calls and writes to the books, so it isn&apos;t hosted here. Watch the recorded run instead, or clone the repo and run it with your own keys.</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-5 text-[13px]">
+        <Link href="/demo" className="text-link hover:text-accent">Watch the live demo →</Link>
+        <Link href={REPO_URL} className="text-link hover:text-accent">Run it yourself →</Link>
+      </div>
+    </div>
   );
 }
