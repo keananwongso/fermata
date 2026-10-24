@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../convex/_generated/api";
-import { MONTH_LABELS } from "../../convex/lib/domain";
-import { num, pct, rp, rpShort, shortDate } from "../../convex/lib/format";
+import { api } from "../../../convex/_generated/api";
+import { MONTH_LABELS } from "../../../convex/lib/domain";
+import { num, pct, rp, rpShort, shortDate } from "../../../convex/lib/format";
 import { Bar, Button, Card, Eyebrow, LinkArrow, Metric, Pill, Tag } from "@/components/ui";
 import { BrandGrid, Reveal, RevealItem, Roll, Splash } from "@/components/motion";
 import { QuestionCard, RuleApproval } from "@/components/question";
