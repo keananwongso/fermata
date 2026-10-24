@@ -55,6 +55,15 @@ export function Button({ variant = "secondary", className = "", children, ...res
   return <button {...rest} className={`${base} px-3.5 ${v} ${className}`}>{children}</button>;
 }
 
+// The brand button as a link, for calls to action that navigate.
+export function LinkButton({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
+  return (
+    <Link href={href} className={`btn-brand calm inline-flex min-h-11 items-center justify-center rounded-[4.5px] text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-9 ${className}`}>
+      <span className="btn-face"><span className="btn-label">{children}</span></span>
+    </Link>
+  );
+}
+
 export function LinkArrow({ href, onClick, children }: { href?: string; onClick?: () => void; children: ReactNode }) {
   const cls = "arrow-link calm inline-flex items-center gap-1.5 text-[13px] font-medium text-link hover:text-accent";
   const arrow = <path d="M1 5h10.5M8 1.5 11.5 5 8 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />;

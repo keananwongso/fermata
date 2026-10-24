@@ -3,13 +3,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRole, type HumanRole } from "./providers";
-import { TABS } from "./nav";
+import { SITE_LINKS, TABS } from "./nav";
+import { LinkButton } from "./ui";
 
 export const ROLE_LABEL: Record<HumanRole, string> = { accountant: "Accountant", cfo: "CFO" };
-const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+const isActive = (path: string, href: string) => (href === "/" ? path === "/" : !href.includes("#") && path.startsWith(href));
 
 export function Header() {
   const path = usePathname();
+  // The landing page and the public demo get the site navigation; the console gets its tabs and role switch.
+  const site = path === "/" || path.startsWith("/demo");
+  const links = site ? SITE_LINKS : TABS;
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -27,14 +31,16 @@ export function Header() {
       <header className="sticky top-3 z-30 mt-3 px-4 lg:px-6">
         <div className="mx-auto max-w-[1180px] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)]">
           <div className="flex h-14 items-center gap-6 pl-4 pr-2 lg:pr-3">
-            <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, Run">
+            <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, home">
               <span className="text-[20px] leading-none text-hold" aria-hidden>𝄐</span>
               <span className="display text-[19px] tracking-[-0.03em]">Fermata</span>
             </Link>
-            <Tabs path={path} />
+            <Tabs path={path} links={links} />
             <div className="ml-auto hidden items-center gap-3 lg:flex">
-              <span className="hidden text-[12px] text-faint xl:inline">Acting as</span>
-              <RoleSwitch />
+              {site ? <LinkButton href="/demo">Watch the live demo</LinkButton> : <>
+                <span className="hidden text-[12px] text-faint xl:inline">Acting as</span>
+                <RoleSwitch />
+              </>}
             </div>
             <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? "Close menu" : "Open menu"}
               className="relative ml-auto flex h-11 w-11 items-center justify-center rounded-[6px] hover:bg-hover lg:hidden">
@@ -45,7 +51,7 @@ export function Header() {
           <div id="mobile-nav" inert={!open} className={`grid transition-[grid-template-rows] duration-350 ease-out lg:hidden ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
             <div className="overflow-hidden">
               <nav className="space-y-0.5 border-t border-hairline px-2 pb-3 pt-2">
-                {TABS.map((t) => {
+                {links.map((t) => {
                   const active = isActive(path, t.href);
                   return (
                     <Link key={t.href} href={t.href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined}
@@ -54,7 +60,7 @@ export function Header() {
                     </Link>
                   );
                 })}
-                <div className="flex items-center justify-between px-3 pt-3 text-[12px] text-faint">Acting as <RoleSwitch /></div>
+                {site ? <div className="px-3 pt-3"><LinkButton href="/demo">Watch the live demo</LinkButton></div> : <div className="flex items-center justify-between px-3 pt-3 text-[12px] text-faint">Acting as <RoleSwitch /></div>}
               </nav>
             </div>
           </div>
@@ -65,10 +71,10 @@ export function Header() {
 }
 
 // Labels turn blue on hover, and the current page stays blue.
-function Tabs({ path }: { path: string }) {
+function Tabs({ path, links }: { path: string; links: { href: string; label: string }[] }) {
   return (
     <nav className="hidden h-9 items-stretch lg:flex">
-      {TABS.map((t) => {
+      {links.map((t) => {
         const active = isActive(path, t.href);
         return (
           <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined}

@@ -106,6 +106,19 @@ The transcript of the agents' meeting on one held story.
 * The room header shows the turn count ("Turn n of 6") and the room state: In meeting (accent, breathing),
   Asked (hold, 𝄐), Closed (success).
 
+## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
+
+* `/` is the site; `/demo` replays a recorded run; the console lives at `/run`, `/stories`, `/rules`,
+  `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/` and
+  `/demo`, console tabs and the Acting as switch everywhere else.
+* The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
+  `LinkArrow`. Illustrations sit in a `.frame` around a `.card`, and alternate sides beat to beat.
+* **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
+  `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
+* The demo is honest about being a replay: it says so under its title, labels every agent message Claude,
+  code or scripted, and greys out answers the recording did not take.
+* Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
+
 ## Motion (`globals.css`, `src/components/motion.tsx`)
 
 | Name | Use |
