@@ -13,6 +13,7 @@ import type * as engine from "../engine.js";
 import type * as evaluation from "../evaluation.js";
 import type * as humans from "../humans.js";
 import type * as learner from "../learner.js";
+import type * as lib_console from "../lib/console.js";
 import type * as lib_domain from "../lib/domain.js";
 import type * as lib_engineCore from "../lib/engineCore.js";
 import type * as lib_format from "../lib/format.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   evaluation: typeof evaluation;
   humans: typeof humans;
   learner: typeof learner;
+  "lib/console": typeof lib_console;
   "lib/domain": typeof lib_domain;
   "lib/engineCore": typeof lib_engineCore;
   "lib/format": typeof lib_format;
