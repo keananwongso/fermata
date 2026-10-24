@@ -88,49 +88,62 @@ export interface MessConfig {
   oneOffs: boolean; // the small stories and stories C and D (anomalies to hold, nothing to learn)
   storyA: boolean; // Jan to Mar: S03 virtual accounts, receipts keyed at S11 in March
   schoolMoved: number; // lines a month, every month: S03 virtual accounts, receipts at S11 on time ("L:school_moved")
+  advance: number; // school credits a month that pay 2 to 6 monthly bills at once ("L:school_advance")
+  cashReversals: { stores: StoreCode[]; perMonth: number; roundTo: number } | null; // reversed voucher, round deposit ("L:cash_reversal")
   newLender: { month: number; perMonth: number; cut: number; launch: boolean; story: string | null } | null; // launch: story B
   cardFees: CardFeeChange[]; // acquirer fee changes ("L:card_fee")
 }
 export const DEFAULT_MESS: MessConfig = {
-  seed: 19450701, totals: MONTHLY_TOTALS, late: "brief", oneOffs: true, storyA: true, schoolMoved: 0,
+  seed: 19450701, totals: MONTHLY_TOTALS, late: "brief", oneOffs: true, storyA: true, schoolMoved: 0, advance: 0, cashReversals: null,
   newLender: { month: STORY_B.month, perMonth: 90, cut: LENDER_TRUE_CUT.FIN_Z, launch: true, story: null }, cardFees: [],
 };
 let cfg: MessConfig = DEFAULT_MESS;
 
-// The learning year: nothing is planted to hit a curve. A flat share of records arrives late every month. The
-// onboarding rules (r1 to r7) miss a set share of January: students who moved class, and the regional stores'
-// card batches, settled at a credit fee r3 does not know (stores taken from S14 down until the share is met).
-// From `drift.month` the acquirer raises the credit fee at `drift.stores`; from `lender.month` a new lender pays out.
+// The learning year: nothing is planted to hit a curve. A flat share of records arrives late every month. Recurring,
+// legitimate patterns the onboarding rules (r1 to r7) do not know, each from the business Fermata is modelled on:
+// students who moved class (r8), school fees paid months in advance (one credit, several monthly bills), a store that
+// reverses its cash voucher and banks a round amount (the rest stays in petty cash), and a new lender from June (r9).
+// Card fees are knobs, off by default (no evidence they change): `onboarding` puts the regional stores' card batches
+// on a credit fee r3 does not know, taking stores from S14 down until January's expected first pass is that share;
+// `drift` raises the credit fee at some stores from a month.
 export interface LearningKnobs {
-  seed?: number; onboarding?: number; late?: number; schoolMoved?: number; oneOffs?: boolean; regionalFee?: number;
-  drift?: { month: number; creditFee: number; stores: StoreCode[] } | null;
+  seed?: number; late?: number; schoolMoved?: number; advance?: number; oneOffs?: boolean;
+  cashReversals?: { stores: StoreCode[]; perMonth: number; roundTo: number } | null;
   lender?: { month: number; perMonth: number; cut: number } | null;
+  onboarding?: number | null; regionalFee?: number;
+  drift?: { month: number; creditFee: number; stores: StoreCode[] } | null;
 }
 export const LEARNING_DEFAULTS = {
-  seed: 19450701, onboarding: 0.7, late: 0.05, schoolMoved: 400, oneOffs: true, regionalFee: 0.02,
-  drift: { month: 4, creditFee: 0.021, stores: ["S08", "S09", "S10"] as StoreCode[] },
+  seed: 19450701, late: 0.05, schoolMoved: 400, advance: 250, oneOffs: true,
+  cashReversals: { stores: ["S02", "S05", "S09", "S12"] as StoreCode[], perMonth: 40, roundTo: 500_000 } as LearningKnobs["cashReversals"],
   lender: { month: 6, perMonth: 300, cut: LENDER_TRUE_CUT.FIN_Z },
+  onboarding: null as number | null, regionalFee: 0.02,
+  drift: null as LearningKnobs["drift"],
 };
+export const DRIFT_EXAMPLE = { month: 4, creditFee: 0.021, stores: ["S08", "S09", "S10"] as StoreCode[] };
 export function learningMess(knobs: LearningKnobs = {}): MessConfig & { regionalStores: StoreCode[] } {
   const k = { ...LEARNING_DEFAULTS, ...knobs };
   const total = MONTHLY_TOTALS[0];
-  // Expected January lines the onboarding rules cannot settle before any card store is added (late, one-offs, moves).
-  const oneOffs = k.oneOffs ? SMALL_STORIES.filter((s) => s.month === 1).reduce((a, s) => a + s.n, 0) : 0;
-  let missing = Math.round(total * k.late) + oneOffs + k.schoolMoved;
-  const terminals = STORES.reduce((a, s) => a + s.terminals, 0);
-  const perTerminal = (total - 2610 - k.schoolMoved) / terminals; // ~2,610 January lines are not card batches
   const regionalStores: StoreCode[] = [];
-  for (const s of [...STORES].reverse()) {
-    const lines = s.terminals * perTerminal;
-    if (k.drift?.stores.includes(s.code)) continue;
-    if (missing + lines / 2 > total * (1 - k.onboarding)) break;
-    regionalStores.push(s.code); missing += lines;
+  if (k.onboarding) {
+    // Expected January lines the onboarding rules cannot settle before any card store is added.
+    const oneOffs = k.oneOffs ? SMALL_STORIES.filter((s) => s.month === 1).reduce((a, s) => a + s.n, 0) : 0;
+    let missing = Math.round(total * k.late) + oneOffs + k.schoolMoved + k.advance + (k.cashReversals?.perMonth ?? 0);
+    const terminals = STORES.reduce((a, s) => a + s.terminals, 0);
+    const perTerminal = (total - 2610 - k.schoolMoved - k.advance) / terminals; // ~2,610 January lines are not card batches
+    for (const s of [...STORES].reverse()) {
+      const lines = s.terminals * perTerminal;
+      if (k.drift?.stores.includes(s.code)) continue;
+      if (missing + lines / 2 > total * (1 - k.onboarding)) break;
+      regionalStores.push(s.code); missing += lines;
+    }
   }
   const cardFees: CardFeeChange[] = [];
   if (regionalStores.length) cardFees.push({ stores: regionalStores, from: null, debitFee: CARD_DEBIT_FEE, creditFee: k.regionalFee });
   if (k.drift) cardFees.push({ stores: k.drift.stores, from: isoDate(YEAR, k.drift.month, 1), debitFee: CARD_DEBIT_FEE, creditFee: k.drift.creditFee });
   return {
     seed: k.seed, totals: MONTHLY_TOTALS, late: k.late, oneOffs: k.oneOffs, storyA: false, schoolMoved: k.schoolMoved,
+    advance: k.advance, cashReversals: k.cashReversals ?? null,
     newLender: k.lender ? { ...k.lender, launch: false, story: "L:new_lender" } : null, cardFees, regionalStores,
   };
 }
@@ -300,6 +313,13 @@ function buildYear(c: Ctx) {
         const idx = shuffle(dDates.map((_, i) => i)).slice(0, plant.left);
         idx.forEach((i) => planted.add(i));
       }
+      // Reversed vouchers: the store posts the day's cash, reverses it, and banks a round amount the next day.
+      const rv = cfg.cashReversals;
+      const reversed = new Set<number>();
+      if (rv && !plant && rv.stores.includes(s.code)) {
+        const tueToFri = dDates.map((dd, i) => ({ dd, i })).filter((x) => weekday(x.dd) >= 2);
+        shuffle(tueToFri).slice(0, Math.round(rv.perMonth / rv.stores.length)).forEach((x) => reversed.add(x.i));
+      }
       dDates.forEach((dd, i) => {
         const days = coveredDays(dd).map((d) => cashDays[s.code + d]);
         let amount = days.reduce((a, d) => a + d.cashSales, 0);
@@ -310,11 +330,14 @@ function buildYear(c: Ctx) {
           else if (plant.pattern === "transpose") amount = transposeDigits(amount);
           else { const kept = money(400_000, 2_500_000, 50_000); days[days.length - 1].pettyCashKept = kept; amount -= kept; }
         }
+        if (rv && reversed.has(i) && amount % rv.roundTo !== 0) {
+          days[0].reversed = true; amount = Math.floor(amount / rv.roundTo) * rv.roundTo; story = "L:cash_reversal";
+        }
         const cLink = story === "C" ? days[days.length - 1] : null;
         const memo = `CASH DEP SLIP ${sCode(s.code)} ${ddmm(dd)}` + tellerSuffix(s.code);
         const txn = bankTxn(c, year, dd, "BANK_A", amount, memo, s.code, "cash", story);
         m.planned.push({ txn });
-        if (story && story !== "C") smallHeldAmounts.push(txn);
+        if (story && story !== "C" && !story.startsWith("L:")) smallHeldAmounts.push(txn);
         if (cLink) cDeposits.push({ txn, day: cLink });
       });
     }
@@ -490,6 +513,20 @@ function buildYear(c: Ctx) {
       const student = `ST${sCode(STORY_A.vaStore)}-${String(500 + (i % 110)).padStart(4, "0")}`;
       m.planned.push(vaLine(c, year, month, STORY_A.vaStore, STORY_A.receiptStore, student, "L:school_moved", money(700_000, 1_500_000, 1000)));
     }
+    // Advance school fees: one credit pays several months. The school pre-creates a bill per student per month at
+    // zero and fills in the months paid, dated by billing month, not by when the cash came.
+    for (let i = 0; i < cfg.advance; i++) {
+      const st = pick(STORES).code, k = ri(2, 6), fee = money(450_000, 1_750_000, 1000);
+      const date = isoDate(year, month, ri(1, daysInMonth(year, month)));
+      const student = `ST${sCode(st)}-${String(2000 + advanceSeq++).padStart(4, "0")}`;
+      for (let j = 1; j <= Math.max(12, month + k - 1); j++) {
+        const paid = j >= month && j < month + k;
+        if (!paid && j > 12) continue;
+        const bill = isoDate(year + Math.floor((j - 1) / 12), ((j - 1) % 12) + 1, 1);
+        c.w.receipts.push({ key: nextKey(c, "sr"), year, store: st, studentRef: student, method: "va", week: isoWeek(bill), date: bill, amount: paid ? fee : 0, recordedOn: paid ? date : isoDate(year, 1, 1) });
+      }
+      m.planned.push({ txn: bankTxn(c, year, date, "SCHOOL_VA", k * fee, `VA 8800${sCode(st)}${student.slice(-4)} ${student}`, st, "school_va", "L:school_advance") });
+    }
     for (let d = 1; d <= daysInMonth(year, month); d++) {
       const iso = isoDate(year, month, d);
       if (weekday(iso) !== 1) continue;
@@ -606,6 +643,7 @@ function buildYear(c: Ctx) {
   scaleTo(unknownLines, unknownSum + gap, 1, c);
 }
 const aLines: BankTxn[] = [];
+let advanceSeq = 0;
 
 function scaleTo(lines: BankTxn[], target: number, step: number, c: Ctx) {
   const sum = lines.reduce((a, t) => a + t.amount, 0);
@@ -776,7 +814,7 @@ function buildLedger(c: Ctx) {
 export function generateWorld(config: MessConfig = DEFAULT_MESS): World {
   cfg = config;
   rand = mulberry32(config.seed);
-  aLines.length = 0; receiptLink.clear(); saleLink.clear();
+  aLines.length = 0; receiptLink.clear(); saleLink.clear(); advanceSeq = 0;
   const c: Ctx = {
     w: { bank: [], erp: [], cash: [], orders: [], gateway: [], dealerInvoices: [], receipts: [], ledger: [], bankBalances: { BANK_A: 0, BANK_B: 0, BANK_C: 0, SCHOOL_VA: 0, HEAD_OFFICE: 0 } },
     seq: {},

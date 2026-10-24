@@ -1,13 +1,15 @@
 // What-ifs, offline: generate a world, run the real engine over the year with and without learning, print both.
 //   npx tsx scripts/simulate.ts                                  the learning year, learned vs baseline
-//   npx tsx scripts/simulate.ts --no-learn --drift 0.021@4       baseline only, the fee rises to 2.1% in April
+//   npx tsx scripts/simulate.ts --no-learn --advance 500          baseline only, twice the advance school payments
 //   npx tsx scripts/simulate.ts --lender 0.038@3 --learn r9@8     the new lender in March, its answer in August
 //   npx tsx scripts/simulate.ts --preset default                 the recorded demo's world (checks the brief's curve)
-// Knobs (learning preset): --seed N --onboarding 0.7 --late 0.05 --school-moved 400 --regional-fee 0.02
-//   --drift FEE@MONTH|off --drift-stores S08,S09 --lender CUT@MONTH|off --lender-volume 300 --no-oneoffs
+// Knobs (learning preset): --seed N --late 0.05 --school-moved 400 --advance 250 --reversals 40|off
+//   --reversal-stores S02,S05 --lender CUT@MONTH|off --lender-volume 300 --no-oneoffs
+//   Card fees (off by default, no evidence they change): --onboarding 0.7 [--regional-fee 0.02] puts the regional
+//   stores on a credit fee r3 does not know; --drift FEE@MONTH [--drift-stores S08,S09] raises it at some stores.
 // Learning: --answers N (questions answered per close), --learn RULE@MONTH (repeatable), --skip RULE, --json
 import { MONTH_LABELS, type StoreCode } from "../convex/lib/domain";
-import { DEFAULT_MESS, LEARNING_DEFAULTS, generateWorld, learningMess, plannedFirstPassSettled, type LearningKnobs, type MessConfig } from "../convex/lib/generate";
+import { DEFAULT_MESS, DRIFT_EXAMPLE, LEARNING_DEFAULTS, generateWorld, learningMess, plannedFirstPassSettled, type LearningKnobs, type MessConfig } from "../convex/lib/generate";
 import { SIM_NOTE, simulateYear, type SimOptions, type SimResult } from "./simulateYear";
 
 export function parseArgs(argv: string[]) {
@@ -20,13 +22,17 @@ export function parseArgs(argv: string[]) {
   if (num("--onboarding") !== undefined) k.onboarding = num("--onboarding");
   if (num("--late") !== undefined) k.late = num("--late");
   if (num("--school-moved") !== undefined) k.schoolMoved = num("--school-moved");
+  if (num("--advance") !== undefined) k.advance = num("--advance");
+  const rv = val("--reversals"), rvStores = val("--reversal-stores"), rvDefault = LEARNING_DEFAULTS.cashReversals!;
+  if (rv === "off") k.cashReversals = null;
+  else if (rv || rvStores) k.cashReversals = { ...rvDefault, perMonth: rv ? Number(rv) : rvDefault.perMonth, stores: rvStores ? (rvStores.split(",") as StoreCode[]) : rvDefault.stores };
   if (num("--regional-fee") !== undefined) k.regionalFee = num("--regional-fee");
   if (argv.includes("--no-oneoffs")) k.oneOffs = false;
   const drift = val("--drift"), stores = val("--drift-stores");
   if (drift === "off") k.drift = null;
   else if (drift || stores) {
-    const d = drift ? at(drift) : { v: LEARNING_DEFAULTS.drift.creditFee, m: LEARNING_DEFAULTS.drift.month };
-    k.drift = { creditFee: d.v, month: d.m, stores: stores ? (stores.split(",") as StoreCode[]) : LEARNING_DEFAULTS.drift.stores };
+    const d = drift ? at(drift) : { v: DRIFT_EXAMPLE.creditFee, m: DRIFT_EXAMPLE.month };
+    k.drift = { creditFee: d.v, month: d.m, stores: stores ? (stores.split(",") as StoreCode[]) : DRIFT_EXAMPLE.stores };
   }
   const lender = val("--lender"), volume = num("--lender-volume");
   if (lender === "off") k.lender = null;
@@ -49,6 +55,8 @@ export function describe(config: MessConfig): string[] {
   out.push(`late records: ${config.late === "brief" ? "planted to hit the brief's first-pass rates" : `${(config.late * 100).toFixed(1)}% of each month`}`);
   for (const f of config.cardFees) out.push(`card fee: ${f.stores.join(", ")} at debit ${(f.debitFee * 100).toFixed(2)}%, credit ${(f.creditFee * 100).toFixed(2)}% ${f.from ? `from ${f.from}` : "since before go-live"} (r3 assumes 1.00% / 1.80%)`);
   if (config.schoolMoved) out.push(`school: ${config.schoolMoved} payments a month into S03's virtual accounts for students who moved to S11`);
+  if (config.advance) out.push(`school: ${config.advance} credits a month that pay 2 to 6 monthly bills at once`);
+  if (config.cashReversals) out.push(`cash: ${config.cashReversals.perMonth} deposits a month at ${config.cashReversals.stores.join(", ")} after a reversed voucher, rounded down to Rp ${config.cashReversals.roundTo.toLocaleString("en-US")}`);
   if (config.storyA) out.push("school: story A (S03 virtual accounts, receipts at S11 keyed in March)");
   if (config.newLender) out.push(`new lender FIN_Z from ${MONTH_LABELS[config.newLender.month - 1]}, cut ${(config.newLender.cut * 100).toFixed(2)}%, ${config.newLender.launch ? "story B launch then 90" : config.newLender.perMonth} payouts a month`);
   out.push(`one-off anomalies (small stories, C, D): ${config.oneOffs ? "on" : "off"}`);

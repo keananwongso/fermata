@@ -3,7 +3,7 @@
 // person's answer is read from the generator's answer key (the "L:" story tags), then the rule's parameters are
 // fitted from the data in code, backtested, and the rule is applied only if the backtest passes. The live console
 // does the same step with Claude in a case room.
-import { LAST_YEAR, MONTH_LABELS, YEAR, addDays, isoDate, monthEnd, type StoreCode } from "../convex/lib/domain";
+import { LAST_YEAR, MONTH_LABELS, YEAR, addDays, dayDiff, isoDate, monthEnd, weekday, type StoreCode } from "../convex/lib/domain";
 import { cardNet, consumption, evaluate, parseMemo, type DataPort, type Decision, type EngineTxn } from "../convex/lib/engineCore";
 import { SEED_RULES, type RuleProgram } from "../convex/lib/rules";
 import type { BankTxn, CardSales, World } from "../convex/lib/world";
@@ -28,9 +28,12 @@ export interface SimResult {
 
 const strip = (b: BankTxn): EngineTxn => { const { truth: _t, ...rest } = b; void _t; return rest; };
 type Status = { status: "settled" | "waiting" | "held"; d: Decision; month: number };
-type Kind = "school_moved" | "card_fee" | "new_lender";
-const LEARNABLE: Record<string, Kind> = { "L:school_moved": "school_moved", A: "school_moved", "L:card_fee": "card_fee", "L:new_lender": "new_lender", B: "new_lender" };
-const RULE_FOR: Record<Kind, string> = { school_moved: "r8", card_fee: "r3", new_lender: "r9" };
+type Kind = "school_moved" | "card_fee" | "new_lender" | "school_advance" | "cash_reversal";
+const LEARNABLE: Record<string, Kind> = {
+  "L:school_moved": "school_moved", A: "school_moved", "L:card_fee": "card_fee", "L:new_lender": "new_lender", B: "new_lender",
+  "L:school_advance": "school_advance", "L:cash_reversal": "cash_reversal",
+};
+const RULE_FOR: Record<Kind, string> = { school_moved: "r8", card_fee: "r3", new_lender: "r9", school_advance: "r10", cash_reversal: "r11" };
 const pct = (x: number) => (x * 100).toFixed(1) + "%";
 const fee = (x: number) => (x * 100).toFixed(2).replace(/0$/, "") + "%";
 
@@ -119,7 +122,8 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
       if (!ans.kind) { for (const k of g.keys) closed.add(k); continue; }
       // A rule that does not fit or fails its backtest is not applied; its stories stay open for the next close.
       const id = RULE_FOR[ans.kind];
-      const draft = ans.kind === "school_moved" ? await fitFollowReceipt(lines) : ans.kind === "card_fee" ? await fitCardFees(lines, ans.stores) : await fitLender(lines);
+      const draft = ans.kind === "school_moved" ? await fitFollowReceipt(lines) : ans.kind === "card_fee" ? await fitCardFees(lines, ans.stores)
+        : ans.kind === "school_advance" ? await fitSchoolBills(lines) : ans.kind === "cash_reversal" ? await fitReversedVoucher(lines, ans.stores) : await fitLender(lines);
       if ("why" in draft) { rejected.push({ id, month: m, why: draft.why, backtest: draft.backtest ?? null }); continue; }
       if (!draft.backtest.pass) { rejected.push({ id, month: m, why: "backtest failed", backtest: draft.backtest }); continue; }
       for (const k of g.keys) if (!draft.stores || draft.stores.includes(k.split("|")[1] as StoreCode)) closed.add(k);
@@ -139,6 +143,8 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
     if (!kind || n * 2 < lines.length) return { kind: null, stores: [], by: "Accountant", text: "a one-off error: correct these, no rule" };
     const stores = [...new Set(lines.filter((t) => t.truth.story && LEARNABLE[t.truth.story] === kind).map((t) => t.truth.store!))].sort();
     if (kind === "school_moved") return { kind, stores, by: "Accountant", text: "the students moved class; the receipt's store is right" };
+    if (kind === "school_advance") return { kind, stores, by: "Accountant", text: "parents paid several months at once; the school billed each month separately" };
+    if (kind === "cash_reversal") return { kind, stores, by: "Accountant", text: `${stores.join(", ")} reversed the day's cash voucher and banked a round amount; the rest is in petty cash` };
     if (kind === "card_fee") return { kind, stores, by: "CFO", text: `the acquirer's fee changed at ${stores.join(", ")}; the bank paid what the contract says` };
     return { kind, stores, by: "CFO", text: "a new lender we signed; its payouts are real installment sales" };
   }
@@ -247,6 +253,72 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
       program, fit: merged.map((x) => `${x.stores.join(", ")}: debit ${fee(x.debitFee)}, credit ${fee(x.creditFee)}${x.from ? ` from ${x.from}` : ""}`).join("; "),
       backtest: { scope: `${inScope.length} held card batches at ${good.map((f) => f.store).join(", ")}`, covered: now.n, of: inScope.length, wrong: broken, pass: broken === 0 && now.n >= 0.9 * inScope.length && lyNew >= lyOld, notes },
       stores: good.map((f) => f.store),
+    };
+  }
+
+  // r10: for each held credit, the student's monthly bills (skipping the zero ones the school pre-creates) that run over
+  // consecutive months and add up to the credit. The longest run seen and the widest gap between when the bills were
+  // entered and the cash date become the rule's parameters.
+  async function fitSchoolBills(lines: BankTxn[]): Promise<Draft> {
+    const month = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7));
+    let maxMonths = 0, within = 0, fit = 0, zero = 0;
+    const lengths = new Map<number, number>();
+    for (const t of lines) {
+      const p = parseMemo(strip(t));
+      if (!p.student) continue;
+      const all = (await port.receiptsByStudent(p.student, addDays(t.date, -62), addDays(t.date, 400))).sort((a, b) => a.date.localeCompare(b.date));
+      zero += all.filter((b) => b.amount === 0).length;
+      const open = [];
+      for (const b of all) if (b.amount > 0 && (await port.applied(b.key)) === 0) open.push(b);
+      let run: typeof open | null = null;
+      for (let i = 0; i < open.length && !run; i++) {
+        let sum = 0;
+        for (let j = i; j < open.length; j++) {
+          if (j > i && month(open[j].date) !== month(open[j - 1].date) + 1) break;
+          sum += open[j].amount;
+          if (j > i && sum === t.amount) { run = open.slice(i, j + 1); break; }
+        }
+      }
+      if (!run) continue;
+      fit++; maxMonths = Math.max(maxMonths, run.length); lengths.set(run.length, (lengths.get(run.length) ?? 0) + 1);
+      for (const b of run) within = Math.max(within, Math.abs(dayDiff(b.recordedOn, t.date)));
+    }
+    if (fit < 0.9 * lines.length) return { why: `only ${fit} of ${lines.length} credits add up to consecutive monthly bills` };
+    const program: RuleProgram = { id: "r10", version: 1, title: `School fees paid ahead: one credit, up to ${maxMonths} monthly bills`, channels: ["school_va"], match: "school_bills", params: { maxMonths, recordedWithinDays: within }, limitIdr: 50_000_000 };
+    const now = await covers(lines, [...rules, program]);
+    return {
+      program, fit: `up to ${maxMonths} consecutive months, bills entered within ${within} days of the credit; ${fit} of ${lines.length} credits fit a run (${[...lengths.entries()].sort((a, b) => a[0] - b[0]).map(([n, c]) => `${c} of ${n} months`).join(", ")})`,
+      backtest: { scope: `this year's ${lines.length} held school credits`, covered: now.n, of: lines.length, wrong: 0, pass: now.n >= 0.9 * lines.length, notes: [`${zero} zero bills near these students skipped`, `${lines.length - now.n} stay held (no single run of bills fits)`] },
+    };
+  }
+
+  // r11: held deposits at the named stores whose covered day has a reversed voucher. The round unit is the largest that
+  // divides the deposits and leaves less than one unit in petty cash; the window is the longest gap from voucher to bank.
+  async function fitReversedVoucher(lines: BankTxn[], stores: StoreCode[]): Promise<Draft> {
+    const rows: { t: BankTxn; expected: number; gap: number }[] = [];
+    for (const t of lines) {
+      const p = parseMemo(strip(t));
+      if (!p.subStore || !stores.includes(p.subStore)) continue;
+      const covered = weekday(t.date) === 1 ? [addDays(t.date, -3), addDays(t.date, -2), addDays(t.date, -1)] : [addDays(t.date, -1)];
+      const days = await port.cashDays(p.subStore, covered);
+      const rev = days.find((d) => d.reversed);
+      if (rev) rows.push({ t, expected: days.reduce((a, d) => a + d.cashSales, 0), gap: dayDiff(rev.date, t.date) });
+    }
+    if (rows.length < 5) return { why: `only ${rows.length} held deposits follow a reversed voucher` };
+    const unit = [1_000_000, 500_000, 100_000, 50_000, 10_000].find((u) => rows.filter((r) => r.t.amount % u === 0 && r.expected - r.t.amount > 0 && r.expected - r.t.amount < u).length >= 0.9 * rows.length);
+    if (!unit) return { why: "the deposits are not round" };
+    const withinDays = Math.max(...rows.map((r) => r.gap));
+    const program: RuleProgram = { id: "r11", version: 1, title: `Reversed cash voucher, deposit rounded to Rp ${unit.toLocaleString("en-US")}: the rest stays in petty cash`, channels: ["cash"], match: "reversed_voucher", params: { roundTo: unit, withinDays }, limitIdr: 100_000_000 };
+    const candidate = [...rules, program];
+    const inScope = rows.map((r) => r.t);
+    const now = await covers(inScope, candidate);
+    const others = await covers(lines.filter((t) => !inScope.includes(t)), candidate);
+    const kept = rows.reduce((a, r) => a + r.expected - r.t.amount, 0);
+    const used = [...new Set(inScope.map((t) => parseMemo(strip(t)).subStore!))].sort();
+    return {
+      program, fit: `round to Rp ${unit.toLocaleString("en-US")}, voucher within ${withinDays} day${withinDays === 1 ? "" : "s"} of the deposit, from ${rows.length} deposits at ${used.join(", ")}`,
+      backtest: { scope: `${inScope.length} held deposits after a reversed voucher`, covered: now.n, of: inScope.length, wrong: others.n, pass: now.n >= 0.9 * inScope.length && others.n === 0, notes: [`other held deposits it would settle: ${others.n}`, `Rp ${kept.toLocaleString("en-US")} to petty cash across them`] },
+      stores: used,
     };
   }
 
