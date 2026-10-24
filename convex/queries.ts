@@ -29,42 +29,11 @@ export const overview = query({
       headOffice: ledger.reduce((a, l) => a + l.bookBalance, 0),
       headOfficeBank: accounts.find((a) => a.code === "HEAD_OFFICE")?.statementBalance ?? 0,
       rulesLearned: rules.filter((r) => r.learnedInMonth).map((r) => ({ ruleId: r.ruleId, month: r.learnedInMonth ?? 0, state: r.state })),
+      roomsByMonth: Array.from({ length: 12 }, (_, i) => stories.filter((s) => s.month === i + 1).length),
+      openRooms: stories.filter((s) => s.room && s.room.state !== "closed").sort((a, b) => b.month - a.month).slice(0, 5).map((s) => ({ key: s.key, title: s.title, state: s.room!.state })),
       pausedQuestion: close?.run?.pausedFor ? questions.find((x) => x.storyKey === (close.run!.pausedFor === "A" ? "placement_conflict|S03|school_va" : "unknown_lender|FIN_Z")) ?? null : null,
       pausedRule: close?.run?.pausedFor === "A" ? rules.find((r) => r.ruleId === "r8") ?? null : null,
     };
-  },
-});
-
-export const lanes = query({
-  args: {},
-  handler: async (ctx) => {
-    const ev = await ctx.db.query("trace_events").order("desc").take(3000);
-    const out: Record<string, Record<number, { n: number; real: number; denied: number }>> = {};
-    for (const e of ev) {
-      const a = out[e.agent] ?? (out[e.agent] = {});
-      const m = a[e.month] ?? (a[e.month] = { n: 0, real: 0, denied: 0 });
-      m.n++; if (e.real) m.real++; if (e.kind === "denied") m.denied++;
-    }
-    const audit = await ctx.db.query("audit_log").withIndex("by_allowed", (q) => q.eq("allowed", true)).order("desc").take(400);
-    for (const r of audit) if (r.actor === "accountant" || r.actor === "cfo") {
-      const a = out[r.actor] ?? (out[r.actor] = {});
-      const m = a[r.month] ?? (a[r.month] = { n: 0, real: 0, denied: 0 });
-      m.n++; m.real++;
-    }
-    return out;
-  },
-});
-
-export const trace = query({
-  args: { agent: v.string(), month: v.number() },
-  handler: async (ctx, a) => {
-    if (a.agent === "accountant" || a.agent === "cfo") {
-      const rows = await ctx.db.query("audit_log").withIndex("by_allowed", (q) => q.eq("allowed", true)).order("desc").take(600);
-      return rows.filter((r) => r.actor === a.agent && r.month === a.month).slice(0, 40).reverse()
-        .map((r) => ({ _id: r._id as string, kind: "decision", text: `${r.action} ${r.itemRef}: ${r.reason}`, real: true, staged: false, at: r._creationTime }));
-    }
-    const rows = await ctx.db.query("trace_events").withIndex("by_agent_month", (q) => q.eq("agent", a.agent as Doc<"trace_events">["agent"]).eq("month", a.month)).take(200);
-    return rows.map((r) => ({ _id: r._id as string, kind: r.kind, text: r.text, real: r.real, staged: !!r.staged, at: r.at }));
   },
 });
 

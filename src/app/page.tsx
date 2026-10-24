@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, pct, rp, rpShort, shortDate } from "../../convex/lib/format";
-import { AGENT_LABEL, Bar, Button, Card, Eyebrow, LinkArrow, Loading, Metric, Pill, Tag, Trace } from "@/components/ui";
+import { Bar, Button, Card, Eyebrow, LinkArrow, Loading, Metric, Pill, Tag } from "@/components/ui";
 import { BrandGrid, Count } from "@/components/motion";
 import { QuestionCard, RuleApproval } from "@/components/question";
 import { ArrowRight, Play } from "lucide-react";
@@ -23,7 +23,7 @@ export default function RunPage() {
       <Pipeline o={o} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <LearningCurve o={o} />
-        <Lanes />
+        <Meetings o={o} />
       </div>
       <Showcase />
     </div>
@@ -221,48 +221,40 @@ function LearningCurve({ o }: { o: Overview }) {
   );
 }
 
-const LANE_AGENTS = ["investigator", "learner", "auditor", "accountant", "cfo"];
-function Lanes() {
-  const lanes = useQuery(api.queries.lanes);
-  const [sel, setSel] = useState<{ agent: string; month: number } | null>(null);
+// The mirror image of the learning curve: how many case rooms opened each month. Early in the year the
+// agents meet every month; as answers become rules, the meetings dry up.
+function Meetings({ o }: { o: Overview }) {
+  const max = Math.max(1, ...o.roomsByMonth);
+  const open = o.openRooms;
   return (
     <Card>
-      <h2 className="title text-[22px]">Who did what</h2>
-      <p className="mt-1 text-[12px] text-faint">One dot per month with activity. Click a dot for its reasoning.</p>
-      <div className="mt-4 space-y-2.5">
-        {LANE_AGENTS.map((a) => (
-          <div key={a} className="flex items-center gap-3">
-            <div className="w-20 shrink-0 text-[13px] text-secondary sm:w-24">{AGENT_LABEL[a]}</div>
-            <div className="grid flex-1 grid-cols-12 gap-1">
-              {MONTH_LABELS.map((m, i) => {
-                const c = lanes?.[a]?.[i + 1];
-                const on = !!c && c.n > 0;
-                const active = sel?.agent === a && sel.month === i + 1;
-                return (
-                  <button key={m} title={`${AGENT_LABEL[a]}, ${m}`} disabled={!on} onClick={() => setSel({ agent: a, month: i + 1 })}
-                    className="flex h-6 items-center justify-center rounded-full disabled:cursor-default">
-                    <span className={`block rounded-full calm ${on ? (c!.denied ? "bg-danger" : a === "accountant" || a === "cfo" ? "bg-hold" : "bg-accent") : "bg-strong"} ${active ? "ring-2 ring-accent ring-offset-2" : ""}`}
-                      style={{ width: on ? 8 : 4, height: on ? 8 : 4 }} />
-                  </button>
-                );
-              })}
-            </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="title text-[22px]">Meetings per month</h2>
+        <span className="num text-[12px] text-faint">{o.roomsByMonth.reduce((a, b) => a + b, 0)} rooms</span>
+      </div>
+      <p className="mt-1 text-[12px] text-faint">One case room per held story. Fewer as answers become rules.</p>
+      <div className="mt-5 grid h-32 grid-cols-12 items-end gap-1.5" role="img" aria-label={`Case rooms per month: ${o.roomsByMonth.map((n, i) => `${MONTH_LABELS[i]} ${n}`).join(", ")}`}>
+        {o.roomsByMonth.map((n, i) => (
+          <div key={i} className="flex h-full flex-col items-center justify-end gap-1">
+            <span className="num text-[11px] text-secondary">{n || ""}</span>
+            <div className={`bar w-full rounded-t-[3px] ${n ? "bg-hold" : "bg-inset"}`} style={{ height: n ? `${Math.max(6, (n / max) * 100)}%` : "2px" }} />
           </div>
         ))}
-        <div className="flex gap-3 pl-[92px] sm:pl-[108px]"><div className="grid flex-1 grid-cols-12 gap-1 text-center text-[11px] text-faint">{MONTH_LABELS.map((m) => <span key={m}>{m[0]}</span>)}</div></div>
       </div>
-      {sel ? <TracePanel key={`${sel.agent}-${sel.month}`} agent={sel.agent} month={sel.month} /> : null}
+      <div className="mt-1.5 grid grid-cols-12 gap-1.5 text-center text-[11px] text-faint">{MONTH_LABELS.map((m) => <span key={m}>{m[0]}</span>)}</div>
+      {open.length ? (
+        <div className="mt-5 space-y-2 border-t border-hairline pt-4">
+          <Eyebrow>Open now</Eyebrow>
+          {open.map((r) => (
+            <div key={r.key} className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="min-w-0 truncate">{r.title}</span>
+              {r.state === "meeting" ? <Pill tone="accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full" />In meeting</Pill> : <Pill tone="hold"><span aria-hidden className="text-hold">𝄐</span>Asked</Pill>}
+            </div>
+          ))}
+          <div className="pt-1"><LinkArrow href="/stories">Open the case rooms</LinkArrow></div>
+        </div>
+      ) : null}
     </Card>
-  );
-}
-
-function TracePanel({ agent, month }: { agent: string; month: number }) {
-  const lines = useQuery(api.queries.trace, { agent, month }) ?? [];
-  return (
-    <div className="enter mt-5">
-      <div className="mb-2 text-[13px] font-medium">{AGENT_LABEL[agent]} · {MONTH_LABELS[month - 1]}</div>
-      <Trace lines={lines} />
-    </div>
   );
 }
 
