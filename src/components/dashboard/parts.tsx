@@ -23,12 +23,12 @@ export function RoomState({ room, short = false }: { room: Room; short?: boolean
     const who = AGENT_LABEL[askedOf(room) ?? "accountant"];
     return <Pill tone="hold"><span aria-hidden className="text-hold" style={MUSIC}>𝄐</span>Asked<span className={short ? "sr-only sm:not-sr-only" : ""}>{" "}the {who}</span></Pill>;
   }
-  return <Pill tone="success">Closed</Pill>;
+  return <Pill>Closed</Pill>;
 }
 
-// The two stories Claude worked live are marked Claude; the other narrated stories carry their letter.
+// The two stories Claude worked live are marked Claude (a neutral pill, like Code); the other narrated stories carry their letter.
 export function RoomMark({ room }: { room: Room }) {
-  if (room.live) return <Pill tone="accent">Claude</Pill>;
+  if (room.live) return <Pill>Claude</Pill>;
   if (room.narrated) return <Pill>Story {room.narrated}</Pill>;
   return null;
 }

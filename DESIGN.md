@@ -11,6 +11,7 @@ quiet by default and loud only where something needs a person:
 
 * **Cream, not white.** Pages sit on a warm cream canvas; cards are white on top of it.
 * **Navy for what you read, blue for what you do, amber for what waits.** No other colours carry meaning.
+* **Two colours with jobs, everything else neutral.** See the rule under Colour.
 * **Numbers are the heroes.** Big figures in the display face, tabular, counting up when they change.
 * **Everything that moves has a reason.** Motion shows arrival, progress or a hold, never decoration.
 * **The fermata mark 𝄐 means held.** Use it only for held or waiting-on-a-person states, and for the brand.
@@ -32,11 +33,26 @@ All colours are tokens in `@theme` in `globals.css`. Use the Tailwind names (`bg
 | Action and data | `accent` #1f5fc0 · `accent-hover` #17499a · `accent-tint` #eaf1fb · `link` | Buttons, links, active tabs, charts, selected states |
 | Brand second colour | `cyan` #17bebb | Only the brand button's tab. Never for meaning |
 | Hold | `hold` #b27d10 · `hold-tint` #fbf0d6 · `hold-tint-strong` | Held, needs an answer, waiting on a person |
-| Success | `success` #2e9e5b · `success-tint` | Settled, passed |
+| Success | `success` #2e9e5b · `success-tint` | Settled, passed, on the console's working screens. Not in the dashboard window or Ask |
 | Danger | `danger` #d23b30 · `danger-tint` | Blocked, denied, wrong |
-| Info | `info` #00a3a0 · `info-tint` | Approved but not yet posted |
+| Info | `info` #00a3a0 · `info-tint` | Approved but not yet posted (console); the orb's working states |
 
 Shadows are warm (`rgb(85 40 20 / …)`), never grey-black.
+
+**Two colours with jobs, everything else neutral.** A screen gets two colours that mean something, and nothing else
+competes with them:
+
+* **Accent (blue)** is what you can act on and what the data draws: the active tab or nav item, links, buttons, and data
+  lines and marks (a bar for the bank, a trend line, a learned rule's pill on a chart).
+* **Hold (amber)** is only what needs a person: the 𝄐, the one amber card (Waiting on you), a held count, a dot on a
+  month that still holds a question, a question waiting for an answer.
+* **Everything else is neutral:** `ink`, `secondary`, `faint`, `inset`, `mute`, `hairline`. A row that is simply done gets
+  no mark (when every row is done, a ✓ carries no information). Source pills (Claude, Code, Scripted, Story) are the same
+  quiet neutral `Pill`. Avatars are one tile (`inset`, ink initials), not a colour each. Settled, closed, approved, answered
+  and passed are neutral pills or plain text, never green. Calls to action inside a card are text links, not tinted pills.
+* **Red is the one exception**, kept for a real refusal or denial (a blocked step, a denied transition), always with its reason.
+* Success green and info teal stay in the palette for the console's working screens, the demo's case rooms and the orb's
+  states; the dashboard window and Ask the books do not use them. New screens start from this rule.
 
 ## Type
 
@@ -176,20 +192,26 @@ The transcript of the agents' meeting on one held story.
 The product as an app window: the landing page's hero and the calm overview page at `/dashboard`. It reads only the
 recording, so it works on the hosted site with no Convex, and a re-export updates every figure.
 
+* **Two colours with jobs** (see Colour): blue for the active tab, links and data; amber for what waits on a person;
+  everything else neutral. The window provides `PlainAvatars`, so every `Avatar` and @mention inside it (the case room
+  transcripts too) is the one neutral tile; room states, rule states (`StateBadge quiet`), audit results and the
+  recorded answer are neutral, except held (amber) and blocked (red).
 * **A window, not a page.** A `.frame` around one `.card` split into a `well` sidebar (the 𝄐 Fermata wordmark, the
   fictional company, the console tabs with counts, and who is acting) and a `canvas` main area. On a phone the sidebar
   folds into one bar across the top of the window.
 * **Three metric cards** (`.card`, eyebrow, `.figure` that `Roll`s, one sub line, then a small picture pinned to the
-  bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through),
-  the first pass share by month as a sparkline that draws in with `pathLength`, and the close as twelve month bars.
+  bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through in
+  `faint`; the bank bar is accent, the books bar `mute`), the first pass share by month as a sparkline that draws in with
+  `pathLength`, and the close as twelve `mute` month bars with an amber dot under each month that still holds a question.
+  "Closed through Dec" in the head is a neutral pill.
   On a phone each card puts its picture beside the figure instead of under it. The first pass card ("Settled on its
   own") states the recorded year as it happened and says nothing about why it rose; the learning claim lives in the
   comparison (see Honest claims about learning).
-* **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
-  `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
-  (Claude or Code). The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
+* **Agent activity:** one row per role: the `Avatar` (neutral), the `AGENT_LABEL` name and what it did, a mono uppercase
+  sub line, and a neutral pill saying where the work came from (Claude or Code). No ✓: every row is done. A red ✕ leads
+  the row only when the recording has a refusal. The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
 * **Waiting on you** is the one amber card: a `hold-tint` header with the 𝄐, open questions grouped by the person
-  asked, the largest first, each with a `Review` link. A person with nothing open says so and shows their last answer.
+  asked, the largest first, each with a quiet `Review` text link (blue, not a tinted pill). A person with nothing open says so and shows their last answer.
 * **Honest by construction:** a figure the recording does not hold is left out rather than invented (there is no
   monthly cash series, so cash is a bank against books comparison, not a sparkline).
 * **Views switch inside the window** (`src/components/dashboard/*`). The sidebar is a `tablist`: choosing an item swaps
@@ -340,8 +362,8 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * **The website carries what the pitch carries.** A visitor who never sees the deck meets the same claims and figures
   on the site: the side by side comparison, what keeps a mistake small, the headline figures with dollars beside the
   rupiah. When a slide gains a claim or a figure, the landing page gets it too, read from the same data module.
-* **Held is amber, everywhere.** Settled is green, blocked is red, actions are blue. Never reuse
-  those colours for anything else.
+* **Held is amber, everywhere.** Blocked is red, actions and data are blue, and everything else is neutral (Two colours
+  with jobs, under Colour). Never reuse those colours for anything else.
 * **Refusals are visible.** A denied transition or a refusal by the meeting manager is shown in red
   with the reason, never hidden.
 * **Real, scripted or staged is always labelled** on every message in a case room. The dashboard's agent summary
@@ -391,7 +413,8 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   duration. The template rises in shortly after the caption starts. Screen readers get the question and the whole
   answer once, from an `aria-live` region; the word by word caption is hidden from them.
 * **Labels stay on every answer:** "Recorded answer" or "Live: Claude chose the query", and "Every number checked against
-  the data" or "Sentence written by code", as pills beside Play and Ask again. The typed field is secondary, a quiet
+  the data" or "Sentence written by code", as neutral pills beside Play and Ask again. Inside the templates, settled lines,
+  a passed audit and "Written by Claude" are neutral too; held stays amber and a refusal red. The typed field is secondary, a quiet
   rounded field under the suggestions. Under it, once and quietly: "Read only: it can explain the books, never change them."
 * **Five templates** (`ask/views.tsx`), each inside a `.frame` around a `.card`, each ending with its source:
   * **Figure**: one number in `.display` that `Roll`s in, a comparison beside it in `.figure`, an optional note.

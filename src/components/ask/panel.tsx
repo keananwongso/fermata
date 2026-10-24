@@ -192,8 +192,8 @@ export function AskPanel({ className = "" }: { className?: string }) {
                   <RotateCcw size={12} strokeWidth={1.75} />Ask again
                 </button>
                 <span className="mx-0.5 hidden h-4 w-px bg-hairline sm:block" aria-hidden />
-                {shown!.from === "recorded" ? <Pill>Recorded answer</Pill> : <Pill tone="info">Live: Claude chose the query</Pill>}
-                {answer!.checked ? <Pill tone="success">Every number checked against the data</Pill> : <Pill>Sentence written by code</Pill>}
+                {shown!.from === "recorded" ? <Pill>Recorded answer</Pill> : <Pill>Live: Claude chose the query</Pill>}
+                {answer!.checked ? <Pill>Every number checked against the data</Pill> : <Pill>Sentence written by code</Pill>}
               </div>
             </div>
           ) : (

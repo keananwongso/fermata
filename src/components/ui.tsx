@@ -101,9 +101,10 @@ const STATE_WORDS: Record<string, [string, Tone]> = {
   NEW: ["New", "neutral"], PROPOSED: ["Proposed", "accent"], APPROVED: ["Approved", "info"], POSTED: ["Settled", "success"],
   NEEDS_INFO: ["Needs an answer", "hold"], HELD: ["Held", "hold"], WAITING: ["Waiting", "neutral"],
 };
-export function StateBadge({ state, label }: { state: string; label?: string }) {
+// `quiet` keeps only amber (held, needs an answer): everywhere else the state is a neutral pill (the dashboard window).
+export function StateBadge({ state, label, quiet = false }: { state: string; label?: string; quiet?: boolean }) {
   const [w, t] = STATE_WORDS[state] ?? [state, "neutral"];
-  return <Pill tone={t}>{state === "HELD" || state === "NEEDS_INFO" ? <span aria-hidden className="text-hold">𝄐</span> : null}{label ?? w}</Pill>;
+  return <Pill tone={quiet && t !== "hold" ? "neutral" : t}>{state === "HELD" || state === "NEEDS_INFO" ? <span aria-hidden className="text-hold">𝄐</span> : null}{label ?? w}</Pill>;
 }
 
 export const AGENT_LABEL: Record<string, string> = {
