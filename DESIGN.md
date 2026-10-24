@@ -93,7 +93,8 @@ inside rule code and the record.
 * **`Arrival`** (`motion.tsx`): wraps the landing page and the demo. The same splash once per visit, on the first page
   opened, with the page hidden underneath so its own entrance plays as the splash fades. Client navigations skip it.
 * **`.tip`** (`globals.css`): a small `night` bubble with an arrow (`data-arrow="up"` or `"down"`, `--tip-x` to move
-  it). Inside a `.has-tip` element it is a tooltip, shown on hover and keyboard focus (the header's GitHub icon).
+  it). Inside a `.has-tip` element it is a tooltip, shown on hover and keyboard focus (the header's GitHub icon); on its
+  own it is a hint (the demo's).
   Icon-only controls still carry an `aria-label`; the tip is `aria-hidden`.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
@@ -146,6 +147,13 @@ The transcript of the agents' meeting on one held story.
   button **Explore the closed books** (`/dashboard`), **Ask the books** (`/dashboard?view=ask`), and Run it yourself as
   a quiet text link. Play again steps down to a secondary button so the hand-off is the one primary. The demo never
   embeds the dashboard; it sends the visitor there.
+* **Hints only for a visitor who hesitates** (`useHints`, `Hint` in `demo/page.tsx`, drawn as `.tip`). Each waits for
+  a pause with no click or key (any click or key restarts the wait): Close the year after 3.5s idle (the splash counts),
+  the question card after 5s (under its scroll box, so it shows however far the options run), the hand-off after 3s at
+  the close, and the engine stream after a mouse lingers 1.5s without clicking. One at a time, each at most once per
+  visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
+  moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
+  recorded, scripted or a replay.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
 
 ## Dashboard (`src/components/dashboard.tsx`, `/dashboard`)

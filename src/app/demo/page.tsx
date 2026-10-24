@@ -2,7 +2,7 @@
 // The public demo: a replay of one recorded run. No Claude calls and no writes; the agents' messages are the
 // real output from that run, and the engine's lines are the same engine replayed on the same year.
 import Link from "next/link";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rp, rpShort } from "../../../convex/lib/format";
@@ -101,6 +101,18 @@ function DemoPage() {
   }, [phase, paused, room, shown, split, speed, month]);
 
   const asking = phase === "question" && !!room?.question;
+
+  // Hints for a visitor who pauses: the hint for this moment shows after a while with no click or key.
+  const { hint, acted, show, hide } = useHints();
+  const waitFor: HintKey | null = phase === "idle" ? "start" : asking ? "answer" : phase === "done" ? "explore" : null;
+  useEffect(() => {
+    if (!waitFor) return;
+    const t = setTimeout(() => show(waitFor), HINT_WAIT[waitFor]);
+    return () => clearTimeout(t);
+  }, [waitFor, acted, show]);
+  // A hint belongs to its moment, so it goes as soon as the phase moves on.
+  const tip = (k: HintKey) => hint === k && (k === "stream" ? phase === "running" : k === waitFor);
+
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { scrollBoxToEnd(end.current); }, [shown, phase]);
 
@@ -140,7 +152,7 @@ function DemoPage() {
 
   return (
     <Reveal className="space-y-5" stagger={0.08}>
-      <RevealItem className="flex flex-wrap items-end justify-between gap-4">
+      <RevealItem className="relative z-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill></div>
           <h1 className="display mt-3 text-[clamp(30px,3.6vw,44px)]">Watch Fermata close a year</h1>
@@ -149,7 +161,12 @@ function DemoPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {phase === "idle" ? <Button variant="primary" onClick={start}>Close the year</Button>
+          {phase === "idle" ? (
+            <span className="relative">
+              <Button variant="primary" onClick={start}>Close the year</Button>
+              <Hint show={tip("start")} className="absolute left-0 top-full z-10 mt-2.5 lg:left-auto lg:right-0 lg:[--tip-x:calc(100%-36px)]">{HINT_TEXT.start}</Hint>
+            </span>
+          )
             : phase === "done" ? <Button onClick={restart}>Play again</Button>
             : <Button onClick={() => setPaused((x) => !x)}>{paused ? "Resume" : "Pause"}</Button>}
           <div className="flex rounded-[6px] border border-hairline bg-well p-0.5" role="radiogroup" aria-label="Speed">
@@ -174,7 +191,7 @@ function DemoPage() {
           columns so a collapsed column leaves no gap. */}
       <RevealItem className={`grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:h-[max(520px,calc(100dvh-21.5rem))] xl:gap-x-0 xl:grid-rows-[minmax(0,1fr)] xl:transition-[grid-template-columns] xl:duration-700 xl:ease-brand ${asking ? "xl:grid-cols-[0px_minmax(0,1fr)_456px]" : room ? "xl:grid-cols-[0px_minmax(0,1fr)_296px]" : "xl:grid-cols-[336px_minmax(0,1fr)_296px]"}`}>
         <div inert={!!room} className={`min-w-0 xl:flex xl:min-h-0 xl:overflow-hidden xl:transition-[opacity,padding] xl:duration-500 xl:ease-brand ${room ? "xl:pointer-events-none xl:pr-0 xl:opacity-0" : "xl:pr-4"}`}>
-          <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} />
+          <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} hint={tip("stream")} onLinger={() => show("stream")} onLeave={() => hide("stream")} />
         </div>
         <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Learning curve"}>
           {room ? (
@@ -194,7 +211,7 @@ function DemoPage() {
           <AnimatePresence mode="wait" initial={false}>
             {asking && room ? (
               <motion.div key="ask" className="card flex min-h-0 flex-1 flex-col overflow-hidden" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-                <Ask room={room} onAnswer={answer} />
+                <Ask room={room} onAnswer={answer} hint={tip("answer")} />
               </motion.div>
             ) : (
               <motion.aside key="rooms" className="card flex min-h-0 flex-1 flex-col p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
@@ -218,7 +235,10 @@ function DemoPage() {
                   <div className="enter mt-4 border-t border-hairline pt-4">
                     <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} lines settled, {num(R.rooms.length)} rooms, about 40 decisions for people. Explore the closed books, or ask them anything.</p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                      <LinkButton href="/dashboard">Explore the closed books</LinkButton>
+                      <span className="relative">
+                        <LinkButton href="/dashboard">Explore the closed books</LinkButton>
+                        <Hint show={tip("explore")} arrow="down" className="absolute bottom-full left-0 z-10 mb-2.5">{HINT_TEXT.explore}</Hint>
+                      </span>
                       <LinkArrow href="/dashboard?view=ask">Ask the books</LinkArrow>
                     </div>
                     <Link href={CONSOLE_LINK.href} className="calm mt-3 inline-block text-[12px] text-faint hover:text-accent">{CONSOLE_LINK.label} →</Link>
@@ -234,6 +254,57 @@ function DemoPage() {
 }
 
 const WHOLE = { maximumFractionDigits: 0 };
+
+// ---- Hints -------------------------------------------------------------------------------------------------------
+
+// Only for a visitor who hesitates: each waits for a pause, shows at most once per visit, one at a time, never takes a
+// click, and goes the moment the visitor acts. `?tips=off` turns them off for the visit (for recording).
+type HintKey = "start" | "answer" | "explore" | "stream";
+const HINT_TEXT: Record<HintKey, string> = {
+  start: "Start here. Fermata closes January to December in about two minutes.",
+  answer: "Each option shows what it will do. Pick the highlighted one to carry on.",
+  explore: "Every figure, rule and case room from this year is in here.",
+  stream: "Click a line to see why it settled.",
+};
+// The first wait includes the splash on a cold load.
+const HINT_WAIT: Record<HintKey, number> = { start: 3500, answer: 5000, explore: 3000, stream: 1500 };
+const SEEN = new Set<HintKey>();
+let hintsOff = false;
+
+function useHints() {
+  const [hint, setHint] = useState<HintKey | null>(null);
+  const [acted, setActed] = useState(0);
+  // Any click, tap or key is the visitor acting: the hint goes, and every pause starts over.
+  useEffect(() => {
+    const act = () => { setHint(null); setActed((n) => n + 1); };
+    window.addEventListener("pointerdown", act, true);
+    window.addEventListener("keydown", act, true);
+    return () => { window.removeEventListener("pointerdown", act, true); window.removeEventListener("keydown", act, true); };
+  }, []);
+  const show = useCallback((k: HintKey) => {
+    if (new URLSearchParams(window.location.search).get("tips") === "off") hintsOff = true;
+    if (hintsOff || SEEN.has(k)) return;
+    SEEN.add(k);
+    setHint(k);
+  }, []);
+  const hide = useCallback((k: HintKey) => setHint((h) => (h === k ? null : h)), []);
+  return { hint, acted, show, hide };
+}
+
+// A `.tip` bubble beside what it explains. It ignores the pointer, so it never gets in the way of a click.
+function Hint({ show, arrow = "up", className = "", children }: { show: boolean; arrow?: "up" | "down"; className?: string; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      {show ? (
+        <motion.div data-hint role="status" data-arrow={arrow} className={`tip pointer-events-none ${className}`}
+          initial={{ opacity: 0, y: arrow === "up" ? 4 : -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+          {children}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
 
 function Stat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub: string; tone?: "success" | "hold" }) {
   return (
@@ -267,9 +338,15 @@ function Timeline({ month, phase, p, answered }: { month: number; phase: Phase; 
   );
 }
 
-function Stream({ stream, month, running, onPick, picked }: { stream: Line[]; month: number; running: boolean; onPick: (l: Line) => void; picked: Line | null }) {
+function Stream({ stream, month, running, onPick, picked, hint, onLinger, onLeave }: { stream: Line[]; month: number; running: boolean; onPick: (l: Line) => void; picked: Line | null; hint: boolean; onLinger: () => void; onLeave: () => void }) {
+  // A mouse that lingers over the running stream without clicking gets the hint that lines open.
+  const linger = useRef<ReturnType<typeof setTimeout>>(undefined);
   return (
-    <section className="card flex min-w-0 flex-col p-4 xl:min-h-0 xl:w-[320px] xl:shrink-0" aria-label="The engine">
+    <section className="card relative flex min-w-0 flex-col p-4 xl:min-h-0 xl:w-[320px] xl:shrink-0" aria-label="The engine"
+      onPointerEnter={(e) => { if (e.pointerType === "mouse" && running) linger.current = setTimeout(onLinger, HINT_WAIT.stream); }}
+      onPointerDown={() => clearTimeout(linger.current)}
+      onPointerLeave={() => { clearTimeout(linger.current); onLeave(); }}>
+      <Hint show={hint} className="absolute bottom-4 left-4 z-10">{HINT_TEXT.stream}</Hint>
       <div className="flex items-center justify-between">
         <div className="eyebrow">The engine · {MONTH_LABELS[month - 1]}</div>
         {running ? <span className="flex items-center gap-1.5 text-[11px] text-accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full bg-accent" />settling</span> : null}
@@ -352,7 +429,7 @@ function Curve({ curve, answered, phase }: { curve: Rec["months"]; answered: str
   );
 }
 
-function Ask({ room, onAnswer }: { room: Room; onAnswer: () => void }) {
+function Ask({ room, onAnswer, hint }: { room: Room; onAnswer: () => void; hint: boolean }) {
   const q = room.question!;
   const who = q.askOf === "cfo" ? "CFO" : "Accountant";
   // A white card like the others; only the band at the top is amber, because amber means waiting on a person.
@@ -380,6 +457,8 @@ function Ask({ room, onAnswer }: { room: Room; onAnswer: () => void }) {
         </div>
         <p className="mt-3 text-[11.5px] text-faint">Every answer works in the full console; here the year follows this one.</p>
       </div>
+      {/* Under the scroll box rather than in it, so it shows however far the options run; nothing above it moves. */}
+      <Hint show={hint} className="mx-4 mb-4 shrink-0 lg:mx-5">{HINT_TEXT.answer}</Hint>
     </div>
   );
 }
