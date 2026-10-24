@@ -69,6 +69,8 @@ inside rule code and the record.
 * `.hatch`: diagonal hatching on canvas for empty states and "nothing here yet".
 * `.scroll-quiet`: put it on every scroll box inside a card. The scrollbar is thin and stays invisible until the box
   is hovered. Lists that stream in (the demo's engine) do not scroll at all: they clip with a fade at the bottom.
+* `.field`: a text input or select. White, hairline border, radius 6px, blue border when focused, 44px tall on
+  mobile and 36px on desktop. Its label is an `.eyebrow` above it.
 * Radii: card 10px, panel 6px, button 4.5px, pill fully round. Nothing else.
 
 ## Components (`src/components/ui.tsx`)
@@ -119,7 +121,7 @@ The transcript of the agents' meeting on one held story.
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
 * `/` is the site; `/dashboard` is the overview; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
-  `/evaluation`, `/record`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
+  `/evaluation`, `/record`, `/scenarios`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
   links (How it works, Dashboard; plus Console when run locally), the GitHub icon and the **Watch the live demo**
   button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
   there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
@@ -191,6 +193,23 @@ recording, so it works on the hosted site with no Convex, and a re-export update
   follows the window there. The landing page's hero keeps its view to itself. Add a view with one entry in `VIEWS` in
   `dashboard.tsx`.
 
+## Scenarios (`src/app/scenarios`, `convex/scenario.ts`)
+
+The console screen for "try a case of our own": inject bank lines into the closed year and let the real engine, agents
+and people handle them. Console only; every write takes the console key.
+
+* **Four presets in a `.frame`**, one `.card` each (new lender, the same with the CFO saying no, a deposit no store
+  recorded, a dealer paying open invoices). Each card: an `.eyebrow` name, one line saying what should happen, its
+  fields (`.field` with an eyebrow label; stores are small toggle chips, `aria-pressed`), then a secondary **Inject**
+  button and who answers. No primary button on this screen: injecting is a tool, not the call to action.
+* **Injected** lists each scenario newest first, as a `.frame` around a `.card`: a neutral pill with its kind, the
+  month and its id, a `.title`, the expectation, outcome pills (settled green, held amber with 𝄐), then two `.panel`s:
+  the case room (room state pill, the question, the answer, the resolution, `LinkArrow` to the room) and the rule
+  (id, state, Claude or scripted, backtest). The lines sit in a `<details>` with a `.scroll-quiet` list.
+* **Reset scenarios** is a secondary button in the page head; its result is one faint line under it.
+* Scenario items carry a neutral **Scenario** pill wherever the year's own screens show them (case rooms, rules,
+  record). The year's figures on Run leave scenario rows out; Ask the books never sees them.
+
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
 `/pitch` is the deck for the Devpost video and any live pitch. It is a page of the app, not a slide file, so it
@@ -250,7 +269,7 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
   (Accountant / CFO). On the site pages the card hugs its contents and sits centred (wordmark, two links, the GitHub
   icon, the demo button, with modest gaps), never stretched to the page; the console's card keeps the page width
-  (60px narrower) for its five tabs and the switch. On mobile both are full width and the links fold into a menu.
+  (60px narrower) for its six tabs and the switch. On mobile both are full width and the links fold into a menu.
   The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
   to an anchor; give anchor targets `scroll-mt-36` so they land below it.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.

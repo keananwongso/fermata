@@ -7,7 +7,7 @@ import { internalAction, internalMutation, internalQuery, type ActionCtx, type M
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { parseMemo } from "./lib/engineCore";
-import { LAST_YEAR, MONTH_LABELS, STORE_BY_CODE, STORY_A_KEY, STORY_B_KEY, YEAR, addDays, type StoreCode } from "./lib/domain";
+import { CASH_TOLERANCE, LAST_YEAR, MONTH_LABELS, STORES, STORE_BY_CODE, STORY_A_KEY, STORY_B_KEY, YEAR, addDays, weekday, type StoreCode } from "./lib/domain";
 import { num, rp, rpShort } from "./lib/format";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
 import { draftQuestion, type QuestionDraft } from "./lib/investigate";
@@ -22,17 +22,33 @@ const storeName = (s: string | null | undefined) => (s ? STORE_BY_CODE[s]?.name 
 
 // ---------------- what each story needs from its agents ----------------
 
-type StorySpec = { optionIds: string[]; askOf: "cfo" | "accountant"; ruleId: string; ruleShape: string };
+// draftFirst: a yes creates a rule, so the Learner drafts it before anyone is asked. ruleId "" means no rule follows.
+type StorySpec = { optionIds: string[]; askOf: "cfo" | "accountant"; ruleId: string; ruleShape: string; draftFirst?: boolean; brief?: string; extraTools?: string[] };
+const lenderShape = (id: string) => `{"id":"${id}","version":1,"title":"...","channels":["lender"],"match":"lender_sale","params":{"lenders":{"<LENDER>":<cut as a fraction>},"windowDays":7},"limitIdr":<per-payout ceiling>}. The limit also applies to future payouts, which can be larger than this month's, so do not set it just above today's largest payout: the approved lender rule r7 uses Rp 1,000,000,000`;
 const SPECS: Record<string, StorySpec> = {
   [STORY_A_KEY]: {
     optionIds: ["receipts", "bank", "unsure"], askOf: "accountant", ruleId: "r8",
     ruleShape: `{"id":"r8","version":1,"title":"...","channels":["school_va"],"match":"follow_receipt","params":{"receiptWeight":0.5-0.9,"subAccountWeight":below 0.2},"limitIdr":<per-payment ceiling, comfortably above every school fee>}`,
   },
-  [STORY_B_KEY]: {
-    optionIds: ["yes", "no", "unsure"], askOf: "cfo", ruleId: "r9",
-    ruleShape: `{"id":"r9","version":1,"title":"...","channels":["lender"],"match":"lender_sale","params":{"lenders":{"<LENDER>":<cut as a fraction>},"windowDays":7},"limitIdr":<per-payout ceiling>}. The limit also applies to future payouts, which can be larger than this month's, so do not set it just above today's largest payout: the approved lender rule r7 uses Rp 1,000,000,000`,
-  },
+  [STORY_B_KEY]: { optionIds: ["yes", "no", "unsure"], askOf: "cfo", ruleId: "r9", draftFirst: true, ruleShape: lenderShape("r9") },
 };
+
+// Rooms beyond A and B meet live by the shape of their story: a scenario's unknown lender meets like B, with its own
+// lender and rule id; a scenario's deposits that no store recorded meet with the Accountant and make no rule.
+export async function specOf(ctx: QueryCtx, story: Doc<"stories">): Promise<StorySpec | null> {
+  if (SPECS[story.key]) return SPECS[story.key];
+  if (!story.scenario) return null;
+  const scn = await ctx.db.query("scenarios").withIndex("by_sid", (q) => q.eq("sid", story.scenario!)).first();
+  if (story.gap === "unknown_lender" && scn?.ruleId) return {
+    optionIds: ["yes", "no", "unsure"], askOf: "cfo", ruleId: scn.ruleId, draftFirst: true, ruleShape: lenderShape(scn.ruleId),
+    brief: `The lender here is ${story.counterparty}. Find the cut its payouts imply with lender_sales and whether it is new with lender_history. A yes creates rule ${scn.ruleId} for ${story.counterparty}; a no or I don't know keeps every payout held.`,
+  };
+  if (story.gap === "no_store_record") return {
+    optionIds: ["not_ours", "ours", "unsure"], askOf: "accountant", ruleId: "", ruleShape: "", extraTools: ["store_cash"],
+    brief: "No rule follows from this question and the Learner is not needed. Check every store's cash with store_cash. Whatever the Accountant answers, nothing is booked as income from it: not_ours keeps the deposits held and never booked, ours keeps them held while each store manager checks, unsure keeps them held and asks the CFO. Each option's impact must say exactly that.",
+  };
+  return null;
+}
 
 // ---------------- tools: read-only queries the agents can run ----------------
 
@@ -150,6 +166,40 @@ export const schoolReceipts = internalQuery({
   },
 });
 
+// Teller deposits with no slip: for each, every store's cash for the days it would cover, and the closest one.
+export const storeCash = internalQuery({
+  args: { storyKey: v.string() },
+  handler: async (ctx, a): Promise<ToolResult> => {
+    const items = (await storyItems(ctx, a.storyKey)).slice(0, 30);
+    let checked = 0, within = 0;
+    let best: { store: string; gap: number } | null = null;
+    const cities = new Set<string>();
+    for (const it of items) {
+      const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
+      if (!b) continue;
+      checked++;
+      const p = parseMemo({ ...b, account: b.account as never });
+      if (p.tellerCity) cities.add(p.tellerCity);
+      const covered = weekday(b.date) === 1 ? [addDays(b.date, -3), addDays(b.date, -2), addDays(b.date, -1)] : [addDays(b.date, -1)];
+      for (const s of STORES) {
+        let sum = 0, days = 0;
+        for (const d of covered) {
+          const r = await ctx.db.query("cash_book").withIndex("by_store_date", (q) => q.eq("store", s.code).eq("date", d)).first();
+          if (r && r.year === YEAR) { sum += r.cashSales; days++; }
+        }
+        if (!days) continue;
+        const gap = Math.abs(sum - b.amount);
+        if (gap <= CASH_TOLERANCE) within++;
+        if (!best || gap < best.gap) best = { store: s.code, gap };
+      }
+    }
+    return {
+      summary: `${num(within)} of ${num(checked)} deposits match any store's cash`,
+      rows: [["Deposits checked", num(checked)], ["Stores tried for each", num(STORES.length)], ["Match a store's cash within Rp 5,000", num(within)], ["Closest store total", best ? `${storeName(best.store)}, off by ${rp(best.gap)}` : "none"], ["Deposit slip numbers", "none"], ["Teller cities", [...cities].join(", ") || "none"]],
+    };
+  },
+});
+
 // Backtest a draft rule. Lender rules: on this story's held payouts (a new lender has no history).
 // Follow-the-receipt rules: on last year's school payments, against how they were actually booked.
 async function backtest(ctx: ActionCtx, storyKey: string, program: RuleProgram): Promise<ToolResult> {
@@ -203,6 +253,7 @@ const TOOL_DEFS: Record<string, ToolDef> = {
   lender_history: { name: "lender_history", description: "How many installment sales this lender financed last year and this year.", input_schema: obj({ lender: { type: "string" } }, ["lender"]) },
   school_receipts: { name: "school_receipts", description: "For held school fee payments, where the school's receipt for the same student and amount was recorded, and when.", input_schema: obj({}) },
   backtest_rule: { name: "backtest_rule", description: "Backtest a draft rule program (JSON in the rule language) and report what it would settle and get wrong.", input_schema: obj({ program: { type: "string", description: "The rule program as a JSON string" } }, ["program"]) },
+  store_cash: { name: "store_cash", description: "For each held cash deposit, every store's recorded cash for the days it would cover, and how close the nearest store comes.", input_schema: obj({}) },
 };
 const SAY: ToolDef = {
   name: "say",
@@ -235,7 +286,7 @@ function systemPrompt(speaker: string, spec: StorySpec): string {
     auditor: "Your job: try to break the case and any draft rule. Look for counterexamples, double matches and missing history, and say plainly whether you object or pass. You can send work back to a colleague. When the question and any draft rule both hold up, tell the room you agree (to: room).",
     learner: `Your job: draft the rule a yes would create, as a program in the rule language, put it in the rule field, and backtest it with backtest_rule before you speak. The rule id must be ${spec.ruleId}. Shape: ${spec.ruleShape}. Then ask the Auditor to check it.`,
   };
-  return `${base}\n\n${role[speaker] ?? ""}`;
+  return `${base}\n\n${role[speaker] ?? ""}${spec.brief ? `\n\nThis case: ${spec.brief}` : ""}`;
 }
 
 // ---------------- the turn ----------------
@@ -245,7 +296,7 @@ export const context = internalQuery({
   handler: async (ctx, a) => {
     const s = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.storyKey)).first();
     const msgs = await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", a.storyKey)).take(200);
-    return { story: s, msgs };
+    return { story: s, msgs, spec: s ? await specOf(ctx, s) : null };
   },
 });
 
@@ -263,12 +314,12 @@ export const agentTurn = internalAction({
   args: { storyKey: v.string(), speaker: v.string() },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const { story, msgs } = await ctx.runQuery(internal.roomAgents.context, { storyKey: a.storyKey });
-    if (!story) return null;
-    const spec = SPECS[a.storyKey];
+    const { story, msgs, spec } = await ctx.runQuery(internal.roomAgents.context, { storyKey: a.storyKey });
+    if (!story || !spec) return null;
     const id: Id<"room_messages"> = await ctx.runMutation(internal.roomAgents.startTurn, { storyKey: a.storyKey, speaker: a.speaker });
     try {
-      const tools = [...(ROLE_TOOLS[a.speaker] ?? []).map((t) => TOOL_DEFS[t]), SAY];
+      const extra = a.speaker === "learner" ? [] : spec.extraTools ?? [];
+      const tools = [...[...(ROLE_TOOLS[a.speaker] ?? []), ...extra].map((t) => TOOL_DEFS[t]), SAY];
       const messages: Msg[] = [{ role: "user", content: `${transcript(story, msgs)}\n\nYou have the floor. Do your job, then call say.` }];
       const ROUNDS = 6;
       for (let i = 0; i < ROUNDS; i++) {
@@ -312,6 +363,7 @@ async function runTool(ctx: ActionCtx, storyKey: string, name: string, input: Re
     }
     case "lender_history": return await ctx.runQuery(internal.roomAgents.lenderHistory, { lender: String(input.lender ?? "") });
     case "school_receipts": return await ctx.runQuery(internal.roomAgents.schoolReceipts, { storyKey });
+    case "store_cash": return await ctx.runQuery(internal.roomAgents.storeCash, { storyKey });
     case "backtest_rule": {
       let raw: unknown;
       try { raw = JSON.parse(String(input.program ?? "")); } catch { return { summary: "the program is not valid JSON", rows: [] }; }
@@ -351,7 +403,8 @@ export const finishTurn = internalMutation({
   handler: async (ctx, a) => {
     const story = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.storyKey)).first();
     if (!story || story.room?.state !== "meeting") return null;
-    const spec = SPECS[a.storyKey];
+    const spec = await specOf(ctx, story);
+    if (!spec) return null;
     const p = JSON.parse(a.payload) as SayPayload;
     const speaker = a.speaker as Role;
     const month = story.month;
@@ -359,7 +412,7 @@ export const finishTurn = internalMutation({
 
     // Record what was said. A draft rule only counts from the Learner; a question only from the Investigator.
     let code: string | undefined;
-    if (p.rule && speaker === "learner") {
+    if (p.rule && speaker === "learner" && spec.ruleId) {
       try { const val = validateRuleProgram(JSON.parse(p.rule)); if (val.ok) code = JSON.stringify({ ...val.rule, id: spec.ruleId }, null, 2); } catch { code = undefined; }
     }
     let question: Doc<"room_messages">["question"];
@@ -391,7 +444,7 @@ export const finishTurn = internalMutation({
       if (speaker === "learner") { await manager("The Learner drafts rules; it does not ask people. Floor goes to the Auditor."); return await next(ctx, a.storyKey, "auditor"); }
       if (!lastQ) { await manager("There is no question for a person yet. Floor goes to the Investigator to write it."); return await next(ctx, a.storyKey, "investigator"); }
       // When a yes would create a rule, the person sees the exact rule they would approve.
-      if (spec?.ruleId === "r9" && !after.some((m) => m.speaker === "learner" && m.code)) {
+      if (spec.draftFirst && !after.some((m) => m.speaker === "learner" && m.code)) {
         await manager("A yes here creates a rule, so the Learner drafts it first. The CFO should see exactly what they would approve. Floor goes to the Learner.");
         return await next(ctx, a.storyKey, "learner");
       }
@@ -480,7 +533,7 @@ export const rerunRoom = internalMutation({
     for (const m of await roomMessages(ctx, a.storyKey)) await ctx.db.delete(m._id);
     for (const q of await ctx.db.query("questions").withIndex("by_story", (x) => x.eq("storyKey", a.storyKey)).take(5)) await ctx.db.delete(q._id);
     await ctx.db.patch(story._id, { state: "NEW", room: undefined });
-    await openRoom(ctx, (await ctx.db.get(story._id))!, story.month, LIVE_ROOMS.has(a.storyKey));
+    await openRoom(ctx, (await ctx.db.get(story._id))!, story.month, !!(await specOf(ctx, story)));
     return null;
   },
 });

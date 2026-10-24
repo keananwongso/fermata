@@ -12,6 +12,7 @@ import { parseMemo } from "./lib/engineCore";
 import { rpShort, num } from "./lib/format";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
 import { CONSOLE_REFUSAL, consoleKey, isConsole } from "./lib/console";
+import { scenarioLenderAnswer } from "./scenario";
 
 const human = v.union(v.literal("accountant"), v.literal("cfo"));
 
@@ -71,6 +72,8 @@ async function applyAnswer(ctx: MutationCtx, story: Doc<"stories">, ans: string,
   const sid = story._id as Id<ItemTable>;
   const close = await getClose(ctx);
   const runMonth = close?.run?.month ?? month;
+  // A scenario's new lender is decided like story B (scenario.ts); its other stories follow the paths below.
+  if (story.scenario && story.gap === "unknown_lender") return await scenarioLenderAnswer(ctx, story, ans, actor);
   if (story.key === STORY_A_KEY) {
     if (ans === "receipts") {
       await ctx.db.insert("trace_events", { agent: "learner", month: runMonth, storyKey: story.key, ruleId: "r8", kind: "tool", text: "The Accountant corrected 1,186 placements. Writing a rule from the correction with Claude.", real: true, at: Date.now() });

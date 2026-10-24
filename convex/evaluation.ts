@@ -19,7 +19,7 @@ export const scanPage = internalQuery({
     const r = { posted: 0, byRule: 0, byPerson: 0, withStore: 0, wrongStore: 0, weekSettled: 0, weekCorrect: 0, weekHeld: 0, weekTotal: 0, wrongExamples: [] as string[] };
     for (const it of page.page) {
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
-      if (!b) continue;
+      if (!b || b.scenario) continue; // scenarios are not part of the year being evaluated
       const inWeek = b.date >= WEEK_FROM && b.date <= WEEK_TO;
       if (inWeek) { r.weekTotal++; if (it.state === "HELD") r.weekHeld++; }
       if (it.state !== "POSTED") continue;
@@ -56,7 +56,7 @@ export const fuzz = internalQuery({
     for (const it of items) {
       if (tried >= a.n) break;
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
-      if (!b || b.memo.startsWith("TRF")) continue;
+      if (!b || b.scenario || b.memo.startsWith("TRF")) continue;
       const t = strip(b);
       const kind = Math.floor(rnd() * 4);
       let m: EngineTxn = t;
