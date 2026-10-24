@@ -26,11 +26,11 @@ type StorySpec = { optionIds: string[]; askOf: "cfo" | "accountant"; ruleId: str
 const SPECS: Record<string, StorySpec> = {
   [STORY_A_KEY]: {
     optionIds: ["receipts", "bank", "unsure"], askOf: "accountant", ruleId: "r8",
-    ruleShape: `{"id":"r8","version":1,"title":"...","channels":["school_va"],"match":"follow_receipt","params":{"receiptWeight":0.5-0.9,"subAccountWeight":below 0.2},"limitIdr":rupiah above every school fee}`,
+    ruleShape: `{"id":"r8","version":1,"title":"...","channels":["school_va"],"match":"follow_receipt","params":{"receiptWeight":0.5-0.9,"subAccountWeight":below 0.2},"limitIdr":<per-payment ceiling, comfortably above every school fee>}`,
   },
   [STORY_B_KEY]: {
     optionIds: ["yes", "no", "unsure"], askOf: "cfo", ruleId: "r9",
-    ruleShape: `{"id":"r9","version":1,"title":"...","channels":["lender"],"match":"lender_sale","params":{"lenders":{"<LENDER>":<cut as a fraction>},"windowDays":7},"limitIdr":rupiah above the largest payout}`,
+    ruleShape: `{"id":"r9","version":1,"title":"...","channels":["lender"],"match":"lender_sale","params":{"lenders":{"<LENDER>":<cut as a fraction>},"windowDays":7},"limitIdr":<per-payout ceiling>}. The limit also applies to future payouts, which can be larger than this month's, so do not set it just above today's largest payout: the approved lender rule r7 uses Rp 1,000,000,000`,
   },
 };
 
