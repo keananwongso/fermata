@@ -287,6 +287,14 @@ page's proof, the pitch's Self improving slide and the What if screen, so the co
   always: "Simulated on the same engine: the same year, with and without learning." (`SIM_CAPTION`).
 * Three widths keep its labels near 11px: a phone chart below `sm` (single letter months), a mid one, and a wide one
   from `lg`. `stage` draws only the mid one, for the pitch, which scales it with CSS `zoom`.
+* **Three notes make the flat stretch read as the point, not a stall.** All three are worked out from the data, never typed:
+  * **The gap is shaded** `accent` at 7% and labelled "What learning did", where it is widest in the second half.
+  * **"Something new arrives: both dip, only learning recovers"** sits under the first month in which the baseline
+    drops more than a point and a half and learning recovers the next month.
+  * **The ceiling band:** when records arrive late (`waiting`), a `warm` band above `1 − late share` says they settle
+    the next month, so first pass can't go higher.
+
+  On phones only the shading and its label show.
 * Both lines draw in left to right behind a growing clip the first time it scrolls into view (not `pathLength`, which
   would overwrite the baseline's dashes).
 * Feed it `{ months, learned }` per run: a run from `/api/simulate`, or `src/demo/learning.json` through

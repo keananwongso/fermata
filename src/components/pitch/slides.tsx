@@ -409,14 +409,14 @@ function Curve() {
   return (
     <Frame chapter="Self improving" n={10}>
       <div className="flex items-end justify-between gap-10">
-        <In><h2 className="title text-[72px]">Learning makes it better.</h2></In>
+        <In><h2 className="title whitespace-nowrap text-[60px]">It learns in months, then holds.</h2></In>
         <In delay={0.2} className="flex shrink-0 gap-14 whitespace-nowrap text-right">
           <div><div className="figure text-[56px] text-heading">{pct(L.first, 0)} → {pct(L.last, 0)}</div><div className="mt-1 text-[22px] text-secondary">first pass with learning · {pct(L.baselineLast, 0)} without</div></div>
           <div><div className="figure text-[56px] text-hold">{num(L.heldLearned)} <span className="text-[34px] text-secondary">vs</span> {num(L.heldBaseline)}</div><div className="mt-1 text-[22px] text-secondary">lines left for people at year end</div></div>
         </In>
       </div>
       <In delay={0.3} className="mt-10">
-        <div style={{ zoom: 1.6 }}><LearningChart learned={L.learned} baseline={L.baseline} stage /></div>
+        <div style={{ zoom: 1.5 }}><LearningChart learned={L.learned} baseline={L.baseline} stage /></div>
       </In>
     </Frame>
   );
