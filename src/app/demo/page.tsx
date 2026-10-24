@@ -8,7 +8,7 @@ import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, Pill } from "@/components/ui";
-import { Roll } from "@/components/motion";
+import { Arrival, Reveal, RevealItem, Roll } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
 
 type Line = {
@@ -37,7 +37,11 @@ const cum = (upTo: number, f: (m: Rec["months"][number]) => number) => R.months.
 
 type Phase = "idle" | "running" | "meeting" | "question" | "after" | "done";
 
-export default function DemoPage() {
+export default function Page() {
+  return <Arrival><DemoPage /></Arrival>;
+}
+
+function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [month, setMonth] = useState(1);
   const [p, setP] = useState(0);
@@ -118,8 +122,8 @@ export default function DemoPage() {
   const rules = R.rules.filter((r) => r.learnedInMonth === 0 || answered.some((k) => R.rooms.find((x) => x.key === k)?.month === r.learnedInMonth));
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <Reveal className="space-y-5" stagger={0.08}>
+      <RevealItem className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill><span className="text-[12px] text-faint">A replay of a recorded run · {R.recordedAt}</span></div>
           <h1 className="display mt-3 text-[clamp(30px,3.6vw,44px)]">Watch Fermata close a year</h1>
@@ -136,19 +140,19 @@ export default function DemoPage() {
           </div>
           {phase !== "idle" ? <Button variant="ghost" onClick={restart}>Restart</Button> : null}
         </div>
-      </div>
+      </RevealItem>
 
-      <Timeline month={month} phase={phase} p={p} answered={answered} />
+      <RevealItem><Timeline month={month} phase={phase} p={p} answered={answered} /></RevealItem>
 
-      <div className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
+      <RevealItem className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
         <Stat label="Bank lines processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
         <Stat label="Settled automatically" value={processed ? <Roll value={settled / processed} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> : "—"} sub={`${num(settled)} lines`} tone="success" />
         <Stat label="Case rooms opened" value={<Roll value={visibleRooms.length} />} sub="one per held story" tone="hold" />
         <Stat label="Questions to people" value={<Roll value={visibleRooms.length} />} sub={`${answered.length} answered by you`} />
         <Stat label="Rules learned" value={<Roll value={rules.length} />} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
-      </div>
+      </RevealItem>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:grid-cols-[320px_minmax(0,1fr)_280px]">
+      <RevealItem className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:grid-cols-[320px_minmax(0,1fr)_280px]">
         <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} />
         <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden" aria-label={room ? "Case room" : "Learning curve"}>
           {room ? (
@@ -188,8 +192,8 @@ export default function DemoPage() {
             </div>
           ) : null}
         </aside>
-      </div>
-    </div>
+      </RevealItem>
+    </Reveal>
   );
 }
 

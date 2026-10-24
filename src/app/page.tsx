@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { AgentWorking, CurveAndMeetings, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
-import { BrandGrid, Reveal, RevealItem, Roll } from "@/components/motion";
+import { Arrival, BrandGrid, Reveal, RevealItem, Roll } from "@/components/motion";
 
-export default function Landing() {
+export default function Page() {
+  return <Arrival><Landing /></Arrival>;
+}
+
+function Landing() {
   return (
     <div className="space-y-24 lg:space-y-32">
       {/* Hero */}

@@ -88,6 +88,8 @@ inside rule code and the record.
 * **`Loading`**: a breathing amber 𝄐 with a short line of text. No spinners.
 * **`Splash`** (`motion.tsx`): the run view's cold load. The 𝄐 alone in a white tile on the canvas, shown at least 700ms,
   then the whole screen fades into the page. Only on a cold load; returning to the page skips it.
+* **`Arrival`** (`motion.tsx`): wraps the landing page and the demo. The same splash once per visit, on the first page
+  opened, with the page hidden underneath so its own entrance plays as the splash fades. Client navigations skip it.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
 ## Case rooms (`src/components/caseRoom.tsx`)

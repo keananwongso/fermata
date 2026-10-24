@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import NumberFlow, { type Format } from "@number-flow/react";
-import { motion, useInView, type Variants } from "motion/react";
+import { AnimatePresence, motion, useInView, type Variants } from "motion/react";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -113,5 +113,24 @@ export function Splash() {
         <span className="breathe text-[60px] leading-none" style={{ fontFamily: "var(--font-music)", transform: "translateY(0.28em)" }} aria-hidden>𝄐</span>
       </motion.div>
     </motion.div>
+  );
+}
+
+let arrived = false;
+
+// The splash on arrival: once per visit, on the first page opened. The page waits underneath, hidden, so its
+// own entrance plays as the splash fades instead of finishing behind it. Later navigations skip it.
+export function Arrival({ children, ms = 900 }: { children: ReactNode; ms?: number }) {
+  const [splash, setSplash] = useState(() => !arrived);
+  useEffect(() => {
+    if (!splash) return;
+    const t = setTimeout(() => { arrived = true; setSplash(false); }, ms);
+    return () => clearTimeout(t);
+  }, [splash, ms]);
+  return (
+    <>
+      <AnimatePresence>{splash ? <Splash key="splash" /> : null}</AnimatePresence>
+      <div hidden={splash}>{children}</div>
+    </>
   );
 }
