@@ -15,14 +15,18 @@ import { DashboardNav, HOME, navFromQuery, navQuery, type Nav } from "./dashboar
 import { Overview } from "./dashboard/overview";
 import { CaseRooms } from "./dashboard/rooms";
 import { Rules } from "./dashboard/rules";
+import { Evaluation, Record, Run } from "./dashboard/screens";
 
 // ---- The views ---------------------------------------------------------------------------------------------------
 
 // One entry per sidebar item. To add a view, add its panel here (and to TABS in nav.ts if the console has it too).
-type View = { id: string; label: string; count?: ReactNode; console?: string; Panel: (p: { room: string | null }) => ReactNode };
+type View = { id: string; label: string; count?: ReactNode; console?: string; Panel: (p: { room: string | null; console?: string }) => ReactNode };
 const PANELS: Record<string, { id: string; Panel: View["Panel"]; count?: ReactNode }> = {
+  "/run": { id: "run", Panel: Run },
   "/stories": { id: "case-rooms", Panel: CaseRooms, count: <span className="num rounded-full bg-hold-tint px-1.5 text-[11px] text-hold-ink">{openRooms.length}<span className="sr-only"> waiting</span></span> },
   "/rules": { id: "rules", Panel: Rules, count: <span className="num text-[11px] text-faint">{R.rules.length}<span className="sr-only"> rules</span></span> },
+  "/evaluation": { id: "evaluation", Panel: Evaluation },
+  "/record": { id: "record", Panel: Record },
 };
 const VIEWS: View[] = [
   { id: HOME.view, label: "Dashboard", Panel: Overview },
@@ -67,7 +71,7 @@ export function Dashboard({ className = "", initial, onNavigate }: { className?:
               {home ? null : (
                 <div key={`${view.id}:${nav.room ?? ""}`} {...panel} data-lenis-prevent
                   className="enter scroll-quiet min-w-0 focus:outline-none lg:absolute lg:inset-0 lg:overflow-y-auto">
-                  <view.Panel room={nav.room} />
+                  <view.Panel room={nav.room} console={view.console} />
                 </div>
               )}
             </div>
@@ -158,12 +162,21 @@ function MobileBar({ nav, go, ids }: TabsProps) {
   const keys = useTabKeys(nav, go, ids.mtab);
   const row = useRef<HTMLDivElement>(null);
   // Keep the open tab in view in the row (by scrolling the row itself; scrollIntoView would move the page too).
+  // The row may have no size yet (the page fades in hidden), so this runs again once it is laid out.
   useEffect(() => {
-    const el = row.current, tab = el && (document.getElementById(ids.mtab(nav.view)) as HTMLElement | null);
-    if (!el || !tab || el.scrollWidth <= el.clientWidth) return;
-    const left = tab.offsetLeft - 8, right = tab.offsetLeft + tab.offsetWidth + 8;
-    if (left < el.scrollLeft) el.scrollTo({ left });
-    else if (right > el.scrollLeft + el.clientWidth) el.scrollTo({ left: right - el.clientWidth });
+    const el = row.current;
+    if (!el) return;
+    const reveal = () => {
+      const tab = document.getElementById(ids.mtab(nav.view));
+      if (!tab || el.scrollWidth <= el.clientWidth) return;
+      const left = tab.offsetLeft - 8, right = tab.offsetLeft + tab.offsetWidth + 8;
+      if (left < el.scrollLeft) el.scrollTo({ left });
+      else if (right > el.scrollLeft + el.clientWidth) el.scrollTo({ left: right - el.clientWidth });
+    };
+    reveal();
+    const ro = new ResizeObserver(reveal);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [nav.view, ids]);
   return (
     <div className="border-b border-hairline bg-well lg:hidden">
