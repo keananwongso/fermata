@@ -1,11 +1,11 @@
 // Engine batches inside Convex. Each batch evaluates bank lines with the shared engine core and changes
-// state only through `transition`, so every step lands in audit_log in the same mutation.
+// state only through `transition` / `transitionChain`, so every step lands in audit_log in the same mutation.
 import { v } from "convex/values";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { GAP_LABEL, consumption, evaluate, parseMemo, type DataPort, type Decision, type EngineTxn, type Gap } from "./lib/engineCore";
 import type { RuleProgram } from "./lib/rules";
-import { transition, type ItemTable } from "./lib/transition";
+import { transition, transitionChain, type ItemTable, type Step } from "./lib/transition";
 import { STORE_BY_CODE, YEAR } from "./lib/domain";
 
 type Row = { _id: Id<"erp_invoices" | "cash_book" | "marketplace_orders" | "gateway_settlements" | "dealer_invoices" | "school_receipts">; key: string; applied: number };
@@ -97,42 +97,46 @@ export function authorityFor(ids: string[], docs: Map<string, Doc<"rules"> | nul
 
 export interface BatchStats { firstSettled: number; waiting: number; held: number; settledLater: number; processed: number }
 
-// Apply one engine decision to a bank line's work item.
-export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items">, txn: EngineTxn, d: Decision, opts: {
+// Apply one engine decision to a bank line's work item. On the first pass the item does not exist yet:
+// `create` is the sync step, and it is written together with the decision as one chain.
+export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | null, txn: EngineTxn, d: Decision, opts: {
   passMonth: number; firstPass: boolean; docs: Map<string, Doc<"rules"> | null>; seen: Map<string, Row>; stats: BatchStats; settledCounts: Map<string, number>;
+  create?: Step;
 }): Promise<void> {
-  const id = item._id as Id<ItemTable>;
   const month = opts.passMonth;
+  const target = { table: "work_items" as const, id: (item?._id ?? null) as Id<ItemTable> | null, month };
+  const lead: Step[] = opts.create ? [opts.create] : [];
   if (d.kind === "settle") {
     const sample = d.counterparts.slice(0, 5).map((c) => ({ key: c.key, amount: c.amount }));
-    const p = await transition(ctx, {
-      table: "work_items", id, action: "propose", actor: "engine", month, reason: d.note,
-      patch: { proposer: "engine", placement: d.placement, ruleIds: d.ruleIds, note: d.note, counterpartTable: d.counterparts[0]?.table ?? "", counterpartCount: d.fanout, counterpartSample: sample, gap: undefined },
-    }, opts.docs);
-    if (!p.ok) return;
     const authority = authorityFor(d.ruleIds, opts.docs);
-    const a = await transition(ctx, { table: "work_items", id, action: "approve", actor: "engine", month, reason: "Within an approved rule's limit", authority, patch: {} }, opts.docs);
-    if (!a.ok) return;
-    await transition(ctx, { table: "work_items", id, action: "post", actor: "gateway", month, reason: "Posted to the books", authority, patch: { settledMonth: month, settledBy: "rule" } });
+    const r = await transitionChain(ctx, target, [
+      ...lead,
+      { action: "propose", actor: "engine", reason: d.note,
+        patch: { proposer: "engine", placement: d.placement, ruleIds: d.ruleIds, note: d.note, counterpartTable: d.counterparts[0]?.table ?? "", counterpartCount: d.fanout, counterpartSample: sample, gap: undefined } },
+      { action: "approve", actor: "engine", reason: "Within an approved rule's limit", authority, patch: {} },
+      { action: "post", actor: "gateway", reason: "Posted to the books", authority, patch: { settledMonth: month, settledBy: "rule" } },
+    ], opts.docs);
+    if (!r.ok) return;
     const store = d.placement.store;
     await ctx.db.insert("journal_entries", {
-      workItemId: item._id, date: txn.date, store, amount: txn.amount, authority,
+      workItemId: r.id as Id<"work_items">, date: txn.date, store, amount: txn.amount, authority,
       debit: `${txn.account}${store ? "/" + store : ""}`, credit: d.counterparts[0]?.table === "bank_transactions" ? "Reversed same day" : `Receivable cleared${store ? " · " + STORE_BY_CODE[store].name : ""}`,
     });
     for (const c of consumption(d)) {
       const row = opts.seen.get(c.key);
       if (row) { row.applied += c.amount; await ctx.db.patch(row._id, { applied: row.applied }); }
     }
-    for (const r of d.ruleIds) opts.settledCounts.set(r, (opts.settledCounts.get(r) ?? 0) + 1);
+    for (const rid of d.ruleIds) opts.settledCounts.set(rid, (opts.settledCounts.get(rid) ?? 0) + 1);
     if (opts.firstPass) opts.stats.firstSettled++; else opts.stats.settledLater++;
   } else if (d.kind === "wait") {
-    await transition(ctx, { table: "work_items", id, action: "wait", actor: "engine", month, reason: d.note, patch: { placement: d.placement, note: d.note } });
+    await transitionChain(ctx, target, [...lead, { action: "wait", actor: "engine", reason: d.note, patch: { placement: d.placement, note: d.note } }]);
     if (opts.firstPass) opts.stats.waiting++;
   } else {
-    await transition(ctx, {
-      table: "work_items", id, action: "hold", actor: "engine", month, reason: d.note,
+    const r = await transitionChain(ctx, target, [...lead, {
+      action: "hold", actor: "engine", reason: d.note,
       patch: { placement: d.placement, note: d.note, gap: d.gap, storyKey: d.storyKey, facts: d.facts, everHeld: true },
-    });
+    }]);
+    if (!r.ok) return;
     await upsertStory(ctx, d, txn, month);
     opts.stats.held++;
   }
@@ -194,15 +198,13 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
     .paginate({ cursor, numItems: BATCH_ITEMS, maximumRowsRead: BATCH_ITEMS });
   for (const b of page.page) {
     const txn = strip(b);
-    const c = await transition(ctx, {
-      table: "work_items", id: null, action: "create", actor: "sync", month, reason: "Synced from the bank statement",
+    const create: Step = {
+      action: "create", actor: "sync", reason: "Synced from the bank statement",
       insert: { kind: "bank_txn", ref: b.key, year: YEAR, month, amount: b.amount, channel: parseMemo(txn).channel, firstPassMonth: month },
       patch: {},
-    });
-    if (!c.ok) continue;
-    const item = (await ctx.db.get(c.id as Id<"work_items">))!;
+    };
     const d = await evaluate(txn, programs, port, { asOf, firstPass: true });
-    await applyDecision(ctx, item, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts });
+    await applyDecision(ctx, null, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts, create });
     if (!voteRef && d.kind === "settle" && d.placement.confidence < 0.99 && d.placement.votes.length > 1) voteRef = b.key;
     stats.processed++;
     if (Date.now() - started > BATCH_MS * 4) break;

@@ -149,6 +149,8 @@ export default defineSchema({
     diff: v.array(v.object({ field: v.string(), before: v.string(), after: v.string() })),
     reason: v.string(), authority: v.union(v.string(), v.null()), allowed: v.boolean(), denial: v.union(v.string(), v.null()),
     month: v.number(), staged: v.optional(v.boolean()),
+    // Present when one row records several steps on the same item (sync, engine, gateway settling a line).
+    steps: v.optional(v.array(v.object({ action: v.string(), actor: role, toState: v.union(state, v.null()) }))),
   })
     .index("by_item", ["itemId"])
     .index("by_allowed", ["allowed"]),

@@ -32,8 +32,14 @@ export default function RecordPage() {
           <div key={r._id} className="border-b border-hairline px-6 py-4 last:border-0">
             <div className="flex flex-wrap items-center gap-2 text-[13px]">
               <span className="num text-[12px] text-faint">{new Date(r._creationTime).toLocaleTimeString("en-GB")}</span>
-              <span className="font-medium">{AGENT_LABEL[r.actor]}</span>
-              <span className="text-secondary">{r.action}</span>
+              {r.steps ? (
+                r.steps.map((s, i) => <span key={i} className="text-secondary">{i ? "→ " : ""}<span className="font-medium text-ink">{AGENT_LABEL[s.actor]}</span> {s.action}</span>)
+              ) : (
+                <>
+                  <span className="font-medium">{AGENT_LABEL[r.actor]}</span>
+                  <span className="text-secondary">{r.action}</span>
+                </>
+              )}
               <button className="num text-accent" onClick={() => { setRef(r.itemRef.split(" ")[0]); setQ(r.itemRef.split(" ")[0]); }}>{r.itemRef}</button>
               {r.allowed ? <span className="text-secondary">{r.fromState ? WORDS[r.fromState] : "created"} → {r.toState ? WORDS[r.toState] : ""}</span> : <Pill tone="danger"><ShieldX size={12} strokeWidth={1.75} />Blocked: {r.denial}</Pill>}
               {r.staged ? <Pill>staged</Pill> : null}

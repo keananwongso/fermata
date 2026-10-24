@@ -91,63 +91,110 @@ async function checkRuleAuthority(ctx: MutationCtx, authority: string | null | u
   return null;
 }
 
-export async function transition(ctx: MutationCtx, a: TransitionArgs, ruleCache?: Map<string, Doc<"rules"> | null>): Promise<TransitionResult> {
-  const doc = a.id ? ((await ctx.db.get(a.id)) as AnyItem | null) : null;
-  const from = (doc ? (doc as { state: State }).state : null) as State | null;
-  const month = a.month ?? (doc && "month" in doc && typeof doc.month === "number" ? doc.month : 0);
-  const ref = doc ? refOf(a.table, doc as unknown as Record<string, unknown>) : refOf(a.table, a.insert ?? {});
+// One step of a chain. A chain runs on one item, checks every step exactly as a lone transition would,
+// then writes the item once and one audit row listing the steps. Used where the engine settles a line
+// (sync creates, engine proposes and approves, gateway posts): one row instead of four.
+export type Step = Omit<TransitionArgs, "table" | "id" | "month">;
+type StepRecord = { action: string; actor: Role; toState: State | null };
 
-  const deny = async (denial: string): Promise<TransitionResult> => {
+// Bulky fields are summarised in the diff; the full value stays on the item itself.
+function showField(field: string, x: unknown): string {
+  if (field === "placement" && x && typeof x === "object") {
+    const p = x as { store: string | null; confidence: number };
+    return `${p.store ?? "none"} ${Math.round(p.confidence * 100)}%`;
+  }
+  if (field === "counterpartSample" && Array.isArray(x)) return `${x.length} rows`;
+  return show(x);
+}
+
+async function check(ctx: MutationCtx, table: ItemTable, a: Step, cur: Record<string, unknown> | null, from: State | null, ruleCache?: Map<string, Doc<"rules"> | null>): Promise<{ denial: string } | { to: State | null }> {
+  const allowedTables = ROLES[a.actor].actions[a.action];
+  if (!allowedTables) return { denial: `${ROLES[a.actor].label} may not ${a.action}` };
+  if (!allowedTables.includes(table)) return { denial: `${ROLES[a.actor].label} may not ${a.action} a ${table.replace("_", " ").replace(/s$/, "")}` };
+  if (a.action !== "create" && !cur) return { denial: "Item does not exist" };
+  const rule = TRANSITIONS.find((t) => t.action === a.action && t.from.includes(from));
+  if (!rule) return { denial: `Cannot ${a.action} an item that is ${from ?? "not created"}` };
+
+  if (a.action === "approve" && cur) {
+    const proposer = cur.proposer as Role | undefined;
+    if (a.actor === "engine") {
+      if (table !== "work_items") return { denial: "The engine approves only settlements" };
+      const amount = (cur.amount as number | undefined) ?? 0;
+      const why = await checkRuleAuthority(ctx, a.authority, amount, ruleCache);
+      if (why) return { denial: why };
+    } else if (proposer === a.actor) {
+      return { denial: `${ROLES[a.actor].label} cannot approve its own proposal` };
+    }
+    if (table === "rules" && a.actor !== "cfo") return { denial: "Only the CFO approves rules" };
+  }
+  return { to: rule.to ?? from };
+}
+
+export async function transitionChain(ctx: MutationCtx, target: { table: ItemTable; id: Id<ItemTable> | null; month?: number }, steps: Step[], ruleCache?: Map<string, Doc<"rules"> | null>): Promise<TransitionResult> {
+  const { table } = target;
+  const original = target.id ? ((await ctx.db.get(target.id)) as AnyItem | null) : null;
+  const base: Record<string, unknown> = (original as unknown as Record<string, unknown>) ?? {};
+  const month = target.month ?? (typeof base.month === "number" ? base.month : 0);
+  const ref = original ? refOf(table, base) : refOf(table, steps[0]?.insert ?? {});
+  const startState = (original ? base.state : null) as State | null;
+
+  let state = startState;
+  let cur: Record<string, unknown> | null = original ? { ...base } : null;
+  let insert: Record<string, unknown> | null = null;
+  const patch: Patch = {};
+  const done: (Step & { toState: State | null })[] = [];
+
+  // Write what has passed so far: the item once, and one audit row for the steps.
+  const flush = async (): Promise<Id<ItemTable> | null> => {
+    if (!done.length) return target.id;
+    const diff: { field: string; before: string; after: string }[] = [];
+    if (startState !== state) diff.push({ field: "state", before: startState ?? "", after: state ?? "" });
+    for (const [k, val] of Object.entries(patch)) {
+      const before = showField(k, base[k]);
+      const after = showField(k, val);
+      if (before !== after) diff.push({ field: k, before, after });
+    }
+    let id = target.id;
+    if (insert) {
+      id = await ctx.db.insert(table, { ...insert, ...patch, state } as never) as Id<ItemTable>;
+      for (const [k, val] of Object.entries(insert)) if (k !== "state" && ["ref", "key", "ruleId", "amount", "storyKey", "title"].includes(k)) diff.push({ field: k, before: "", after: show(val) });
+    } else {
+      await ctx.db.patch(id!, { ...patch, state } as never);
+    }
+    const last = done[done.length - 1];
+    const authority = [...done].reverse().find((s) => s.authority)?.authority ?? null;
+    const reason = done.length === 1 ? last.reason : [...new Set(done.map((s) => s.reason))].join(" · ");
+    const chain: StepRecord[] | undefined = done.length > 1 ? done.map((s) => ({ action: s.action, actor: s.actor, toState: s.toState })) : undefined;
     await ctx.db.insert("audit_log", {
-      itemTable: a.table, itemId: a.id ?? "", itemRef: ref, action: a.action, actor: a.actor, fromState: from, toState: from,
-      diff: [], reason: a.reason, authority: a.authority ?? null, allowed: false, denial, month, staged: a.staged,
+      itemTable: table, itemId: id!, itemRef: ref, action: last.action, actor: last.actor, fromState: startState, toState: state,
+      diff, reason, authority, allowed: true, denial: null, month, staged: done.some((s) => s.staged) || undefined, steps: chain,
     });
-    return { ok: false, denial };
+    return id;
   };
 
-  const allowedTables = ROLES[a.actor].actions[a.action];
-  if (!allowedTables) return deny(`${ROLES[a.actor].label} may not ${a.action}`);
-  if (!allowedTables.includes(a.table)) return deny(`${ROLES[a.actor].label} may not ${a.action} a ${a.table.replace("_", " ").replace(/s$/, "")}`);
-  if (a.id && !doc) return deny("Item does not exist");
-  const rule = TRANSITIONS.find((t) => t.action === a.action && t.from.includes(from));
-  if (!rule) return deny(`Cannot ${a.action} an item that is ${from ?? "not created"}`);
-
-  if (a.action === "approve" && doc) {
-    const proposer = (doc as { proposer?: Role }).proposer;
-    if (a.actor === "engine") {
-      if (a.table !== "work_items") return deny("The engine approves only settlements");
-      const amount = (doc as Doc<"work_items">).amount ?? 0;
-      const why = await checkRuleAuthority(ctx, a.authority, amount, ruleCache);
-      if (why) return deny(why);
-    } else if (proposer === a.actor) {
-      return deny(`${ROLES[a.actor].label} cannot approve its own proposal`);
+  for (const a of steps) {
+    const r = await check(ctx, table, a, cur, state, ruleCache);
+    if ("denial" in r) {
+      const id = await flush();
+      await ctx.db.insert("audit_log", {
+        itemTable: table, itemId: id ?? "", itemRef: ref, action: a.action, actor: a.actor, fromState: state, toState: state,
+        diff: [], reason: a.reason, authority: a.authority ?? null, allowed: false, denial: r.denial, month, staged: a.staged,
+      });
+      return { ok: false, denial: r.denial };
     }
-    if (a.table === "rules" && a.actor !== "cfo") return deny("Only the CFO approves rules");
+    if (a.action === "create") insert = { ...(a.insert ?? {}) };
+    Object.assign(patch, a.patch);
+    cur = { ...(cur ?? {}), ...(a.action === "create" ? a.insert ?? {} : {}), ...a.patch };
+    state = r.to;
+    done.push({ ...a, toState: r.to });
   }
-
-  const to = rule.to ?? from;
-  const diff: { field: string; before: string; after: string }[] = [];
-  if (from !== to) diff.push({ field: "state", before: from ?? "", after: to ?? "" });
-  const source: Record<string, unknown> = (doc as unknown as Record<string, unknown>) ?? {};
-  for (const [k, val] of Object.entries(a.patch)) {
-    const before = show(source[k]);
-    const after = show(val);
-    if (before !== after) diff.push({ field: k, before, after });
-  }
-
-  let id = a.id;
-  if (a.action === "create") {
-    const fields = { ...(a.insert ?? {}), ...a.patch, state: "NEW" } as never;
-    id = await ctx.db.insert(a.table, fields) as Id<ItemTable>;
-    for (const [k, val] of Object.entries(a.insert ?? {})) if (k !== "state" && ["ref", "key", "ruleId", "amount", "storyKey", "title"].includes(k)) diff.push({ field: k, before: "", after: show(val) });
-  } else {
-    await ctx.db.patch(a.id!, { ...a.patch, state: to } as never);
-  }
-  await ctx.db.insert("audit_log", {
-    itemTable: a.table, itemId: id!, itemRef: ref, action: a.action, actor: a.actor, fromState: from, toState: to,
-    diff, reason: a.reason, authority: a.authority ?? null, allowed: true, denial: null, month, staged: a.staged,
-  });
+  const id = await flush();
   return { ok: true, id: id! };
+}
+
+export async function transition(ctx: MutationCtx, a: TransitionArgs, ruleCache?: Map<string, Doc<"rules"> | null>): Promise<TransitionResult> {
+  const { table, id, month, ...step } = a;
+  return transitionChain(ctx, { table, id, month }, [step], ruleCache);
 }
 
 export function monthLabel(m: number): string { return m >= 1 && m <= 12 ? MONTH_LABELS[m - 1] : "Year end"; }
