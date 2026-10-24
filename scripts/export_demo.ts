@@ -23,7 +23,8 @@ type Line = {
   votes: { store: string; score: number; reasons: string[] }[]; fanout: number; matched: string | null; note: string; story: string | null;
 };
 
-async function engineYear() {
+// learn: false runs the same year without the rules learned from people's answers, as a baseline.
+async function engineYear(learn = true) {
   const w = generateWorld();
   const applied = new Map<string, number>();
   let asOf = "";
@@ -75,8 +76,8 @@ async function engineYear() {
       const n = perRule.get(k) ?? 0;
       if (n < (d.kind === "settle" ? 4 : 3)) { sample.push(toLine(t, d)); perRule.set(k, n + 1); }
     }
-    if (m === 3) { rules = [...rules, { id: "r8", version: 1, title: "Follow the school's receipts", channels: ["school_va"], match: "follow_receipt", params: {}, limitIdr: 50_000_000 }]; released = await rerun(); }
-    if (m === 6) { rules = [...rules, { id: "r9", version: 1, title: "FIN_Z payout minus 3.8%", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 }]; released = await rerun(); }
+    if (learn && m === 3) { rules = [...rules, { id: "r8", version: 1, title: "Follow the school's receipts", channels: ["school_va"], match: "follow_receipt", params: {}, limitIdr: 50_000_000 }]; released = await rerun(); }
+    if (learn && m === 6) { rules = [...rules, { id: "r9", version: 1, title: "FIN_Z payout minus 3.8%", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 }]; released = await rerun(); }
     months.push({ month: m, total: MONTHLY_TOTALS[m - 1], firstSettled: first, waiting, held, settledLater, released });
     lines[m] = sample.sort((a, b) => a.date.localeCompare(b.date));
   }
@@ -124,15 +125,19 @@ async function convexRun() {
   return { rooms, rules, headOffice: ov.headOffice, headOfficeBank: ov.headOfficeBank, evaluation };
 }
 
+// What the year looks like without learning: per month first pass and the year's final state.
+const baselineOf = (b: Awaited<ReturnType<typeof engineYear>>) => ({ months: b.months.map((m) => ({ month: m.month, firstSettled: m.firstSettled, held: m.held })), final: b.final });
+
 async function main() {
   if (process.argv.includes("--engine-only")) {
-    const engine = await engineYear();
+    const engine = { ...(await engineYear()), baseline: baselineOf(await engineYear(false)) };
     const prev = JSON.parse(readFileSync("src/demo/recording.json", "utf8"));
     writeFileSync("src/demo/recording.json", JSON.stringify({ ...prev, ...engine }));
     console.log(`updated the engine numbers in src/demo/recording.json, final ${JSON.stringify(engine.final)}`);
     return;
   }
-  const [engine, run] = await Promise.all([engineYear(), convexRun()]);
+  const [learned, run] = await Promise.all([engineYear(), convexRun()]);
+  const engine = { ...learned, baseline: baselineOf(await engineYear(false)) };
   const out = { recordedAt: new Date().toISOString().slice(0, 10), year: YEAR, ...engine, ...run };
   mkdirSync("src/demo", { recursive: true });
   const json = JSON.stringify(out);
