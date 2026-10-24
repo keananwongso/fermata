@@ -14,8 +14,10 @@ function Landing() {
   return (
     <div className="space-y-24 lg:space-y-32">
       {/* Hero: the headline centred on top, the product window under it. */}
-      <section className="pt-2">
-        <Reveal className="mx-auto max-w-[880px] text-center" stagger={0.1}>
+      <section className="relative pt-2">
+        {/* One band of brand cells hangs from the top of the page, behind the header, and clears before the window. */}
+        <BrandGrid top cols={24} rows={12} className="absolute left-1/2 -top-40 h-[680px] w-screen -translate-x-1/2 opacity-70 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)] lg:-top-44 lg:h-[820px]" />
+        <Reveal className="relative mx-auto max-w-[880px] text-center" stagger={0.1}>
           <RevealItem><Tag tone="neutral">Autonomous cash reconciliation</Tag></RevealItem>
           <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">Every bank line, matched on its own.</h1></RevealItem>
           <RevealItem><p className="mx-auto mt-5 max-w-[600px] text-[16px] leading-relaxed text-body">
@@ -29,7 +31,6 @@ function Landing() {
           <RevealItem><p className="mt-6 text-[12px] text-faint">Shown on a fictional 14-store music retailer. Every number here comes from a real run on synthetic books.</p></RevealItem>
         </Reveal>
         <div className="relative mt-12 lg:mt-16">
-          <BrandGrid cols={24} rows={8} className="absolute -inset-x-4 -top-10 h-[70%] w-[calc(100%+2rem)] opacity-50 [mask-image:linear-gradient(to_bottom,transparent,#000_30%,transparent)] lg:-inset-x-10 lg:w-[calc(100%+5rem)]" />
           <Reveal className="relative min-w-0" delay={0.35}><RevealItem><Dashboard /></RevealItem></Reveal>
           {/* The window is the year already closed: the way on is to watch it close; full screen is the quiet second. */}
           <div className="relative mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
@@ -41,7 +42,6 @@ function Landing() {
 
       {/* Banner */}
       <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
-        <BrandGrid cols={18} rows={6} className="absolute inset-0 h-full w-full opacity-60 [mask-image:radial-gradient(ellipse_at_center,transparent_35%,#000_100%)]" />
         <Reveal className="relative"><RevealItem>
           <p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={0.98} format={{ style: "percent", maximumFractionDigits: 0 }} /> of bank lines settle on their own, so the team only answers what nobody wrote down.</p>
         </RevealItem></Reveal>

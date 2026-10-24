@@ -56,13 +56,15 @@ export function useLive() {
 }
 
 // Stepped brand-blue cells, concentrated at the outer edges and clearing toward a readable centre.
-export function BrandGrid({ cols = 18, rows = 6, className = "" }: { cols?: number; rows?: number; className?: string }) {
+// `top` weights the top edge instead of top and bottom, for a band that hangs from the top of the page.
+export function BrandGrid({ cols = 18, rows = 6, top = false, className = "" }: { cols?: number; rows?: number; top?: boolean; className?: string }) {
   const cells: { x: number; y: number; o: number }[] = [];
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const dx = Math.abs((x + 0.5) / cols - 0.5) * 2;
-      const dy = Math.abs((y + 0.5) / rows - 0.5) * 2;
-      const edge = Math.max(dx * 1.08, dy * 0.55) + (((x * 7 + y * 13) % 5) - 2) * 0.035;
+      const dy = top ? 1.25 - ((y + 0.5) / rows) * 2 : Math.abs((y + 0.5) / rows - 0.5) * 2 * 0.55;
+      const side = top ? 1.1 - ((y + 0.5) / rows) * 0.5 : 1.08;
+      const edge = Math.max(dx * side, dy) + (((x * 7 + y * 13) % 5) - 2) * 0.035;
       const step = edge > 0.94 ? 0.55 : edge > 0.84 ? 0.28 : edge > 0.72 ? 0.13 : edge > 0.6 ? 0.05 : 0;
       if (step) cells.push({ x, y, o: step });
     }

@@ -224,7 +224,7 @@ uses the same tokens, type classes, components and motion as the screens it intr
 | `Reveal` / `RevealItem` | A group whose children rise in with a short blur, one after another, the first time it scrolls into view |
 | Sliding highlight | A `motion` `layoutId` background that slides between options, e.g. the current month on the run view |
 | `useLive` | Only rows that arrive after first paint animate |
-| `BrandGrid` | Stepped blue cells at the edges of a hero, clearing toward a readable centre |
+| `BrandGrid` | Stepped blue cells at the edges of a hero, clearing toward a readable centre. `top` hangs it from the top edge: the landing page uses one full-width band behind the header and headline, and nowhere else on that page |
 | `ThinkingOrb` | Ask the books' voice: a point sphere that rests, listens, works and speaks (see Ask the books). Blue only |
 
 Component motion uses `motion/react`; CSS classes stay for anything that does not need it. Patterns are ported from
