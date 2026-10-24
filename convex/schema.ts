@@ -137,10 +137,13 @@ export default defineSchema({
     .index("by_agent_month", ["agent", "month"])
     .index("by_story", ["storyKey"])
     .index("by_rule", ["ruleId"]),
+  // Lines settled by a rule post as one summary entry per month, account, store and authority (`key`, `lines`).
+  // A person's decision posts per line (`workItemId`).
   journal_entries: defineTable({
-    workItemId: v.id("work_items"), date: v.string(), store: v.union(store, v.null()), debit: v.string(), credit: v.string(),
+    workItemId: v.optional(v.id("work_items")), key: v.optional(v.string()), month: v.optional(v.number()), lines: v.optional(v.number()),
+    date: v.string(), store: v.union(store, v.null()), debit: v.string(), credit: v.string(),
     amount: v.number(), authority: v.string(),
-  }).index("by_work_item", ["workItemId"]),
+  }).index("by_work_item", ["workItemId"]).index("by_key", ["key"]),
   eval_runs: defineTable({ kind: v.string(), at: v.number(), result: v.record(v.string(), v.union(v.string(), v.number())) })
     .index("by_kind", ["kind"]),
   audit_log: defineTable({

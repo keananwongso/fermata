@@ -97,11 +97,31 @@ export function authorityFor(ids: string[], docs: Map<string, Doc<"rules"> | nul
 
 export interface BatchStats { firstSettled: number; waiting: number; held: number; settledLater: number; processed: number }
 
+// Rule settlements post to the books as summary entries, accumulated per batch and added to the month's entry.
+type JournalLine = { month: number; date: string; store: string | null; debit: string; credit: string; amount: number; authority: string };
+type Journal = Map<string, JournalLine & { lines: number }>;
+
+function addJournal(j: Journal, l: JournalLine) {
+  const key = `${l.month}|${l.debit}|${l.credit}|${l.authority}`;
+  const e = j.get(key);
+  if (!e) { j.set(key, { ...l, lines: 1 }); return; }
+  e.amount += l.amount; e.lines++;
+  if (l.date > e.date) e.date = l.date;
+}
+
+async function flushJournal(ctx: MutationCtx, j: Journal) {
+  for (const [key, e] of j) {
+    const row = await ctx.db.query("journal_entries").withIndex("by_key", (q) => q.eq("key", key)).first();
+    if (row) await ctx.db.patch(row._id, { amount: row.amount + e.amount, lines: (row.lines ?? 0) + e.lines, date: e.date > row.date ? e.date : row.date });
+    else await ctx.db.insert("journal_entries", { key, ...e });
+  }
+}
+
 // Apply one engine decision to a bank line's work item. On the first pass the item does not exist yet:
 // `create` is the sync step, and it is written together with the decision as one chain.
 export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | null, txn: EngineTxn, d: Decision, opts: {
   passMonth: number; firstPass: boolean; docs: Map<string, Doc<"rules"> | null>; seen: Map<string, Row>; stats: BatchStats; settledCounts: Map<string, number>;
-  create?: Step;
+  journal: Journal; create?: Step;
 }): Promise<void> {
   const month = opts.passMonth;
   const target = { table: "work_items" as const, id: (item?._id ?? null) as Id<ItemTable> | null, month };
@@ -118,8 +138,8 @@ export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | 
     ], opts.docs);
     if (!r.ok) return;
     const store = d.placement.store;
-    await ctx.db.insert("journal_entries", {
-      workItemId: r.id as Id<"work_items">, date: txn.date, store, amount: txn.amount, authority,
+    addJournal(opts.journal, {
+      month, date: txn.date, store, amount: txn.amount, authority,
       debit: `${txn.account}${store ? "/" + store : ""}`, credit: d.counterparts[0]?.table === "bank_transactions" ? "Reversed same day" : `Receivable cleared${store ? " · " + STORE_BY_CODE[store].name : ""}`,
     });
     for (const c of consumption(d)) {
@@ -193,6 +213,7 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
   const port = convexPort(ctx, asOf, YEAR, seen);
   const stats: BatchStats = { firstSettled: 0, waiting: 0, held: 0, settledLater: 0, processed: 0 };
   const settledCounts = new Map<string, number>();
+  const journal: Journal = new Map();
   let voteRef: string | null = null;
   const page = await ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR).eq("month", month))
     .paginate({ cursor, numItems: BATCH_ITEMS, maximumRowsRead: BATCH_ITEMS });
@@ -204,12 +225,13 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
       patch: {},
     };
     const d = await evaluate(txn, programs, port, { asOf, firstPass: true });
-    await applyDecision(ctx, null, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts, create });
+    await applyDecision(ctx, null, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts, journal, create });
     if (!voteRef && d.kind === "settle" && d.placement.confidence < 0.99 && d.placement.votes.length > 1) voteRef = b.key;
     stats.processed++;
     if (Date.now() - started > BATCH_MS * 4) break;
   }
   await bumpRuleCounts(ctx, settledCounts, docs);
+  await flushJournal(ctx, journal);
   return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats, voteRef };
 }
 
@@ -229,6 +251,7 @@ export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; st
   const port = convexPort(ctx, opts.asOf, YEAR, seen);
   const stats: BatchStats = { firstSettled: 0, waiting: 0, held: 0, settledLater: 0, processed: 0 };
   const settledCounts = new Map<string, number>();
+  const journal: Journal = new Map();
   const q = opts.storyKey
     ? ctx.db.query("work_items").withIndex("by_story", (x) => x.eq("storyKey", opts.storyKey!))
     : ctx.db.query("work_items").withIndex("by_kind_month_state", (x) => x.eq("kind", "bank_txn").eq("month", opts.fromMonth).eq("state", opts.state));
@@ -244,13 +267,14 @@ export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; st
     if (opts.state === "HELD") {
       if (d.kind !== "settle") { heldBefore++; continue; }
       // a held line moves only when a rule now settles it
-      await applyDecision(ctx, item, txn, d, { passMonth: opts.passMonth, firstPass: false, docs, seen, stats, settledCounts });
+      await applyDecision(ctx, item, txn, d, { passMonth: opts.passMonth, firstPass: false, docs, seen, stats, settledCounts, journal });
       continue;
     }
     if (d.kind === "wait") { stats.waiting++; continue; } // still waiting, nothing changes
-    await applyDecision(ctx, item, txn, d, { passMonth: opts.passMonth, firstPass: false, docs, seen, stats, settledCounts });
+    await applyDecision(ctx, item, txn, d, { passMonth: opts.passMonth, firstPass: false, docs, seen, stats, settledCounts, journal });
   }
   await bumpRuleCounts(ctx, settledCounts, docs);
+  await flushJournal(ctx, journal);
   void heldBefore;
   return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats };
 }
