@@ -264,7 +264,7 @@ const WHOLE = { maximumFractionDigits: 0 };
 type HintKey = "start" | "answer" | "explore" | "stream";
 const HINT_TEXT: Record<HintKey, string> = {
   start: "Start here. Fermata closes January to December in about two minutes.",
-  answer: "Each option shows what it will do. Pick the highlighted one to carry on.",
+  answer: "Each option shows what it will do. Pick an answer to carry on.",
   explore: "Every figure, rule and case room from this year is in here.",
   stream: "Click a line to see why it settled.",
 };
