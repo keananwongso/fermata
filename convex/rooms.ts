@@ -95,7 +95,7 @@ export async function closeRoom(ctx: MutationCtx, story: Doc<"stories">, month: 
   });
   const q = await transition(ctx, {
     table: "questions", id: null, action: "create", actor: "manager", month, reason: "The question the meeting agreed on",
-    insert: { storyKey: story.key, askOf: d.askOf, text: d.text, options: d.options, real, month }, patch: {},
+    insert: { storyKey: story.key, askOf: d.askOf, text: d.text, options: d.options, real, month, ...(story.scenario ? { scenario: story.scenario } : {}) }, patch: {},
   });
   if (q.ok) await transition(ctx, { table: "questions", id: q.id, action: "ask", actor: "manager", month, reason: `Asked the ${roleName(d.askOf)}`, patch: {} });
   await say(ctx, story, month, { speaker: "manager", to: d.askOf, kind: "manager", source: "code", text: `Meeting closed after ${turns} turns. One question for the ${roleName(d.askOf)}.` });

@@ -30,6 +30,8 @@ export default defineSchema({
     direction: v.union(v.literal("in"), v.literal("out")), amount: v.number(), memo: v.string(),
     // Ground truth for evaluation only. The engine port strips it before evaluation.
     truth: v.object({ store: v.union(store, v.null()), channel, story: v.union(v.string(), v.null()) }),
+    // Set on rows injected from the console's Scenarios screen (scenario.ts). Reset deletes them.
+    scenario: v.optional(v.string()),
   })
     .index("by_key", ["key"])
     .index("by_year_month_date", ["year", "month", "date"])
@@ -38,6 +40,7 @@ export default defineSchema({
     key: v.string(), year: v.number(), kind: v.union(v.literal("card_sales"), v.literal("installment_sale")), store,
     date: v.string(), recordedOn: v.string(), terminal: v.optional(v.number()), debitGross: v.optional(v.number()),
     creditGross: v.optional(v.number()), lender: v.optional(v.string()), amount: v.optional(v.number()), applied: v.number(),
+    scenario: v.optional(v.string()),
   })
     .index("by_key", ["key"])
     .index("by_store_kind_date", ["store", "kind", "date"])
@@ -51,7 +54,7 @@ export default defineSchema({
   gateway_settlements: defineTable({ key: v.string(), year: v.number(), store, batchRef: v.string(), date: v.string(), gross: v.number(), fee: v.number(), net: v.number(), recordedOn: v.string(), applied: v.number() })
     .index("by_key", ["key"])
     .index("by_batch", ["batchRef"]),
-  dealer_invoices: defineTable({ key: v.string(), year: v.number(), dealer: v.string(), store, invoiceNo: v.string(), date: v.string(), amount: v.number(), recordedOn: v.string(), applied: v.number() })
+  dealer_invoices: defineTable({ key: v.string(), year: v.number(), dealer: v.string(), store, invoiceNo: v.string(), date: v.string(), amount: v.number(), recordedOn: v.string(), applied: v.number(), scenario: v.optional(v.string()) })
     .index("by_key", ["key"])
     .index("by_invoice", ["invoiceNo"])
     .index("by_dealer_date", ["dealer", "date"]),
@@ -90,6 +93,7 @@ export default defineSchema({
       phase: v.string(), month: v.number(), cursor: v.union(v.string(), v.null()), pausedFor: v.union(v.string(), v.null()),
       autopilot: v.boolean(), startedAt: v.number(), finishedAt: v.union(v.number(), v.null()), rerunRule: v.union(v.string(), v.null()),
     })),
+    scenario: v.optional(v.string()),
   })
     .index("by_ref", ["ref"])
     .index("by_kind_state", ["kind", "state"])
@@ -105,6 +109,7 @@ export default defineSchema({
     auditorOpinion: v.optional(v.object({ text: v.string(), real: v.boolean() })),
     // The case room for this story: meeting -> asked (one question out) -> closed (answered).
     room: v.optional(v.object({ state: v.union(v.literal("meeting"), v.literal("asked"), v.literal("closed")), turns: v.number(), live: v.boolean() })),
+    scenario: v.optional(v.string()),
   })
     .index("by_key", ["key"])
     .index("by_month", ["month"]),
@@ -118,6 +123,7 @@ export default defineSchema({
     audit: v.optional(v.object({ result: v.union(v.literal("pass"), v.literal("flag"), v.literal("block")), note: v.string(), counterexamples: v.number(), real: v.boolean() })),
     learnedInMonth: v.optional(v.number()),
     real: v.boolean(), // written by Claude (true) or seeded/scripted (false)
+    scenario: v.optional(v.string()),
   })
     .index("by_ruleId", ["ruleId"]),
   // One row per thing said in a case room. Agents talk to each other; the manager (code) gives the floor and records.
@@ -145,6 +151,7 @@ export default defineSchema({
     // Answered by voice in the browser: transcribed, then confirmed back by voice before it was sent.
     voice: v.optional(v.boolean()),
     real: v.boolean(), month: v.number(),
+    scenario: v.optional(v.string()),
   })
     .index("by_story", ["storyKey"])
     .index("by_state", ["state"]),
@@ -162,7 +169,7 @@ export default defineSchema({
   journal_entries: defineTable({
     workItemId: v.optional(v.id("work_items")), key: v.optional(v.string()), month: v.optional(v.number()), lines: v.optional(v.number()),
     date: v.string(), store: v.union(store, v.null()), debit: v.string(), credit: v.string(),
-    amount: v.number(), authority: v.string(),
+    amount: v.number(), authority: v.string(), scenario: v.optional(v.string()),
   }).index("by_work_item", ["workItemId"]).index("by_key", ["key"]),
   eval_runs: defineTable({ kind: v.string(), at: v.number(), result: v.record(v.string(), v.union(v.string(), v.number())) })
     .index("by_kind", ["kind"]),
@@ -174,7 +181,15 @@ export default defineSchema({
     month: v.number(), staged: v.optional(v.boolean()),
     // Present when one row records several steps on the same item (sync, engine, gateway settling a line).
     steps: v.optional(v.array(v.object({ action: v.string(), actor: role, toState: v.union(state, v.null()) }))),
+    // Rows about a scenario's items. The log stays append only: Reset keeps them, and views hide reset scenarios.
+    scenario: v.optional(v.string()),
   })
     .index("by_item", ["itemId"])
     .index("by_allowed", ["allowed"]),
+  // One per scenario injected from the console: what it put in and what to expect. Its rows carry `sid` as `scenario`.
+  scenarios: defineTable({
+    sid: v.string(), kind: v.string(), title: v.string(), expect: v.string(), month: v.number(),
+    params: v.record(v.string(), v.union(v.string(), v.number())),
+    keys: v.array(v.string()), storyKey: v.optional(v.string()), ruleId: v.optional(v.string()), at: v.number(),
+  }).index("by_sid", ["sid"]),
 });

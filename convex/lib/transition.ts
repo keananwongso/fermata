@@ -144,6 +144,8 @@ export async function transitionChain(ctx: MutationCtx, target: { table: ItemTab
   const month = target.month ?? (typeof base.month === "number" ? base.month : 0);
   const ref = original ? refOf(table, base) : refOf(table, steps[0]?.insert ?? {});
   const startState = (original ? base.state : null) as State | null;
+  // A scenario's items tag their audit rows, so views can hide a scenario once it is reset.
+  const scenario = (base.scenario ?? steps[0]?.insert?.scenario) as string | undefined;
 
   let state = startState;
   let cur: Record<string, unknown> | null = original ? { ...base } : null;
@@ -174,7 +176,7 @@ export async function transitionChain(ctx: MutationCtx, target: { table: ItemTab
     const chain: StepRecord[] | undefined = done.length > 1 ? done.map((s) => ({ action: s.action, actor: s.actor, toState: s.toState })) : undefined;
     await ctx.db.insert("audit_log", {
       itemTable: table, itemId: id!, itemRef: ref, action: last.action, actor: last.actor, fromState: startState, toState: state,
-      diff, reason, authority, allowed: true, denial: null, month, staged: done.some((s) => s.staged) || undefined, steps: chain,
+      diff, reason, authority, allowed: true, denial: null, month, staged: done.some((s) => s.staged) || undefined, steps: chain, scenario,
     });
     return id;
   };
@@ -185,7 +187,7 @@ export async function transitionChain(ctx: MutationCtx, target: { table: ItemTab
       const id = await flush();
       await ctx.db.insert("audit_log", {
         itemTable: table, itemId: id ?? "", itemRef: ref, action: a.action, actor: a.actor, fromState: state, toState: state,
-        diff: [], reason: a.reason, authority: a.authority ?? null, allowed: false, denial: r.denial, month, staged: a.staged,
+        diff: [], reason: a.reason, authority: a.authority ?? null, allowed: false, denial: r.denial, month, staged: a.staged, scenario,
       });
       return { ok: false, denial: r.denial };
     }
