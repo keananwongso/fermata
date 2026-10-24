@@ -67,6 +67,8 @@ inside rule code and the record.
   a hero card with its supporting cards.
 * `.panel`: a flat warm well (radius 6px) for traces, code and evidence inside a card.
 * `.hatch`: diagonal hatching on canvas for empty states and "nothing here yet".
+* `.scroll-quiet`: put it on every scroll box inside a card. The scrollbar is thin and stays invisible until the box
+  is hovered. Lists that stream in (the demo's engine) do not scroll at all: they clip with a fade at the bottom.
 * Radii: card 10px, panel 6px, button 4.5px, pill fully round. Nothing else.
 
 ## Components (`src/components/ui.tsx`)
@@ -152,6 +154,10 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * Content width 1440px (`max-w-page`, the `--container-page` token; the header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
 * **Workspaces that play over time** (the demo) have a fixed height on wide screens and scroll inside each panel, so the page
   stays still while they run. Starting the run scrolls the page once to bring the whole workspace into view.
+  In the demo, a meeting takes the workspace: the engine column (paused) collapses so the transcript gets the width,
+  and the question takes the right column beside it, never under it, because the agents' conversation is the point.
+  The columns resize with a `grid-template-columns` transition; spacing lives inside the columns so a 0px column
+  leaves no gap.
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.
 * Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
