@@ -4,7 +4,8 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, pct, rp, rpShort, shortDate } from "../../convex/lib/format";
-import { AGENT_LABEL, Bar, Button, Card, Eyebrow, Metric, Pill, Trace } from "@/components/ui";
+import { AGENT_LABEL, Bar, Button, Card, Eyebrow, LinkArrow, Loading, Metric, Pill, Tag, Trace } from "@/components/ui";
+import { BrandGrid, Count } from "@/components/motion";
 import { QuestionCard, RuleApproval } from "@/components/question";
 import { ArrowRight, Play } from "lucide-react";
 
@@ -12,9 +13,9 @@ type Overview = NonNullable<ReturnType<typeof useQuery<typeof api.queries.overvi
 
 export default function RunPage() {
   const o = useQuery(api.queries.overview);
-  if (!o) return <div className="text-faint">Loading the books…</div>;
+  if (!o) return <Loading>Loading the books…</Loading>;
   return (
-    <div className="space-y-10">
+    <div className="space-y-12 lg:space-y-16">
       <Hero o={o} />
       <Controls o={o} />
       {o.run?.pausedFor ? <PausePanel o={o} /> : null}
@@ -29,27 +30,39 @@ export default function RunPage() {
   );
 }
 
+// Tweens toward the target while keeping the target's unit, so "bn" never flickers through "m" and "k".
+const inUnitOf = (target: number) => (n: number) => {
+  const [u, suffix] = Math.abs(target) >= 1e9 ? [1e9, "bn"] : Math.abs(target) >= 1e6 ? [1e6, "m"] : [1e3, "k"];
+  const decimals = rpShort(target).match(/\.(\d+)/)?.[1].length ?? 0;
+  return `${n < 0 ? "−" : ""}Rp ${(Math.abs(n) / u).toFixed(decimals)}${suffix}`;
+};
+
 function Hero({ o }: { o: Overview }) {
   const done = o.run?.phase === "done";
   return (
-    <section className="pt-2">
-      <Eyebrow>{done ? "The year is closed" : "Before the close"}</Eyebrow>
-      {done ? (
-        <>
-          <div className="num mt-2 text-[48px] font-medium leading-none tight">{pct(o.counters.settledAuto / Math.max(1, o.counters.processed))}</div>
-          <p className="mt-3 max-w-[640px] text-[15px] text-secondary">
-            settled automatically: {num(o.counters.settledAuto)} of {num(o.counters.processed)} bank lines. {num(o.counters.everHeld)} were held at some point, in {o.counters.stories} stories. {num(o.counters.held)} are still held at year end, on purpose.
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="num mt-2 text-[48px] font-medium leading-none tight text-hold">{rpShort(o.headOffice).replace("minus ", "−")}</div>
-          <p className="mt-3 max-w-[640px] text-[15px] text-secondary">
-            The head office account in the books. No bank holds this: the bank statement says {rpShort(o.headOfficeBank)}. Five shared accounts are split into 70 store sub accounts, and nothing was cleared during the year.
-          </p>
-        </>
-      )}
-      <p className="mt-4 text-[13px] text-faint">Every line settles on its own. Fermata only holds where it should.</p>
+    <section className="relative -mx-4 overflow-hidden px-4 pb-2 pt-24 text-center lg:-mx-10 lg:px-10 lg:pt-14">
+      <BrandGrid cols={18} rows={6} className="absolute inset-0 hidden h-full w-full [mask-image:linear-gradient(to_bottom,transparent,#000_22%,#000_70%,transparent)] lg:block" />
+      <BrandGrid cols={10} rows={3} className="absolute inset-x-0 top-0 h-20 w-full [mask-image:linear-gradient(to_bottom,#000,transparent)] lg:hidden" />
+      <div className="relative mx-auto max-w-[720px]">
+        <Tag>{done ? "The year is closed" : "Before the close"}</Tag>
+        {done ? (
+          <>
+            <div className="display mt-6 text-[clamp(56px,9vw,104px)] tabular-nums"><Count value={o.counters.settledAuto / Math.max(1, o.counters.processed)} format={pct} round={false} /></div>
+            <p className="mx-auto mt-6 max-w-[600px] text-[15px] text-body">
+              settled automatically: {num(o.counters.settledAuto)} of {num(o.counters.processed)} bank lines. {num(o.counters.everHeld)} were held at some point, in {o.counters.stories} stories. {num(o.counters.held)} are still held at year end, on purpose.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="display mt-6 text-[clamp(56px,9vw,104px)] tabular-nums text-hold"><Count value={o.headOffice} format={inUnitOf(o.headOffice)} round={false} /></div>
+            <p className="mx-auto mt-6 max-w-[600px] text-[15px] text-body">
+              The head office account in the books. No bank holds this: the bank statement says {rpShort(o.headOfficeBank)}. Five shared accounts are split into 70 store sub accounts, and nothing was cleared during the year.
+            </p>
+          </>
+        )}
+        <p className="mt-4 text-[13px] text-faint">Every line settles on its own. Fermata only holds where it should.</p>
+        {done ? <div className="mt-5"><LinkArrow href="/stories">Read the stories</LinkArrow></div> : null}
+      </div>
     </section>
   );
 }
@@ -64,23 +77,27 @@ function Controls({ o }: { o: Overview }) {
   const done = run?.phase === "done" || run?.phase.startsWith("yearend");
   const autopilot = idle ? auto : !!run?.autopilot;
   return (
-    <section className="flex flex-wrap items-center gap-4">
+    <section className="flex flex-col gap-5 lg:flex-row lg:flex-wrap lg:items-center">
       <Button variant="primary" disabled={!idle} onClick={() => start({ autopilot: auto })}>
         <Play size={16} strokeWidth={1.75} />{idle ? "Close the year" : done ? (run?.phase === "done" ? "Year closed" : "Final pass") : run?.pausedFor ? "Paused for a person" : `Closing ${MONTH_LABELS[current - 1]}`}
       </Button>
       <label className="flex cursor-pointer items-center gap-2 text-[13px] text-secondary">
-        <input type="checkbox" className="accent-[#1f5fc0]" checked={autopilot}
+        <input type="checkbox" className="size-4 accent-accent" checked={autopilot}
           onChange={(e) => { if (idle) setAutoLocal(e.target.checked); else void setAuto({ on: e.target.checked }); }} />
         Autopilot answers for a hands-free recording
       </label>
-      <div className="ml-auto flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 lg:ml-auto">
         {MONTH_LABELS.map((m, i) => {
           const n = i + 1;
           const isDone = done || n < current;
           const isCur = !done && n === current;
           const paused = isCur && !!run?.pausedFor;
-          const cls = paused ? "bg-hold-tint text-hold" : isCur ? "bg-accent-tint text-accent" : isDone ? "bg-well text-ink" : "border border-hairline text-faint";
-          return <span key={m} className={`calm rounded-full px-2.5 py-1 text-[12px] font-medium ${cls}`}>{paused ? "𝄐 " : ""}{m}</span>;
+          const cls = paused ? "bg-hold-tint text-hold-ink" : isCur ? "bg-accent-tint text-accent" : isDone ? "bg-inset text-ink" : "border border-hairline text-faint";
+          return (
+            <span key={m} className={`calm inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ${cls}`}>
+              {paused ? <span className="text-hold">𝄐</span> : isCur ? <span className="breathe-dot size-1.5 rounded-full" aria-hidden /> : null}{m}
+            </span>
+          );
         })}
       </div>
     </section>
@@ -90,12 +107,12 @@ function Controls({ o }: { o: Overview }) {
 function PausePanel({ o }: { o: Overview }) {
   const which = o.run?.pausedFor;
   return (
-    <section className="space-y-4">
+    <section key={which} className="enter space-y-4">
       <div className="flex items-baseline gap-3">
-        <span className="text-[20px] text-hold" aria-hidden>𝄐</span>
-        <h2 className="text-[20px] font-semibold tight">{which === "A" ? "Held in March: a correction becomes a rule" : "Held in June: a question only the CFO can answer"}</h2>
+        <span className="breathe text-[24px]" aria-hidden>𝄐</span>
+        <h2 className="title text-[clamp(22px,2.6vw,30px)]">{which === "A" ? "Held in March: a correction becomes a rule" : "Held in June: a question only the CFO can answer"}</h2>
       </div>
-      <p className="max-w-[720px] text-secondary">
+      <p className="max-w-[720px] text-body">
         {which === "A"
           ? "1,186 school fees landed in Store 3’s virtual accounts while the school’s receipts put the students at Store 11. Fermata will not guess where money belongs. It asks the Accountant once, then turns the answer into a rule and tests it on last year before the CFO approves it."
           : "742 payouts arrived from FIN_Z, a lender that was not in last year’s books. Fermata asks the CFO one question instead of settling them on a pattern alone."}
@@ -110,13 +127,15 @@ function PausePanel({ o }: { o: Overview }) {
 
 function Counters({ o }: { o: Overview }) {
   return (
-    <Card className="grid grid-cols-2 gap-6 md:grid-cols-5">
-      <Metric label="Processed" value={num(o.counters.processed)} sub="of 104,820 bank lines" />
-      <Metric label="Settled automatically" value={num(o.counters.settledAuto)} sub={o.counters.processed ? pct(o.counters.settledAuto / o.counters.processed) : "—"} tone="success" />
-      <Metric label="Waiting" value={num(o.counters.waiting)} sub="records not in the books yet" />
-      <Metric label="Held" value={num(o.counters.held)} sub={`${num(o.counters.everHeld)} held at some point`} tone="hold" />
-      <Metric label="Questions" value={num(o.counters.questions)} sub={`${o.counters.openQuestions} open`} />
-    </Card>
+    <div className="frame">
+      <Card className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5">
+        <Metric label="Processed" value={<Count value={o.counters.processed} format={num} />} sub="of 104,820 bank lines" />
+        <Metric label="Settled automatically" value={<Count value={o.counters.settledAuto} format={num} />} sub={o.counters.processed ? pct(o.counters.settledAuto / o.counters.processed) : "—"} tone="success" />
+        <Metric label="Waiting" value={<Count value={o.counters.waiting} format={num} />} sub="records not in the books yet" />
+        <Metric label="Held" value={<Count value={o.counters.held} format={num} />} sub={`${num(o.counters.everHeld)} held at some point`} tone="hold" />
+        <Metric label="Questions" value={<Count value={o.counters.questions} format={num} />} sub={`${o.counters.openQuestions} open`} />
+      </Card>
+    </div>
   );
 }
 
@@ -133,12 +152,12 @@ function Pipeline({ o }: { o: Overview }) {
   ];
   return (
     <section>
-      <h2 className="text-[17px] font-semibold tight">Pipeline</h2>
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-6">
+      <h2 className="title text-[clamp(22px,2.6vw,30px)]">Pipeline</h2>
+      <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 lg:grid-cols-6">
         {stages.map((s, i) => (
           <div key={s.label} className="relative">
-            <div className="flex items-center gap-1 text-[13px] font-medium">{s.label === "Held in stories" ? <span className="text-hold">𝄐</span> : null}{s.label}{i < stages.length - 1 && i !== 3 ? <ArrowRight size={14} strokeWidth={1.75} className="ml-auto text-faint" /> : null}</div>
-            <div className={`num mt-1 text-[20px] ${s.tone === "hold" ? "text-hold" : ""}`}>{num(s.n)}</div>
+            <div className="flex items-center gap-1 text-[13px] font-medium">{s.label === "Held in stories" ? <span className="text-hold">𝄐</span> : null}{s.label}{i < stages.length - 1 && i !== 3 ? <ArrowRight size={14} strokeWidth={1.75} className="ml-auto hidden text-mute lg:block" /> : null}</div>
+            <div className={`figure mt-2 text-[26px] ${s.tone === "hold" ? "text-hold" : "text-heading"}`}><Count value={s.n} format={num} /></div>
             <div className="mt-2"><Bar value={s.n} max={max} tone={s.tone} /></div>
             <div className="mt-1.5 text-[12px] text-faint">{s.note}</div>
           </div>
@@ -155,26 +174,35 @@ function LearningCurve({ o }: { o: Overview }) {
   const x = (m: number) => L + ((m - 1) / 11) * (W - L - R);
   const y = (r: number) => T + (1 - (r - lo) / (hi - lo)) * (H - T - B);
   const path = pts.map((p, i) => `${i ? "L" : "M"}${x(p.m).toFixed(1)},${y(p.r).toFixed(1)}`).join(" ");
+  const area = pts.length > 1 ? `${path} L${x(pts[pts.length - 1].m).toFixed(1)},${y(lo)} L${x(pts[0].m).toFixed(1)},${y(lo)} Z` : "";
   const learned = o.rulesLearned;
   return (
     <Card>
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[17px] font-semibold tight">Learning curve</h2>
-        <span className="text-[12px] text-faint">share settled automatically on first pass</span>
+        <h2 className="title text-[22px]">Learning curve</h2>
+        <span className="hidden text-[12px] text-faint sm:inline">share settled automatically on first pass</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-4 w-full" role="img" aria-label="Share settled automatically on first pass, by month">
+      <div className="-mx-5 mt-4 overflow-x-auto px-5 lg:mx-0 lg:px-0">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[540px]" role="img" aria-label="Share settled automatically on first pass, by month">
+        <defs>
+          <linearGradient id="lc-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0.14" />
+            <stop offset="1" stopColor="var(--color-accent)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {[0.75, 0.8, 0.85, 0.9, 0.95, 1].map((g) => (
           <g key={g}>
-            <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="#d6dce5" strokeWidth={g === 0.75 ? 1 : 0.6} strokeDasharray={g === 0.75 ? "" : "2 4"} />
-            <text x={L - 8} y={y(g) + 4} textAnchor="end" className="num" fontSize="11" fill="#8b93a1">{Math.round(g * 100)}%</text>
+            <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" strokeWidth={g === 0.75 ? 1 : 0.6} strokeDasharray={g === 0.75 ? "" : "2 4"} />
+            <text x={L - 8} y={y(g) + 4} textAnchor="end" className="num" fontSize="11" fill="var(--color-faint)">{Math.round(g * 100)}%</text>
           </g>
         ))}
-        {MONTH_LABELS.map((m, i) => <text key={m} x={x(i + 1)} y={H - 10} textAnchor="middle" fontSize="11" fill="#8b93a1">{m}</text>)}
-        {path ? <path d={path} fill="none" stroke="#1f5fc0" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" /> : null}
+        {MONTH_LABELS.map((m, i) => <text key={m} x={x(i + 1)} y={H - 10} textAnchor="middle" fontSize="11" fill="var(--color-faint)">{m}</text>)}
+        {area ? <path d={area} fill="url(#lc-fill)" className="rise" /> : null}
+        {path ? <path d={path} pathLength={1} fill="none" stroke="var(--color-accent)" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" className="draw" /> : null}
         {pts.map((p) => (
-          <g key={p.m}>
-            <circle cx={x(p.m)} cy={y(p.r)} r={3.5} fill="#ffffff" stroke="#1f5fc0" strokeWidth={2} />
-            <text x={x(p.m)} y={y(p.r) + 18} textAnchor="middle" className="num" fontSize="11" fill="#5f6775">{String(Math.round(p.r * 1000) / 10)}</text>
+          <g key={p.m} className="rise" style={{ animationDelay: `${Math.min(900, p.m * 70)}ms` }}>
+            <circle cx={x(p.m)} cy={y(p.r)} r={3.5} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth={1.75} />
+            <text x={x(p.m)} y={y(p.r) + 18} textAnchor="middle" className="num" fontSize="11" fill="var(--color-secondary)">{String(Math.round(p.r * 1000) / 10)}</text>
           </g>
         ))}
         {learned.map((r) => {
@@ -182,12 +210,13 @@ function LearningCurve({ o }: { o: Overview }) {
           if (!p) return null;
           return (
             <g key={r.ruleId}>
-              <text x={x(r.month)} y={y(p.r) - 14} textAnchor="middle" fontSize="18" fill="#b27d10" style={{ fontFamily: "var(--font-music)" }}>𝄐</text>
-              <text x={x(r.month)} y={y(p.r) - 32} textAnchor="middle" className="num" fontSize="11" fill="#b27d10">{r.ruleId}</text>
+              <text x={x(r.month)} y={y(p.r) - 14} textAnchor="middle" fontSize="18" fill="var(--color-hold)" style={{ fontFamily: "var(--font-music)" }}>𝄐</text>
+              <text x={x(r.month)} y={y(p.r) - 32} textAnchor="middle" className="num" fontSize="11" fill="var(--color-hold-ink)">{r.ruleId}</text>
             </g>
           );
         })}
       </svg>
+      </div>
     </Card>
   );
 }
@@ -198,12 +227,12 @@ function Lanes() {
   const [sel, setSel] = useState<{ agent: string; month: number } | null>(null);
   return (
     <Card>
-      <h2 className="text-[17px] font-semibold tight">Who did what</h2>
+      <h2 className="title text-[22px]">Who did what</h2>
       <p className="mt-1 text-[12px] text-faint">One dot per month with activity. Click a dot for its reasoning.</p>
       <div className="mt-4 space-y-2.5">
         {LANE_AGENTS.map((a) => (
           <div key={a} className="flex items-center gap-3">
-            <div className="w-24 text-[13px] text-secondary">{AGENT_LABEL[a]}</div>
+            <div className="w-20 shrink-0 text-[13px] text-secondary sm:w-24">{AGENT_LABEL[a]}</div>
             <div className="grid flex-1 grid-cols-12 gap-1">
               {MONTH_LABELS.map((m, i) => {
                 const c = lanes?.[a]?.[i + 1];
@@ -212,7 +241,7 @@ function Lanes() {
                 return (
                   <button key={m} title={`${AGENT_LABEL[a]}, ${m}`} disabled={!on} onClick={() => setSel({ agent: a, month: i + 1 })}
                     className="flex h-6 items-center justify-center rounded-full disabled:cursor-default">
-                    <span className={`block rounded-full calm ${on ? (c!.denied ? "bg-danger" : a === "accountant" || a === "cfo" ? "bg-hold" : "bg-accent") : "bg-hairline"} ${active ? "ring-2 ring-accent ring-offset-2" : ""}`}
+                    <span className={`block rounded-full calm ${on ? (c!.denied ? "bg-danger" : a === "accountant" || a === "cfo" ? "bg-hold" : "bg-accent") : "bg-strong"} ${active ? "ring-2 ring-accent ring-offset-2" : ""}`}
                       style={{ width: on ? 8 : 4, height: on ? 8 : 4 }} />
                   </button>
                 );
@@ -220,9 +249,9 @@ function Lanes() {
             </div>
           </div>
         ))}
-        <div className="flex gap-3 pl-[108px]"><div className="grid flex-1 grid-cols-12 gap-1 text-center text-[11px] text-faint">{MONTH_LABELS.map((m) => <span key={m}>{m[0]}</span>)}</div></div>
+        <div className="flex gap-3 pl-[92px] sm:pl-[108px]"><div className="grid flex-1 grid-cols-12 gap-1 text-center text-[11px] text-faint">{MONTH_LABELS.map((m) => <span key={m}>{m[0]}</span>)}</div></div>
       </div>
-      {sel ? <TracePanel agent={sel.agent} month={sel.month} /> : null}
+      {sel ? <TracePanel key={`${sel.agent}-${sel.month}`} agent={sel.agent} month={sel.month} /> : null}
     </Card>
   );
 }
@@ -230,7 +259,7 @@ function Lanes() {
 function TracePanel({ agent, month }: { agent: string; month: number }) {
   const lines = useQuery(api.queries.trace, { agent, month }) ?? [];
   return (
-    <div className="mt-5">
+    <div className="enter mt-5">
       <div className="mb-2 text-[13px] font-medium">{AGENT_LABEL[agent]} · {MONTH_LABELS[month - 1]}</div>
       <Trace lines={lines} />
     </div>
@@ -246,8 +275,8 @@ function Showcase() {
         <Card>
           <Eyebrow>Placement vote</Eyebrow>
           <div className="mt-2 flex items-baseline gap-3">
-            <div className="text-[20px] font-semibold tight">Store {Number(s.vote.placement.store?.slice(1))}</div>
-            <div className="num text-[20px] text-success">{Math.round(s.vote.placement.confidence * 100)}%</div>
+            <div className="title text-[24px]">Store {Number(s.vote.placement.store?.slice(1))}</div>
+            <div className="figure text-[24px] text-success">{Math.round(s.vote.placement.confidence * 100)}%</div>
           </div>
           <div className="mt-1 text-[12px] text-faint"><span className="num">{shortDate(s.vote.date)} · {rp(s.vote.amount)}</span> · <span className="num">{s.vote.memo}</span></div>
           <div className="mt-4 space-y-3">
@@ -264,17 +293,17 @@ function Showcase() {
       {s.fan ? (
         <Card>
           <Eyebrow>Fan-out</Eyebrow>
-          <div className="mt-2 flex items-baseline gap-2 text-[20px] font-semibold tight">
-            <span>One Shopee payout of {rpShort(s.fan.amount)}</span><ArrowRight size={16} strokeWidth={1.75} className="text-faint" /><span className="num">{num(s.fan.orders)} orders</span>
+          <div className="title mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[22px]">
+            <span>One Shopee payout of {rpShort(s.fan.amount)}</span><ArrowRight size={16} strokeWidth={1.75} className="text-faint" /><span className="tabular-nums">{num(s.fan.orders)} orders</span>
           </div>
           <div className="mt-1 text-[12px] text-faint"><span className="num">{shortDate(s.fan.date)}</span> · {s.fan.store} · <span className="num">{s.fan.memo}</span></div>
-          <div className="mt-4 grid grid-cols-3 gap-4 text-[13px]">
+          <div className="mt-4 grid grid-cols-1 gap-4 text-[13px] sm:grid-cols-3">
             <div><div className="eyebrow">Orders</div><div className="num mt-1">{rp(s.fan.gross)}</div></div>
             <div><div className="eyebrow">Minus 6.5% and refunds</div><div className="num mt-1">{rp(Math.round(s.fan.gross * 0.065) + s.fan.refunds)}</div></div>
             <div><div className="eyebrow">Paid</div><div className="num mt-1">{rp(s.fan.amount)}</div></div>
           </div>
           <div className="mt-4 flex flex-wrap gap-1">
-            {Array.from({ length: Math.min(s.fan.orders, 840) }).map((_, i) => <span key={i} className={`block h-1.5 w-1.5 rounded-full ${s.fan!.settled ? "bg-success" : "bg-strong"}`} />)}
+            {Array.from({ length: Math.min(s.fan.orders, 840) }).map((_, i) => <span key={i} className={`block h-1.5 w-1.5 rounded-full ${s.fan!.settled ? "bg-success" : "bg-mute"}`} />)}
           </div>
           <div className="mt-3">{s.fan.settled ? <Pill tone="success">Settled under r4, every order accounted for</Pill> : <Pill>Not processed yet</Pill>}</div>
         </Card>

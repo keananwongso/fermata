@@ -1,24 +1,43 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: var(--font-inter-tight), var(--font-music), ui-sans-serif, system-ui, sans-serif;
+/* Display type on a cream canvas with warm neutrals: deep navy for headings,
+   signal blue for actions and data, amber for hold. See DESIGN.md. */
+@theme static {
+  --font-sans: var(--font-inter), var(--font-music), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope), var(--font-music), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), var(--font-music), ui-monospace, monospace;
 
-  --color-ground: #ffffff;
-  --color-well: #f4f6f9;
-  --color-hover: #eceff3;
-  --color-hairline: #d6dce5;
-  --color-strong: #c0c7d2;
-  --color-faint: #8b93a1;
-  --color-secondary: #5f6775;
-  --color-ink: #1a1f29;
+  /* The brief switches between desktop and mobile at 1024px and below. */
+  --breakpoint-lg: 64.0625rem;
 
+  --color-canvas: #fdfcfa;
+  --color-ground: #ffffff;
+  --color-well: #f9f7f1;
+  --color-warm: #f8f1ea;
+  --color-hover: #f4eee6;
+  --color-inset: #f1e8df;
+  --color-hairline: #e9ddd1;
+  --color-strong: #e0d0c1;
+  --color-mute: #cfbba8;
+  --color-faint: #897d71;
+  --color-secondary: #5f564d;
+  --color-body: #3f3a34;
+  --color-ink: #272320;
+
+  --color-night: #0b1d3a;
+  --color-heading: #0a2d66;
+  --color-heading-2: #0f3d7a;
+  --color-link: #1f5fc0;
   --color-accent: #1f5fc0;
-  --color-accent-hover: #0f3d7a;
+  --color-accent-hover: #17499a;
   --color-accent-tint: #eaf1fb;
+  --color-cyan: #17bebb;
 
   --color-hold: #b27d10;
+  --color-hold-ink: #b27d10;
   --color-hold-tint: #fbf0d6;
+  --color-hold-tint-strong: #f5e4bb;
+
   --color-success: #2e9e5b;
   --color-success-tint: #e7f4ec;
   --color-danger: #d23b30;
@@ -26,19 +45,82 @@
   --color-info: #00a3a0;
   --color-info-tint: #e3f5f4;
 
-  --radius-card: 22px;
-  --radius-button: 12px;
-  --radius-input: 8px;
+  --radius-card: 10px;
+  --radius-panel: 6px;
+  --radius-button: 4.5px;
 
-  --ease-calm: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-brand: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-exit: cubic-bezier(0.76, 0, 0.24, 1);
 }
 
-html, body { background: var(--color-ground); color: var(--color-ink); }
-body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-.num, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.card { background: var(--color-ground); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgba(15,15,15,0.04); }
-.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-faint); font-weight: 500; }
-.tight { letter-spacing: -0.02em; }
-.calm { transition: all 160ms var(--ease-calm); }
-.bar { transition: width 260ms var(--ease-calm); }
-@media (prefers-reduced-motion: reduce) { .calm, .bar { transition: none; } }
+@supports (color: color(display-p3 0 0 0)) {
+  :root { --color-canvas: color(display-p3 0.9922 0.9882 0.9804); }
+}
+
+@layer base {
+  html, body { background: var(--color-canvas); color: var(--color-ink); }
+  body { font-family: var(--font-sans); font-size: 14px; line-height: 1.45; letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; overflow-x: clip; }
+}
+
+@layer components {
+  .num, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+  /* Type roles: display for headings and figures, mono for technical labels. */
+  .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.04em; line-height: 1; color: var(--color-heading); }
+  .title { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-heading-2); }
+  .figure { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; line-height: 1.45; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-faint); font-weight: 400; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; letter-spacing: 0.02em; background: var(--color-accent-tint); color: var(--color-accent); }
+  .tag[data-tone="neutral"] { background: var(--color-inset); color: var(--color-secondary); }
+  .tight { letter-spacing: -0.02em; }
+
+  /* Surfaces */
+  .card { background: var(--color-ground); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgb(85 40 20 / 0.04), 0 12px 32px -20px rgb(85 40 20 / 0.12); }
+  .frame { background: var(--color-warm); border: 1px solid var(--color-hairline); border-radius: calc(var(--radius-card) + 6px); padding: 6px; }
+  .frame > .card { box-shadow: 0 1px 2px rgb(85 40 20 / 0.05); }
+  .panel { background: var(--color-well); border: 1px solid var(--color-hairline); border-radius: var(--radius-panel); }
+  .hatch { background-color: var(--color-canvas); background-image: repeating-linear-gradient(-45deg, #f1e8df 0 1px, transparent 1px 9px); }
+
+  /* Motion */
+  .calm { transition-property: color, background-color, border-color, box-shadow, opacity, transform; transition-duration: 300ms; transition-timing-function: var(--ease-brand); }
+  .bar { transition: width 600ms var(--ease-brand); }
+
+  /* Brand button: a navy face over a cyan base, the two brand colours. The cyan shows as a tab on the left whose
+     point notches into the face. On hover the face slides right, widening the tab, and the label
+     moves back the same distance so it stays put. */
+  .btn-brand { position: relative; overflow: hidden; isolation: isolate; padding: 0; color: #fff; background: linear-gradient(180deg, var(--color-cyan) 20%, #5fd6d3 100%); }
+  .btn-brand .btn-face {
+    display: flex; flex: 1; align-items: center; justify-content: center; align-self: stretch; padding: 0 16px 0 14px; margin-left: 9px;
+    background: linear-gradient(180deg, var(--color-heading) 20%, var(--color-accent-hover) 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 68%, 6px 50%, 0 32%);
+    transition: transform 400ms var(--ease-brand);
+  }
+  .btn-brand .btn-label { display: inline-flex; align-items: center; gap: 6px; transition: transform 400ms var(--ease-brand); }
+  .btn-brand:not(:disabled):hover .btn-face { transform: translateX(11px); }
+  .btn-brand:not(:disabled):hover .btn-label { transform: translateX(-11px); }
+
+  /* Inline arrow: one arrow leaves to the right while its copy enters from the left. */
+  .arrow-link .arrow-track { transition: transform 400ms var(--ease-brand); }
+  .arrow-link:hover .arrow-track { transform: translateX(13px); }
+
+  .enter { animation: enter 400ms var(--ease-out) both; }
+  .arrive { animation: arrive 1200ms var(--ease-out) both; }
+  .breathe { animation: breathe 1200ms ease-in-out infinite; }
+  .breathe-dot { animation: breathe-bg 1200ms ease-in-out infinite; }
+  .draw { stroke-dasharray: 1; animation: draw 1100ms var(--ease-brand) both; }
+  .rise { animation: rise 500ms var(--ease-out) both; }
+}
+
+@keyframes enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes arrive { from { opacity: 0; transform: translateY(-6px); background-color: var(--color-accent-tint); } 40% { opacity: 1; transform: none; } to { background-color: transparent; } }
+@keyframes breathe { 0%, 100% { color: var(--color-hold); } 50% { color: var(--color-hold-tint-strong); } }
+@keyframes breathe-bg { 0%, 100% { background-color: var(--color-hold); } 50% { background-color: var(--color-hold-tint-strong); } }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes rise { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .btn-brand:not(:disabled):hover .btn-face, .btn-brand:not(:disabled):hover .btn-label, .arrow-link:hover .arrow-track { transform: none; }
+}
