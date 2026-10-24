@@ -21,7 +21,8 @@ export function Providers({ children }: { children: ReactNode }) {
   const role = useSyncExternalStore(subscribe, readRole, () => "cfo" as HumanRole);
   const setRole = (r: HumanRole) => { window.localStorage.setItem("fermata.role", r); listeners.forEach((l) => l()); };
   const path = usePathname();
-  const consolePage = !["/", "/demo", "/pitch", "/dashboard"].includes(path);
+  // The site pages work without Convex. Ask the books plays recorded answers without it, and live ones with it.
+  const consolePage = !["/", "/demo", "/pitch", "/dashboard", "/ask"].includes(path);
   const page = !convex && consolePage ? <ConsoleIsLocal /> : children;
   const inner = <RoleContext.Provider value={{ role, setRole }}><MotionConfig reducedMotion="user">{page}</MotionConfig></RoleContext.Provider>;
   // The hosted site has no Convex URL at all: the landing page and demo replay a recording, and the console

@@ -135,12 +135,18 @@
   .breathe-dot { animation: breathe-bg 1200ms ease-in-out infinite; }
   .draw { stroke-dasharray: 1; animation: draw 1100ms var(--ease-brand) both; }
   .rise { animation: rise 500ms var(--ease-out) both; }
+  /* Ask the books: the push to talk button while it listens (blue: the person is talking, nothing is held),
+     and the small bars beside a caption while its answer plays. */
+  .listen { animation: listen 1400ms var(--ease-out) infinite; box-shadow: 0 0 0 0 rgb(31 95 192 / 0.45); }
+  .speak-bar { height: 4px; animation: speak 900ms ease-in-out infinite; }
 }
 
 @keyframes enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes arrive { from { opacity: 0; transform: translateY(-6px); background-color: var(--color-accent-tint); } 40% { opacity: 1; transform: none; } to { background-color: transparent; } }
 @keyframes breathe { 0%, 100% { color: var(--color-hold); } 50% { color: var(--color-hold-tint-strong); } }
 @keyframes breathe-bg { 0%, 100% { background-color: var(--color-hold); } 50% { background-color: var(--color-hold-tint-strong); } }
+@keyframes listen { from { box-shadow: 0 0 0 0 rgb(31 95 192 / 0.45); } to { box-shadow: 0 0 0 18px rgb(31 95 192 / 0); } }
+@keyframes speak { 0%, 100% { height: 4px; } 50% { height: 12px; } }
 @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes rise { from { opacity: 0; } to { opacity: 1; } }
 

@@ -11,16 +11,18 @@ import { LENDER_TRUE_CUT, STORE_BY_CODE, addDays, type StoreCode } from "./lib/d
 import { parseMemo } from "./lib/engineCore";
 import { rpShort, num } from "./lib/format";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
+import { CONSOLE_REFUSAL, consoleKey, isConsole } from "./lib/console";
 
 const human = v.union(v.literal("accountant"), v.literal("cfo"));
 
 export const answer = mutation({
-  args: { questionId: v.id("questions"), optionId: v.string(), actor: human, autopilot: v.optional(v.boolean()) },
+  // voice: the person said it, heard it read back and said yes. It lands as their answer; confirming stays a click.
+  args: { questionId: v.id("questions"), optionId: v.string(), actor: human, autopilot: v.optional(v.boolean()), voice: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doAnswer(ctx, a.questionId, a.optionId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doAnswer(ctx, a.questionId, a.optionId, a.actor, !!a.autopilot, !!a.voice) : CONSOLE_REFUSAL),
 });
 
-async function doAnswer(ctx: MutationCtx, questionId: Id<"questions">, optionId: string, actor: Role, autopilot: boolean): Promise<string | null> {
+async function doAnswer(ctx: MutationCtx, questionId: Id<"questions">, optionId: string, actor: Role, autopilot: boolean, voice = false): Promise<string | null> {
   const q = await ctx.db.get(questionId);
   if (!q) return "Question not found";
   const opt = q.options.find((o) => o.id === optionId);
@@ -31,16 +33,20 @@ async function doAnswer(ctx: MutationCtx, questionId: Id<"questions">, optionId:
   }
   const r = await transition(ctx, {
     table: "questions", id: questionId as Id<ItemTable>, action: "answer", actor, month: q.month,
-    reason: autopilot ? `Answered by autopilot for a hands-free recording: ${opt.label}` : opt.label,
-    patch: { answer: optionId, answeredBy: actor, proposer: "investigator" },
+    reason: autopilot ? `Answered by autopilot for a hands-free recording: ${opt.label}` : voice ? `Answered by voice, read back and confirmed: ${opt.label}` : opt.label,
+    patch: { answer: optionId, answeredBy: actor, proposer: "investigator", ...(voice ? { voice: true } : {}) },
   });
+  if (r.ok && voice) {
+    const who = actor === "cfo" ? "CFO" : "Accountant";
+    await afterword(ctx, q.storyKey, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `The ${who} answered by voice: "${opt.label}". It was read back and the ${who} said yes. Waiting for the ${who} to confirm on the card.` });
+  }
   return r.ok ? null : r.denial;
 }
 
 export const confirm = mutation({
-  args: { questionId: v.id("questions"), actor: human, autopilot: v.optional(v.boolean()) },
+  args: { questionId: v.id("questions"), actor: human, autopilot: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doConfirm(ctx, a.questionId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doConfirm(ctx, a.questionId, a.actor, !!a.autopilot) : CONSOLE_REFUSAL),
 });
 
 async function doConfirm(ctx: MutationCtx, questionId: Id<"questions">, actor: Role, autopilot: boolean): Promise<string | null> {
@@ -55,7 +61,7 @@ async function doConfirm(ctx: MutationCtx, questionId: Id<"questions">, actor: R
   if (!story) return null;
   const picked = q.options.find((o) => o.id === q.answer);
   await ctx.db.insert("precedents", { storyKey: story.key, answer: q.answer, actor, effect: picked?.impact ?? "", at: Date.now() });
-  await afterword(ctx, story.key, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `The ${actor === "cfo" ? "CFO" : "Accountant"} answered "${picked?.label ?? q.answer}"${autopilot ? " (autopilot)" : ""}, confirmed back. ${picked?.impact ?? ""}` });
+  await afterword(ctx, story.key, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `The ${actor === "cfo" ? "CFO" : "Accountant"} answered "${picked?.label ?? q.answer}"${autopilot ? " (autopilot)" : q.voice ? " by voice" : ""}, confirmed back. ${picked?.impact ?? ""}` });
   await applyAnswer(ctx, story, q.answer, actor, q.month);
   await markRoomClosed(ctx, story.key);
   return null;
@@ -157,9 +163,9 @@ async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, acto
 }
 
 export const approveRule = mutation({
-  args: { ruleDocId: v.id("rules"), actor: human, autopilot: v.optional(v.boolean()) },
+  args: { ruleDocId: v.id("rules"), actor: human, autopilot: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doApproveRule(ctx, a.ruleDocId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doApproveRule(ctx, a.ruleDocId, a.actor, !!a.autopilot) : CONSOLE_REFUSAL),
 });
 
 async function doApproveRule(ctx: MutationCtx, ruleDocId: Id<"rules">, actor: Role, autopilot: boolean): Promise<string | null> {

@@ -7,7 +7,7 @@ export const state = v.union(
 );
 export const role = v.union(
   v.literal("sync"), v.literal("engine"), v.literal("investigator"), v.literal("learner"),
-  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"), v.literal("manager"),
+  v.literal("auditor"), v.literal("accountant"), v.literal("cfo"), v.literal("gateway"), v.literal("manager"), v.literal("assistant"),
 );
 const store = v.string();
 const channel = v.string();
@@ -142,6 +142,8 @@ export default defineSchema({
     storyKey: v.string(), state, askOf: role, text: v.string(),
     options: v.array(v.object({ id: v.string(), label: v.string(), impact: v.string() })),
     answer: v.optional(v.string()), answeredBy: v.optional(role), confirmed: v.optional(v.boolean()), proposer: v.optional(role),
+    // Answered by voice in the browser: transcribed, then confirmed back by voice before it was sent.
+    voice: v.optional(v.boolean()),
     real: v.boolean(), month: v.number(),
   })
     .index("by_story", ["storyKey"])

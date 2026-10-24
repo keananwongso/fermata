@@ -9,10 +9,15 @@
  */
 
 import type * as agents from "../agents.js";
+import type * as ask from "../ask.js";
+import type * as askData from "../askData.js";
 import type * as engine from "../engine.js";
 import type * as evaluation from "../evaluation.js";
 import type * as humans from "../humans.js";
 import type * as learner from "../learner.js";
+import type * as lib_ask from "../lib/ask.js";
+import type * as lib_askPresets from "../lib/askPresets.js";
+import type * as lib_console from "../lib/console.js";
 import type * as lib_domain from "../lib/domain.js";
 import type * as lib_engineCore from "../lib/engineCore.js";
 import type * as lib_format from "../lib/format.js";
@@ -20,6 +25,7 @@ import type * as lib_generate from "../lib/generate.js";
 import type * as lib_investigate from "../lib/investigate.js";
 import type * as lib_rules from "../lib/rules.js";
 import type * as lib_transition from "../lib/transition.js";
+import type * as lib_voiceMatch from "../lib/voiceMatch.js";
 import type * as lib_world from "../lib/world.js";
 import type * as queries from "../queries.js";
 import type * as roomAgents from "../roomAgents.js";
@@ -35,10 +41,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
+  ask: typeof ask;
+  askData: typeof askData;
   engine: typeof engine;
   evaluation: typeof evaluation;
   humans: typeof humans;
   learner: typeof learner;
+  "lib/ask": typeof lib_ask;
+  "lib/askPresets": typeof lib_askPresets;
+  "lib/console": typeof lib_console;
   "lib/domain": typeof lib_domain;
   "lib/engineCore": typeof lib_engineCore;
   "lib/format": typeof lib_format;
@@ -46,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/investigate": typeof lib_investigate;
   "lib/rules": typeof lib_rules;
   "lib/transition": typeof lib_transition;
+  "lib/voiceMatch": typeof lib_voiceMatch;
   "lib/world": typeof lib_world;
   queries: typeof queries;
   roomAgents: typeof roomAgents;
@@ -80,4 +92,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};

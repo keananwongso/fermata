@@ -13,6 +13,8 @@
     "reset": "tsx scripts/reset.ts"
   },
   "dependencies": {
+    "@cartesia/cartesia-js": "4.2.0",
+    "@convex-dev/rate-limiter": "0.4.1",
     "@number-flow/react": "^0.6.2",
     "convex": "^1.48.0",
     "lenis": "^1.3.27",

@@ -252,3 +252,38 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
    `globals.css` and a line to this file, rather than writing a one-off value.
 3. Numbers: `.num` in text, `Metric` or `.figure` for headline values, `Count` when they change live.
 4. Check it at 375px wide and on desktop, and with reduced motion on.
+
+## Ask the books (`src/app/ask`, `src/components/ask`)
+
+A voice first, read only way to ask about the books. `/ask` shows it alone; `AskPanel` (`ask/panel.tsx`) mounts anywhere.
+
+* **Not a chat.** One question at a time: the question, a caption of the spoken sentence (with a play button), the answer
+  in one template, then suggested questions and at most four recent ones. No message list, no bubbles.
+* **Push to talk is the primary control** (`PushToTalk`, `ask/pushToTalk.tsx`): a 64px blue round button. Hold it (or hold
+  Space or Enter while it is focused), speak, let go. While it listens it pulses blue (`.listen`), never amber: the person is
+  talking, nothing is held. The typed field is secondary and sits beside it. Under the controls, always: "Read only: it can
+  explain the books, never change them."
+* **Five templates** (`ask/views.tsx`), each inside a `.frame` around a `.card`, each ending with its source:
+  * **Figure**: one number in `.display` that `Roll`s in, a comparison beside it in `.figure`, an optional note.
+  * **Trend**: twelve months as a line (shares) or bars (counts), with learned rules as accent pills. Never 𝄐.
+  * **Breakdown**: rows of label, value and `Bar`; amber tone because what it breaks down is held.
+  * **Lines**: a table of bank lines (date, memo, amount, outcome, rule, store) on wide screens, stacked rows on phones.
+  * **Story**: a story or a rule: facts, the question and its answer (light amber box), the case room through `ChatList`
+    in a `.scroll-quiet` panel, a rule's program as a `bg-night` code block, and the record (denied lines red).
+* **The model never writes numbers or UI.** It picks a template and a named query (`convex/lib/ask.ts`); code runs the
+  query and fills the template. It writes the spoken sentence after seeing the result, and code checks every number in
+  that sentence against the result; if it fails twice, the template's own caption (written by code) is spoken instead.
+  The answer says which: "Every number checked against the data" or "Sentence written by code". Answers are labelled
+  "Recorded answer" or "Live: Claude chose the query".
+* **Read only, enforced.** The assistant role in `ROLES` has no actions. Asking it to change something sends the request
+  through the gateway, which refuses and records it; the answer shows the refusal as a red "Blocked by the gateway" note.
+* **Presets first.** The suggested questions (`convex/lib/askPresets.ts`) and anything that matches them (plain keyword
+  matching) are answered from `src/demo/ask.json` with the recorded audio in `public/ask/`, with no Claude call. Re-record
+  with `npx tsx --env-file=.env scripts/export_ask.ts`. Only unmatched questions go live, rate limited per visitor and
+  capped per day; past the cap the answer is "I can only answer the suggested questions right now".
+* **Without a Convex URL** (the hosted site today) the push to talk button is disabled with a line saying why, typed
+  questions only match presets, and recorded answers still play out loud.
+* **Voice answers in a case room** (`voiceAnswer.tsx`): a question for the CFO can be answered by voice under its options.
+  The answer is read back ("You said …. That means …") and only a spoken yes sends it, marked "By voice". Confirming the
+  restated answer and approving a rule stay clicks.
+* **Speech** is Cartesia: one voice, `sonic-3.6`, mp3. The browser gets a one minute access token from Convex, never the key.

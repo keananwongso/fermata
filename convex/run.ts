@@ -8,6 +8,7 @@ import { runFirstPass, runRecheck, type BatchStats } from "./engine";
 import { YEAR, isoDate, monthEnd } from "./lib/domain";
 import { openRoom } from "./rooms";
 import { LIVE_ROOMS } from "./roomAgents";
+import { CONSOLE_REFUSAL, consoleKey, isConsole, requireConsole } from "./lib/console";
 
 const YEAR_END_AS_OF = isoDate(YEAR + 1, 1, 20);
 export { STORY_A_KEY, STORY_B_KEY } from "./lib/domain";
@@ -29,9 +30,10 @@ async function addStats(ctx: MutationCtx, m: number, s: Partial<BatchStats> & { 
 }
 
 export const start = mutation({
-  args: { autopilot: v.boolean() },
+  args: { autopilot: v.boolean(), consoleKey },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
+    if (!isConsole(args.consoleKey)) return CONSOLE_REFUSAL;
     const close = await getClose(ctx);
     if (!close) return "Seed the data first";
     if (close.run && close.run.phase !== "idle") return "The close is already running";
@@ -45,9 +47,10 @@ export const start = mutation({
 });
 
 export const setAutopilot = mutation({
-  args: { on: v.boolean() },
+  args: { on: v.boolean(), consoleKey },
   returns: v.null(),
   handler: async (ctx, args) => {
+    requireConsole(args.consoleKey);
     const close = await getClose(ctx);
     if (!close?.run) return null;
     await ctx.db.patch(close._id, { run: { ...close.run, autopilot: args.on } });
