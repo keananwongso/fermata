@@ -86,6 +86,8 @@ inside rule code and the record.
 * **`Trace`**: mono lines in a panel, each with its kind and whether it was **real, scripted or
   staged**. Denied lines are red. Every agent output on screen says which of the three it was.
 * **`Loading`**: a breathing amber 𝄐 with a short line of text. No spinners.
+* **`Splash`** (`motion.tsx`): the run view's cold load. The 𝄐 alone in a white tile on the canvas, shown at least 700ms,
+  then the whole screen fades into the page. Only on a cold load; returning to the page skips it.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
 ## Case rooms (`src/components/caseRoom.tsx`)
@@ -115,12 +117,18 @@ The transcript of the agents' meeting on one held story.
 | `.draw` | Lines and charts drawing in |
 | `.rise` | Fade in, used by `BrandGrid` cells |
 | `Count` / `useTween` | Live Convex numbers count toward their new value instead of jumping |
+| `Roll` | Headline figures: digits roll to the new value (NumberFlow), starting from zero the first time they are on screen |
+| `Reveal` / `RevealItem` | A group whose children rise in with a short blur, one after another, the first time it scrolls into view |
+| Sliding highlight | A `motion` `layoutId` background that slides between options, e.g. the current month on the run view |
 | `useLive` | Only rows that arrive after first paint animate |
 | `BrandGrid` | Stepped blue cells at the edges of a hero, clearing toward a readable centre |
 
+Component motion uses `motion/react`; CSS classes stay for anything that does not need it. Patterns are ported from
+Watermelon UI (ui.watermelon.sh) into our tokens, never installed as-is, because its blocks carry their own colours.
+
 Easings: `--ease-brand` for most things, `--ease-out` for entrances, `--ease-spring` only for small
 toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
-`prefers-reduced-motion`; new animations must respect it too.
+`prefers-reduced-motion` (`MotionConfig reducedMotion="user"` in `providers.tsx` covers `motion`); new animations must respect it too.
 
 ## Layout
 
