@@ -30,12 +30,11 @@ export async function roomMessages(ctx: MutationCtx, storyKey: string) {
 export async function say(ctx: MutationCtx, story: Doc<"stories">, month: number, m: RoomMessage): Promise<Id<"room_messages">> {
   const prev = await lastMessage(ctx, story.key);
   const kind = m.kind ?? "message";
-  const isTurn = kind === "message";
+  const fresh = (await ctx.db.get(story._id))!;
+  // Only messages during the meeting count as turns; what follows the answer does not.
+  const isTurn = kind === "message" && fresh.room?.state === "meeting";
   const turn = (prev?.turn ?? 0) + (isTurn ? 1 : 0);
-  if (isTurn) {
-    const fresh = (await ctx.db.get(story._id))!;
-    if (fresh.room) await ctx.db.patch(story._id, { room: { ...fresh.room, turns: fresh.room.turns + 1 } });
-  }
+  if (isTurn && fresh.room) await ctx.db.patch(story._id, { room: { ...fresh.room, turns: fresh.room.turns + 1 } });
   return await ctx.db.insert("room_messages", {
     storyKey: story.key, month, seq: (prev?.seq ?? 0) + 1, turn, speaker: m.speaker, to: m.to, kind, status: m.status ?? "done",
     source: m.source, staged: m.staged, think: m.think ?? [], tools: m.tools ?? [], text: m.text, code: m.code, at: Date.now(),
@@ -106,4 +105,10 @@ export async function closeRoom(ctx: MutationCtx, story: Doc<"stories">, month: 
 export async function markRoomClosed(ctx: MutationCtx, storyKey: string) {
   const s = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", storyKey)).first();
   if (s?.room) await ctx.db.patch(s._id, { room: { ...s.room, state: "closed" } });
+}
+
+// After the meeting: what the person answered and what followed (a rule, a posting), told in the same room.
+export async function afterword(ctx: MutationCtx, storyKey: string, m: RoomMessage) {
+  const story = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", storyKey)).first();
+  if (story?.room) await say(ctx, story, story.month, m);
 }

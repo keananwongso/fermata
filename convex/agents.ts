@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { transition } from "./lib/transition";
+import { afterword } from "./rooms";
 import { parseMemo } from "./lib/engineCore";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
 import { LAST_YEAR, addDays } from "./lib/domain";
@@ -128,6 +129,8 @@ export const writeR8 = internalMutation({
     await transition(ctx, { table: "rules", id: c.id, action: errors ? "flag" : "annotate", actor: "auditor", month, reason: "Searched last year for counterexamples", patch: { audit: { result: errors ? "flag" : "pass", note, counterexamples: errors, real: false } } });
     await ctx.db.insert("trace_events", { agent: "auditor", month, ruleId: "r8", kind: "result", text: note, real: false, at: now + 2 });
     await ctx.db.insert("trace_events", { agent: "cfo", month, ruleId: "r8", kind: "decision", text: "waiting for the CFO to approve r8", real: true, at: now + 3 });
+    await afterword(ctx, a.storyKey, { speaker: "learner", to: "auditor", source: a.real ? "claude" : "scripted", code: JSON.stringify(program, null, 2), text: `Wrote r8 from the correction: ${program.title}. Backtest on last year: ${num(a.covered)} payments covered, ${num(a.correct)} correct, ${errors} wrong.`, tools: [{ name: "backtest_rule", input: "r8 on last year's school payments", rows: [["Covered", num(a.covered)], ["Correct", num(a.correct)], ["Wrong", String(errors)], ["Precision", pct(precision)]] }] });
+    await afterword(ctx, a.storyKey, { speaker: "auditor", to: "room", source: "scripted", text: `${note} Ready for the CFO to approve.` });
     return null;
   },
 });

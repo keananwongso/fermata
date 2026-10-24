@@ -5,7 +5,7 @@ import { internalMutation, mutation, type MutationCtx } from "./_generated/serve
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getClose, resume, STORY_A_KEY, STORY_B_KEY } from "./run";
-import { markRoomClosed } from "./rooms";
+import { afterword, markRoomClosed } from "./rooms";
 import { transition, type ItemTable, type Role } from "./lib/transition";
 import { LENDER_TRUE_CUT, STORE_BY_CODE, addDays, type StoreCode } from "./lib/domain";
 import { parseMemo } from "./lib/engineCore";
@@ -53,7 +53,9 @@ async function doConfirm(ctx: MutationCtx, questionId: Id<"questions">, actor: R
   if (!r.ok) return r.denial;
   const story = await ctx.db.query("stories").withIndex("by_key", (x) => x.eq("key", q.storyKey)).first();
   if (!story) return null;
-  await ctx.db.insert("precedents", { storyKey: story.key, answer: q.answer, actor, effect: q.options.find((o) => o.id === q.answer)?.impact ?? "", at: Date.now() });
+  const picked = q.options.find((o) => o.id === q.answer);
+  await ctx.db.insert("precedents", { storyKey: story.key, answer: q.answer, actor, effect: picked?.impact ?? "", at: Date.now() });
+  await afterword(ctx, story.key, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `The ${actor === "cfo" ? "CFO" : "Accountant"} answered "${picked?.label ?? q.answer}"${autopilot ? " (autopilot)" : ""}, confirmed back. ${picked?.impact ?? ""}` });
   await applyAnswer(ctx, story, q.answer, actor, q.month);
   await markRoomClosed(ctx, story.key);
   return null;
@@ -110,6 +112,7 @@ async function settleStoryByPerson(ctx: MutationCtx, story: Doc<"stories">, acto
     await transition(ctx, { table: "stories", id: sid, action: "approve", actor, month, reason: "Approved", patch: {} });
     await transition(ctx, { table: "stories", id: sid, action: "post", actor: "gateway", month, reason: "Story closed", patch: { resolution: `${num(n)} lines settled by the ${actor === "cfo" ? "CFO" : "Accountant"}'s answer.` } });
   }
+  await afterword(ctx, story.key, { speaker: "gateway", to: "room", source: "code", text: `Posted ${num(n)} lines to the books on the ${actor === "cfo" ? "CFO" : "Accountant"}'s decision.` });
 }
 
 async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, actor: Role, month: number) {
@@ -146,6 +149,7 @@ async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, acto
   await transition(ctx, { table: "rules", id: c.id, action: "annotate", actor: "auditor", month, reason: "Looked for counterexamples", patch: { audit: { result: "pass", note: `${items.length - covered} payouts match no FIN_Z sale and stay held. No payout matches two sales.`, counterexamples: 0, real: false } } });
   const ap = await transition(ctx, { table: "rules", id: c.id, action: "approve", actor, month, reason: "Confirmed back: FIN_Z is a new financing partner", patch: { approvedBy: actor } });
   if (!ap.ok) return;
+  await afterword(ctx, story.key, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `r9 approved by the CFO${realRule ? ", as the Learner drafted it in this room" : ""}. The engine now re-runs the held payouts under r9: ${num(covered)} match a sale, ${num(items.length - covered)} stay held.` });
   await ctx.db.insert("trace_events", { agent: "learner", month, ruleId: "r9", storyKey: story.key, kind: "result", text: `r9 ${realRule ? "drafted by the Learner in the case room" : "written (scripted program)"}. Backtest: ${covered} of ${items.length} held payouts match a FIN_Z sale at 3.8%.`, real: realRule, at: Date.now() });
   await transition(ctx, { table: "stories", id: story._id as Id<ItemTable>, action: "propose", actor: "investigator", month, reason: "Settle under r9", patch: { proposer: "investigator", resolution: `r9 settles ${num(covered)} payouts (${rpShort(coveredAmount)}). ${num(items.length - covered)} match no sale and stay held.` } });
   const close = await getClose(ctx);
@@ -164,6 +168,7 @@ async function doApproveRule(ctx: MutationCtx, ruleDocId: Id<"rules">, actor: Ro
   const r = await transition(ctx, { table: "rules", id: ruleDocId as Id<ItemTable>, action: "approve", actor, month: rule.learnedInMonth ?? 0, reason: autopilot ? "Approved by autopilot for a hands-free recording" : "Approved after reading the backtest", patch: { approvedBy: actor } });
   if (!r.ok) return r.denial;
   if (rule.ruleId === "r8") {
+    await afterword(ctx, STORY_A_KEY, { speaker: "manager", to: "room", kind: "manager", source: "code", text: `r8 approved by the CFO. The engine re-runs the held school fees under r8.` });
     const close = await getClose(ctx);
     if (close?.run?.pausedFor === "A") await resume(ctx, { storyKey: STORY_A_KEY, ruleId: "r8" });
   }
