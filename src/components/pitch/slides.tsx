@@ -316,12 +316,98 @@ function Built() {
   );
 }
 
+// 8 · The stack: what runs where. One engine, used live in Convex and offline for the simulator and the export.
+const STACK: { place: string; who: string; items: [string, string][] }[] = [
+  { place: "The site", who: "Next.js on Vercel", items: [
+    ["Landing, demo, dashboard, pitch", "read the exported year, so they load with no backend"],
+    ["Ask the books", "hold ⌃ + ⌥ and talk: Claude picks the answer, code fills every number, Cartesia speaks it"],
+  ] },
+  { place: "The backend", who: "Convex", items: [
+    ["Sync and the engine", "every bank line placed, matched and settled under approved rules"],
+    ["Case rooms", "Claude agents meet; a manager in code runs the meeting"],
+    ["transition()", "every change and its audit row in one transaction; roles checked in code"],
+    ["Evaluation and scenarios", "scored against the answer key; judges' own cases run live"],
+  ] },
+  { place: "Offline", who: "the same engine, in Node", items: [
+    ["The generator", "a synthetic year from a fixed seed, with a hidden answer key"],
+    ["The simulator", "the year closed twice, with and without learning; what-ifs in seconds"],
+    ["The export", "a closed run becomes the data the site reads"],
+  ] },
+];
+function Stack() {
+  return (
+    <Frame chapter="How it's built" n={8}>
+      <In><h2 className="title text-[64px]">One engine, running in three places.</h2></In>
+      <div className="mt-10 grid grid-cols-3 gap-8">
+        {STACK.map((col, i) => (
+          <In key={col.place} delay={0.2 + i * 0.15}>
+            <div className={`h-full rounded-[16px] border p-[6px] ${i === 1 ? "border-heading bg-heading" : "border-hairline bg-warm"}`}>
+              <div className="card h-full px-8 py-6">
+                <div className="flex items-baseline justify-between gap-4"><span className="text-[34px] font-medium text-ink">{col.place}</span><span className="eyebrow text-[16px]">{col.who}</span></div>
+                <ul className="mt-4 space-y-3">
+                  {col.items.map(([head, sub]) => (
+                    <li key={head} className="border-t border-hairline pt-3">
+                      <div className="text-[23px] font-medium text-ink">{head}</div>
+                      <div className="mt-1 text-[19px] leading-snug text-secondary">{sub}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </In>
+        ))}
+      </div>
+      <In delay={0.8}>
+        <div className="mt-7 flex items-center gap-4 text-[21px] text-secondary">
+          {["Generate the year", "Close it", "Score it", "Export it", "The site reads it"].map((step, i) => (
+            <span key={step} className="flex items-center gap-4">{i ? <span className="text-mute">→</span> : null}<span className="rounded-full border border-hairline bg-ground px-5 py-2">{step}</span></span>
+          ))}
+        </div>
+      </In>
+    </Frame>
+  );
+}
+
+// 9 · How we measure: what each number means and where it comes from, so no figure needs trusting.
+const PENDING = "filled in by the final run";
+function Measure() {
+  const L = D.learning;
+  const e: Evaluation | null = D.evaluation;
+  const rows: [string, string, string][] = [
+    ["Settled on first pass", "Share of bank lines settled on their own the month they arrive. Counted per bank line, not per account.", `${pct(L.first, 0)} → ${pct(L.last, 0)}`],
+    ["Lines left for people", "Lines still held at year end, waiting on a person.", num(L.heldLearned)],
+    ["What learning did", "The same year on the same engine, closed with learning and with the rules frozen at onboarding.", `${num(L.heldLearned)} vs ${num(L.heldBaseline)}`],
+    ["Decisions for people", `One answer per held story plus one approval per rule, at ${D.minutesPerDecision} minutes each (an assumption).`, `~${num(D.decisions)}`],
+    ["Rule quality", "Every rule is backtested on past books before approval: what it covers, what it gets wrong, and a per payment limit.", `${L.rules.filter((r) => r.backtest.pass).length} of ${L.rules.length} passed`],
+    ["Correctness", "Scored against an answer key the engine never reads: wrong store postings, a week it never saw, and a fuzzer.", e ? `${num(Number(e.wrongStore ?? 0))} wrong store` : PENDING],
+  ];
+  return (
+    <Frame chapter="Proves every step" n={9}>
+      <In><h2 className="title text-[64px]">How we measure it.</h2></In>
+      <div className="mt-12 grid grid-cols-2 gap-x-8 gap-y-6">
+        {rows.map(([name, def, now], i) => (
+          <In key={name} delay={0.15 + i * 0.08}>
+            <div className="card flex h-full items-start justify-between gap-8 px-8 py-6">
+              <div className="min-w-0">
+                <div className="text-[28px] font-medium text-ink">{name}</div>
+                <div className="mt-2 text-[20px] leading-snug text-secondary">{def}</div>
+              </div>
+              <div className={`shrink-0 whitespace-nowrap ${now === PENDING ? "text-[22px] text-faint" : "figure text-[40px] text-heading"}`}>{now}</div>
+            </div>
+          </In>
+        ))}
+      </div>
+      <In delay={0.8}><p className="mt-8 text-[20px] text-faint">The learning figures are simulated on the same engine. For scale: vendors report 84% to 99.6% matched for mature systems, and APQC&apos;s median close is 6.4 days.</p></In>
+    </Frame>
+  );
+}
+
 // 8 · Self improving: the learning claim. Not the recorded year's curve (its baseline climbs too), but one year
 // simulated on the same engine twice, learning from people's answers and with the rules frozen at onboarding.
 function Curve() {
   const L = D.learning;
   return (
-    <Frame chapter="Self improving" n={8}>
+    <Frame chapter="Self improving" n={10}>
       <div className="flex items-end justify-between gap-10">
         <In><h2 className="title text-[72px]">Learning makes it better.</h2></In>
         <In delay={0.2} className="flex shrink-0 gap-14 whitespace-nowrap text-right">
@@ -342,7 +428,7 @@ function Proof() {
   const n = (k: string) => Number(e?.[k] ?? 0);
   const backtests = D.learned.filter((r) => r.backtest);
   return (
-    <Frame chapter="Proves every step" n={9}>
+    <Frame chapter="Proves every step" n={11}>
       <In><h2 className="title text-[72px]">Tested before anyone is asked to trust it.</h2></In>
       <div className="mt-14 grid grid-cols-2 gap-6">
         {backtests.map((r, i) => (
@@ -398,7 +484,7 @@ function ProofCard({ label, figure, sub, delay }: { label: string; figure: strin
 function Result() {
   const hours = Math.round(D.fermataHours);
   return (
-    <Frame chapter="The result" n={10} tone="warm">
+    <Frame chapter="The result" n={12} tone="warm">
       <div className="flex h-full flex-col justify-center">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-16">
           <In>
@@ -458,6 +544,8 @@ export const SLIDES: Slide[] = [
 
 Video: cut to the demo here (/demo?tips=off: close the year, the school story's room, the new lender's room, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
   { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood, a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. Every change is written together with its record, in Convex."` },
+  { id: "stack", chapter: "How it's built", render: Stack, notes: `"It runs in three places. The site is Next.js on Vercel, and it loads the closed year with no backend. Convex is the whole backend: the engine, the case rooms, the rules and every record. And the same engine runs offline, to generate the year, simulate what-ifs, and export what the site shows."` },
+  { id: "measure", chapter: "Proves every step", render: Measure, notes: `"Here's how we measure it, so you don't have to trust a number. We count per bank line. We count what's left for people. We measure learning by closing the same year with and without it. Every rule is backtested before approval, and the whole year is scored against an answer key the engine never reads."` },
   { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is one year, simulated on the same engine twice: once learning from people's answers, once with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
 (Say "simulated": here the answers come from the simulator's answer key and its Learner is code. Never present the demo's recorded curve as learning.)` },
   { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is fitted from the data and tested on past books before a person sees it. Then we scored the whole year against an answer key the engine never reads: a week it never saw, lines at the wrong store, and altered lines thrown at it by a fuzzer." (Read the three bottom numbers from the slide; never say a number that is not on it.) "All of this data is synthetic, from a fixed seed. The big meetings ran live on Claude; the rest are scripted, and labelled that way."` },
