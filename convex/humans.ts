@@ -10,7 +10,7 @@ import { transition, type ItemTable, type Role } from "./lib/transition";
 import { LENDER_TRUE_CUT, STORE_BY_CODE, addDays, type StoreCode } from "./lib/domain";
 import { parseMemo } from "./lib/engineCore";
 import { rpShort, num } from "./lib/format";
-import type { RuleProgram } from "./lib/rules";
+import { validateRuleProgram, type RuleProgram } from "./lib/rules";
 
 const human = v.union(v.literal("accountant"), v.literal("cfo"));
 
@@ -129,10 +129,14 @@ async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, acto
     if (hit) { covered++; coveredAmount += b.amount; used.add(hit.key); }
   }
   void LENDER_TRUE_CUT;
-  const program: RuleProgram = { id: "r9", version: 1, title: "FIN_Z payout minus its 3.8% cut", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 };
+  // The rule the Learner drafted in the case room, if it is a valid lender rule; otherwise the scripted one.
+  const drafted = (await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", story.key)).order("desc").take(200)).find((m) => m.speaker === "learner" && m.code)?.code;
+  const fromRoom = drafted ? validateRuleProgram(JSON.parse(drafted)) : null;
+  const realRule = !!fromRoom?.ok && fromRoom.rule.match === "lender_sale" && !!fromRoom.rule.params.lenders?.FIN_Z;
+  const program: RuleProgram = realRule && fromRoom?.ok ? { ...fromRoom.rule, id: "r9", version: 1 } : { id: "r9", version: 1, title: "FIN_Z payout minus its 3.8% cut", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 };
   const c = await transition(ctx, {
     table: "rules", id: null, action: "create", actor: "learner", month, reason: "The CFO confirmed FIN_Z is a financing partner",
-    insert: { ruleId: "r9", version: 1, title: program.title, program: JSON.stringify(program), origin: "CFO answer on the FIN_Z story (June)", proposer: "learner", settledCount: 0, learnedInMonth: month, real: false }, patch: {},
+    insert: { ruleId: "r9", version: 1, title: program.title, program: JSON.stringify(program), origin: "CFO answer on the FIN_Z story (June)", proposer: "learner", settledCount: 0, learnedInMonth: month, real: realRule }, patch: {},
   });
   if (!c.ok) return;
   await transition(ctx, {
@@ -142,7 +146,7 @@ async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, acto
   await transition(ctx, { table: "rules", id: c.id, action: "annotate", actor: "auditor", month, reason: "Looked for counterexamples", patch: { audit: { result: "pass", note: `${items.length - covered} payouts match no FIN_Z sale and stay held. No payout matches two sales.`, counterexamples: 0, real: false } } });
   const ap = await transition(ctx, { table: "rules", id: c.id, action: "approve", actor, month, reason: "Confirmed back: FIN_Z is a new financing partner", patch: { approvedBy: actor } });
   if (!ap.ok) return;
-  await ctx.db.insert("trace_events", { agent: "learner", month, ruleId: "r9", storyKey: story.key, kind: "result", text: `r9 written (scripted program). Backtest: ${covered} of ${items.length} held payouts match a FIN_Z sale at 3.8%.`, real: false, at: Date.now() });
+  await ctx.db.insert("trace_events", { agent: "learner", month, ruleId: "r9", storyKey: story.key, kind: "result", text: `r9 ${realRule ? "drafted by the Learner in the case room" : "written (scripted program)"}. Backtest: ${covered} of ${items.length} held payouts match a FIN_Z sale at 3.8%.`, real: realRule, at: Date.now() });
   await transition(ctx, { table: "stories", id: story._id as Id<ItemTable>, action: "propose", actor: "investigator", month, reason: "Settle under r9", patch: { proposer: "investigator", resolution: `r9 settles ${num(covered)} payouts (${rpShort(coveredAmount)}). ${num(items.length - covered)} match no sale and stay held.` } });
   const close = await getClose(ctx);
   if (close?.run?.pausedFor === "B") await resume(ctx, { storyKey: story.key, ruleId: "r9" });

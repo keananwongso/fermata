@@ -7,10 +7,10 @@ import type { Doc } from "./_generated/dataModel";
 import { runFirstPass, runRecheck, type BatchStats } from "./engine";
 import { YEAR, isoDate, monthEnd } from "./lib/domain";
 import { openRoom } from "./rooms";
+import { LIVE_ROOMS } from "./roomAgents";
 
 const YEAR_END_AS_OF = isoDate(YEAR + 1, 1, 20);
-export const STORY_A_KEY = "placement_conflict|S03|school_va";
-export const STORY_B_KEY = "unknown_lender|FIN_Z";
+export { STORY_A_KEY, STORY_B_KEY } from "./lib/domain";
 
 export async function getClose(ctx: MutationCtx): Promise<Doc<"work_items"> | null> {
   return await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", "close")).first();
@@ -86,7 +86,7 @@ export const step = internalMutation({
     }
     if (run.phase === "stories") {
       const fresh = (await ctx.db.query("stories").withIndex("by_month", (q) => q.eq("month", m)).take(100)).filter((s) => s.state === "NEW");
-      for (const s of fresh) await openRoom(ctx, s, m, false);
+      for (const s of fresh) await openRoom(ctx, s, m, LIVE_ROOMS.has(s.key));
       await addStats(ctx, m, { questions: fresh.length, stories: fresh.length });
       await ctx.db.insert("trace_events", { agent: "engine", month: m, kind: "result", text: `Month closed on first pass. ${fresh.length} new ${fresh.length === 1 ? "story" : "stories"}.`, real: true, at: Date.now() });
       const pauseFor = m === 3 ? "A" : m === 6 ? "B" : null;

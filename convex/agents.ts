@@ -1,14 +1,13 @@
-// The three Claude agents. Real Claude calls: the Investigator on story B and the Learner writing r8.
-// Everything else the agents "say" is scripted and labelled so in trace_events (real: false).
+// The Learner turning the Accountant's correction into r8, and its backtest on last year. The case rooms
+// (roomAgents.ts) hold the agents' meetings; when the Learner drafted r8 there, that draft is used here.
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { transition, type ItemTable } from "./lib/transition";
+import { transition } from "./lib/transition";
 import { parseMemo } from "./lib/engineCore";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
-import { LAST_YEAR, addDays, type StoreCode } from "./lib/domain";
-import { num, rpShort, pct } from "./lib/format";
+import { LAST_YEAR, addDays } from "./lib/domain";
+import { num, pct } from "./lib/format";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
 
@@ -33,129 +32,6 @@ function extractJson(text: string): unknown {
   if (start < 0 || end < start) throw new Error("No JSON in Claude's reply");
   return JSON.parse(text.slice(start, end + 1));
 }
-
-// ---------------- Investigator on story B ----------------
-
-export const storyBEvidence = internalQuery({
-  args: { storyKey: v.string() },
-  returns: v.object({
-    count: v.number(), amount: v.number(), stores: v.number(), matched: v.number(), matchedAmount: v.number(), orphans: v.number(),
-    impliedCuts: v.array(v.number()), knownLenders: v.string(), examples: v.array(v.string()), firstDate: v.string(), lastDate: v.string(),
-  }),
-  handler: async (ctx, a) => {
-    const items = await ctx.db.query("work_items").withIndex("by_story", (q) => q.eq("storyKey", a.storyKey)).take(1000);
-    const stores = new Set<string>();
-    let amount = 0, matched = 0, matchedAmount = 0;
-    const cuts: number[] = [];
-    const examples: string[] = [];
-    let firstDate = "9999", lastDate = "0000";
-    const rows: { b: { date: string; memo: string; amount: number }; sales: { amount: number; date: string; key: string }[] }[] = [];
-    for (const it of items) {
-      const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
-      if (!b) continue;
-      amount += b.amount;
-      if (b.date < firstDate) firstDate = b.date;
-      if (b.date > lastDate) lastDate = b.date;
-      const p = parseMemo({ ...b, account: b.account as never });
-      if (p.subStore) stores.add(p.subStore);
-      const sales = p.subStore ? await ctx.db.query("erp_invoices").withIndex("by_store_kind_date", (q) => q.eq("store", p.subStore as StoreCode).eq("kind", "installment_sale").gte("date", addDays(b.date, -7)).lte("date", addDays(b.date, -1))).take(100) : [];
-      const fz = sales.filter((s) => s.lender === "FIN_Z").map((s) => ({ amount: s.amount ?? 0, date: s.date, key: s.key }));
-      rows.push({ b, sales: fz });
-      for (const s of fz) { const c = Math.round((1 - b.amount / s.amount) * 1000) / 1000; if (c > 0 && c < 0.1) cuts.push(c); }
-    }
-    // The most common implied cut, then an exact rupiah check against it.
-    const hist: Record<string, number> = {};
-    for (const c of cuts) hist[c.toFixed(3)] = (hist[c.toFixed(3)] ?? 0) + 1;
-    const ranked = Object.entries(hist).sort((x, y) => y[1] - x[1]);
-    const mode = ranked.length ? Number(ranked[0][0]) : 0;
-    const used = new Set<string>();
-    for (const r of rows) {
-      const hit = r.sales.find((s) => !used.has(s.key) && Math.round(s.amount * (1 - mode)) === r.b.amount);
-      if (hit) { used.add(hit.key); matched++; matchedAmount += r.b.amount; if (examples.length < 4) examples.push(`${r.b.date} ${r.b.memo}: payout ${r.b.amount}, FIN_Z installment sale ${hit.amount} on ${hit.date} at the same store`); }
-      else if (examples.length < 6) examples.push(`${r.b.date} ${r.b.memo}: payout ${r.b.amount}, no FIN_Z sale at that store matches it exactly`);
-    }
-    const top = ranked.filter(([, n]) => n >= cuts.length * 0.05).slice(0, 3).map(([k]) => Number(k));
-    const rules = await ctx.db.query("rules").withIndex("by_ruleId", (q) => q.eq("ruleId", "r7")).first();
-    const known = rules ? JSON.stringify((JSON.parse(rules.program) as RuleProgram).params.lenders) : "{}";
-    return { count: items.length, amount, stores: stores.size, matched, matchedAmount, orphans: items.length - matched, impliedCuts: top, knownLenders: known, examples, firstDate, lastDate };
-  },
-});
-
-export const investigateStoryB = internalAction({
-  args: { storyKey: v.string() },
-  returns: v.null(),
-  handler: async (ctx, a) => {
-    const e = await ctx.runQuery(internal.agents.storyBEvidence, { storyKey: a.storyKey });
-    const system = "You are the Investigator inside Fermata, an autonomous cash reconciliation system for a fictional Indonesian music retailer. " +
-      "You never approve or post anything. You build the evidence for one story of held bank transactions, explain your reasoning in short plain steps, " +
-      "and write exactly one question for the one person who can answer it (the Accountant for bookkeeping facts, the CFO for business relationships and policy). " +
-      "Voice: calm, plainspoken, sentence case, no emoji, no exclamation marks. Money in rupiah like 'Rp 9.8bn' or 'Rp 412m'. Reply with JSON only.";
-    const user = `Story: ${num(e.count)} bank credits on the lender channel from "FIN_Z", ${e.firstDate} to ${e.lastDate}, total ${rpShort(e.amount)}, across ${e.stores} stores.
-Known lenders in approved rule r7 (lender: cut): ${e.knownLenders}. FIN_Z is not among them and did not appear last year.
-Evidence from the books: ${num(e.matched)} of the payouts have an installment sale booked with lender FIN_Z at the same store 1 to 7 days earlier. Most common implied cut (1 - payout / sale), then checked to the rupiah: ${e.impliedCuts.join(", ")}.
-${num(e.orphans)} payouts match no FIN_Z sale.
-Examples:
-${e.examples.join("\n")}
-
-Return JSON with these keys:
-"steps": 4 to 6 short reasoning lines (lower case is fine),
-"summary": two sentences of evidence,
-"hypothesis": one sentence,
-"ask_of": "cfo" or "accountant",
-"question": the single question, under 20 words,
-"options": exactly three objects {"id","label","impact"} with ids "yes", "no", "unsure"; labels like "Yes", "No, not ours", "I don't know"; each impact says concretely what Fermata will do (counts and rupiah).`;
-    let parsed: { steps: string[]; summary: string; hypothesis: string; ask_of: string; question: string; options: { id: string; label: string; impact: string }[] };
-    let real = true;
-    try {
-      let reply: string;
-      try { reply = await claude(system, user, 4000); }
-      catch (first) {
-        // One retry without the example lines if the model declines.
-        if (!String(first).includes("refusal")) throw first;
-        reply = await claude(system, user.replace(/Examples:[\s\S]*?\n\nReturn JSON/, "Return JSON"), 4000);
-      }
-      try { parsed = extractJson(reply) as typeof parsed; } catch { throw new Error(`unreadable reply: ${reply.slice(0, 120)}`); }
-      if (!Array.isArray(parsed.options) || parsed.options.length !== 3 || !parsed.question) throw new Error("Claude's reply is missing fields");
-    } catch (err) {
-      real = false;
-      parsed = {
-        steps: [`claude unavailable (${String(err).slice(0, 80)}), using the scripted fallback`, `${e.matched} of ${e.count} payouts sit 3.8% below a FIN_Z installment sale`, "FIN_Z is not in r7", "this is a business relationship question, so ask the CFO"],
-        summary: `${num(e.matched)} payouts are each 3.8% below an installment sale booked with FIN_Z. ${num(e.orphans)} match no sale.`,
-        hypothesis: "FIN_Z is a new financing partner taking a 3.8% cut.", ask_of: "cfo", question: "Is FIN_Z a new financing partner?",
-        options: [
-          { id: "yes", label: "Yes", impact: `Writes rule r9 and settles ${num(e.matched)} payouts (${rpShort(e.matchedAmount)}). ${e.orphans} stay held.` },
-          { id: "no", label: "No, not ours", impact: `Keeps all ${num(e.count)} held.` },
-          { id: "unsure", label: "I don't know", impact: `Keeps all ${num(e.count)} held and asks the Accountant to check contracts.` },
-        ],
-      };
-    }
-    await ctx.runMutation(internal.agents.writeStoryB, { storyKey: a.storyKey, real, steps: parsed.steps.slice(0, 8), summary: parsed.summary, hypothesis: parsed.hypothesis, askOf: parsed.ask_of === "accountant" ? "accountant" : "cfo", question: parsed.question, options: parsed.options.slice(0, 3).map((o) => ({ id: o.id, label: o.label, impact: o.impact })), matched: e.matched, orphans: e.orphans });
-    return null;
-  },
-});
-
-export const writeStoryB = internalMutation({
-  args: { storyKey: v.string(), real: v.boolean(), steps: v.array(v.string()), summary: v.string(), hypothesis: v.string(), askOf: v.union(v.literal("cfo"), v.literal("accountant")), question: v.string(), options: v.array(v.object({ id: v.string(), label: v.string(), impact: v.string() })), matched: v.number(), orphans: v.number() },
-  returns: v.null(),
-  handler: async (ctx, a) => {
-    const story = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.storyKey)).first();
-    if (!story) return null;
-    const now = Date.now();
-    for (let i = 0; i < a.steps.length; i++) await ctx.db.insert("trace_events", { agent: "investigator", month: story.month, storyKey: a.storyKey, kind: i === a.steps.length - 1 ? "decision" : "thought", text: a.steps[i], real: a.real, at: now + i });
-    const sid = story._id as Id<ItemTable>;
-    await transition(ctx, { table: "stories", id: sid, action: "annotate", actor: "investigator", month: story.month, reason: a.real ? "Investigation written by Claude" : "Scripted fallback investigation", patch: { askOf: a.askOf, investigation: { summary: a.summary, hypothesis: a.hypothesis, real: a.real } } });
-    const q = await ctx.db.query("questions").withIndex("by_story", (x) => x.eq("storyKey", a.storyKey)).first();
-    if (q) await transition(ctx, { table: "questions", id: q._id as Id<ItemTable>, action: "annotate", actor: "investigator", month: story.month, reason: "Question written", patch: { text: a.question, options: a.options, askOf: a.askOf, real: a.real } });
-    // Staged: the Investigator tries to approve the story it just built. The code denies it.
-    await ctx.db.insert("trace_events", { agent: "investigator", month: story.month, storyKey: a.storyKey, kind: "tool", text: "staged test: attempting to approve this story myself", real: false, staged: true, at: now + 50 });
-    const denied = await transition(ctx, { table: "stories", id: sid, action: "approve", actor: "investigator", month: story.month, reason: "Staged attempt: Investigator approves its own story", staged: true, patch: {} });
-    await ctx.db.insert("trace_events", { agent: "investigator", month: story.month, storyKey: a.storyKey, kind: "denied", text: denied.ok ? "unexpectedly allowed" : `denied in code: ${denied.denial}`, real: true, staged: true, at: now + 51 });
-    const opinion = `Searched for FIN_Z payouts matching two different sales: none. ${a.orphans} payouts match no sale at all and should stay held whatever the answer.`;
-    await transition(ctx, { table: "stories", id: sid, action: "annotate", actor: "auditor", month: story.month, reason: "Second opinion", patch: { auditorOpinion: { text: opinion, real: false } } });
-    await ctx.db.insert("trace_events", { agent: "auditor", month: story.month, storyKey: a.storyKey, kind: "result", text: opinion, real: false, at: now + 60 });
-    return null;
-  },
-});
 
 // ---------------- Learner writes r8 ----------------
 
@@ -195,8 +71,9 @@ Also add a top-level key "why": one sentence for the CFO. Return one JSON object
     let program: RuleProgram;
     let why = "";
     let real = true;
+    const drafted: string | null = await ctx.runQuery(internal.roomAgents.roomDraftRule, { storyKey: a.storyKey });
     try {
-      const raw = extractJson(await claude(system, user, 800)) as Record<string, unknown>;
+      const raw = (drafted ? { ...JSON.parse(drafted), why: "Drafted by the Learner in the case room, before the Accountant was asked." } : extractJson(await claude(system, user, 800))) as Record<string, unknown>;
       why = typeof raw.why === "string" ? raw.why : "";
       const val = validateRuleProgram({ ...raw, id: "r8" });
       if (!val.ok) throw new Error(val.error);

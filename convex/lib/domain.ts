@@ -86,6 +86,10 @@ export const DEALER_BY_NAME: Record<string, { code: string; name: string; store:
 export const MONTHLY_TOTALS = [8100, 8040, 8320, 8510, 8660, 8920, 8890, 9010, 8960, 9120, 9040, 9250];
 export const FIRST_PASS_RATE = [0.81, 0.84, 0.86, 0.92, 0.93, 0.89, 0.95, 0.96, 0.965, 0.97, 0.975, 0.98];
 export const QUESTIONS_PER_MONTH = [8, 6, 5, 3, 2, 4, 1, 1, 1, 0, 0, 0];
+// The two narrated stories whose case rooms meet live with Claude.
+export const STORY_A_KEY = "placement_conflict|S03|school_va";
+export const STORY_B_KEY = "unknown_lender|FIN_Z";
+
 export const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function daysInMonth(year: number, month: number): number {

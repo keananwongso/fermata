@@ -22,6 +22,8 @@ import type * as lib_rules from "../lib/rules.js";
 import type * as lib_transition from "../lib/transition.js";
 import type * as lib_world from "../lib/world.js";
 import type * as queries from "../queries.js";
+import type * as roomAgents from "../roomAgents.js";
+import type * as rooms from "../rooms.js";
 import type * as run from "../run.js";
 import type * as seed from "../seed.js";
 
@@ -46,6 +48,8 @@ declare const fullApi: ApiFromModules<{
   "lib/transition": typeof lib_transition;
   "lib/world": typeof lib_world;
   queries: typeof queries;
+  roomAgents: typeof roomAgents;
+  rooms: typeof rooms;
   run: typeof run;
   seed: typeof seed;
 }>;

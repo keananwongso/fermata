@@ -2,6 +2,7 @@
 // and the meeting manager (this file, code) gives the floor, records every message, and closes the meeting
 // with one question for one person. The manager never writes content; it only enforces.
 import type { MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { GAP_LABEL, type Gap } from "./lib/engineCore";
 import { MONTH_LABELS, STORE_BY_CODE } from "./lib/domain";
@@ -70,7 +71,8 @@ export async function engineOpening(ctx: MutationCtx, story: Doc<"stories">): Pr
 export async function openRoom(ctx: MutationCtx, story: Doc<"stories">, month: number, live: boolean) {
   await ctx.db.patch(story._id, { room: { state: "meeting", turns: 0, live } });
   await say(ctx, story, month, await engineOpening(ctx, story));
-  if (!live) await scriptedMeeting(ctx, (await ctx.db.get(story._id))!, month);
+  if (live) await ctx.scheduler.runAfter(0, internal.roomAgents.agentTurn, { storyKey: story.key, speaker: "investigator" });
+  else await scriptedMeeting(ctx, (await ctx.db.get(story._id))!, month);
 }
 
 // A meeting from the scripted drafts: Investigator to Auditor, Auditor to the room, then one question.

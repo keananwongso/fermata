@@ -132,6 +132,8 @@ export default defineSchema({
     tools: v.array(v.object({ name: v.string(), input: v.string(), rows: v.array(v.array(v.string())) })),
     text: v.string(),
     code: v.optional(v.string()),
+    // The one question an agent proposes for a person; the manager sends the latest one out when the meeting closes.
+    question: v.optional(v.object({ askOf: v.union(v.literal("cfo"), v.literal("accountant")), text: v.string(), options: v.array(v.object({ id: v.string(), label: v.string(), impact: v.string() })) })),
     at: v.number(),
   }).index("by_story_seq", ["storyKey", "seq"]),
   precedents: defineTable({ storyKey: v.string(), answer: v.string(), actor: role, effect: v.string(), at: v.number() })
