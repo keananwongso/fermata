@@ -114,9 +114,9 @@ The transcript of the agents' meeting on one held story.
 
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
-* `/` is the site; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
-  `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/` and
-  `/demo`, console tabs and the Acting as switch everywhere else.
+* `/` is the site; `/dashboard` is the overview; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
+  `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/`,
+  `/dashboard` and `/demo`, console tabs and the Acting as switch everywhere else.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
 * **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens one card stays in the middle of the
@@ -129,6 +129,26 @@ The transcript of the agents' meeting on one held story.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
+
+## Dashboard (`src/components/dashboard.tsx`, `/dashboard`)
+
+The product as an app window: the landing page's hero and the calm overview page at `/dashboard`. It reads only the
+recording, so it works on the hosted site with no Convex, and a re-export updates every figure.
+
+* **A window, not a page.** A `.frame` around one `.card` split into a `well` sidebar (the 𝄐 Fermata wordmark, the
+  fictional company, the console tabs with counts, and who is acting) and a `canvas` main area. On a phone the sidebar
+  folds into one bar across the top of the window.
+* **Three metric cards** (`.card`, eyebrow, `.figure` that `Roll`s, one sub line, then a small picture pinned to the
+  bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through),
+  the first pass share by month as a sparkline that draws in with `pathLength`, and the close as twelve month bars.
+  On a phone each card puts its picture beside the figure instead of under it.
+* **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
+  `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
+  (Claude, Code, scripted). Counts are computed from the rooms, rules and months, never typed.
+* **Waiting on you** is the one amber card: a `hold-tint` header with the 𝄐, open questions grouped by the person
+  asked, the largest first, each with a `Review` link. A person with nothing open says so and shows their last answer.
+* **Honest by construction:** a figure the recording does not hold is left out rather than invented (there is no
+  monthly cash series, so cash is a bank against books comparison, not a sparkline).
 
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
