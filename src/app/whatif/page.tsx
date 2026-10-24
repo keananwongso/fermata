@@ -1,7 +1,6 @@
 "use client";
 // What if: knobs for the generated world, then the real engine over the year with learning and without, computed by
 // /api/simulate on this machine (no Convex, no Claude). Every number on the page comes back from that run.
-import { motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { MONTH_LABELS, STORES } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
@@ -9,9 +8,9 @@ import { DRIFT_EXAMPLE, LEARNING_DEFAULTS } from "../../../convex/lib/generate";
 import type { SimResult } from "../../../scripts/simulateYear";
 import { Button, Card, Eyebrow, Loading, Metric, PageHead, Pill } from "@/components/ui";
 import { PUBLIC_SITE } from "@/components/nav";
+import { LearningChart } from "@/components/learningChart";
 import { FlaskConical } from "lucide-react";
 
-const EASE = [0.645, 0.045, 0.355, 1] as const;
 type Knobs = {
   preset: "learning" | "default"; seed: number; late: number; schoolMoved: number; advance: number; reversals: number; oneOffs: boolean;
   onboarding: boolean; onboardingShare: number; regionalFee: number;
@@ -159,10 +158,8 @@ function Results({ run }: { run: Run }) {
               <Eyebrow>Settled on first pass</Eyebrow>
               <h2 className="title mt-1.5 text-[clamp(19px,2.2vw,24px)]">Learning against rules frozen at onboarding</h2>
             </div>
-            <div className="flex flex-wrap gap-2"><Pill tone="accent">Learning</Pill><Pill>Baseline</Pill></div>
           </div>
-          <div className="sm:hidden"><Chart L={L} B={B} W={340} H={220} /></div>
-          <div className="hidden sm:block"><Chart L={L} B={B} W={900} H={260} /></div>
+          <LearningChart learned={L} baseline={B} className="mt-4" />
           {L.learned.length ? <div className="mt-3 flex flex-wrap gap-2">{L.learned.map((r) => <Pill key={`${r.id}${r.version}`} tone="accent">{MONTH_LABELS[r.month - 1]} · {r.id} v{r.version}</Pill>)}</div> : null}
           <div className="mt-6 grid grid-cols-2 gap-6 border-t border-hairline pt-5 md:grid-cols-4">
             <Metric label="December, learning" value={pct(share(L, 11))} sub={`January ${pct(share(L, 0))}`} />
@@ -214,32 +211,6 @@ function Results({ run }: { run: Run }) {
         </Card>
       </div>
     </div>
-  );
-}
-
-function Chart({ L, B, W, H }: { L: SimResult; B: SimResult; W: number; H: number }) {
-  const left = 44, right = 14, top = 20, bottom = 30;
-  const vals = [...L.months, ...B.months].map((m) => m.firstSettled / m.total);
-  const lo = Math.max(0, Math.floor((Math.min(...vals) - 0.03) * 20) / 20), hi = Math.min(1, Math.ceil(Math.max(...vals) * 20) / 20);
-  const x = (i: number) => left + (i / 11) * (W - left - right);
-  const y = (v: number) => top + (1 - (v - lo) / (hi - lo || 1)) * (H - top - bottom);
-  const path = (r: SimResult) => r.months.map((m, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(m.firstSettled / m.total).toFixed(1)}`).join(" ");
-  const grid: number[] = [];
-  for (let g = lo; g <= hi + 1e-9; g += 0.05) grid.push(Math.round(g * 100) / 100);
-  const marked = new Set(L.learned.map((r) => r.month - 1));
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-5 w-full" role="img" aria-label={`First pass share by month. Learning: ${L.months.map((m, i) => `${MONTH_LABELS[i]} ${pct(m.firstSettled / m.total)}`).join(", ")}. Baseline: ${B.months.map((m, i) => `${MONTH_LABELS[i]} ${pct(m.firstSettled / m.total)}`).join(", ")}.`}>
-      {grid.map((g, k) => (
-        <g key={g}>
-          <line x1={left} x2={W - right} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" strokeWidth={k === 0 ? 1 : 0.6} strokeDasharray={k === 0 ? "" : "2 4"} />
-          <text x={left - 8} y={y(g) + 4} textAnchor="end" className="num" fontSize="11" fill="var(--color-faint)">{pct(g, 0)}</text>
-        </g>
-      ))}
-      {MONTH_LABELS.map((m, i) => <text key={m} x={x(i)} y={H - 8} textAnchor="middle" fontSize={W < 400 ? 9.5 : 11} fill={marked.has(i) ? "var(--color-accent)" : "var(--color-faint)"}>{m}</text>)}
-      <motion.path d={path(B)} fill="none" stroke="var(--color-mute)" strokeWidth={1.75} strokeDasharray="5 4" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: EASE }} />
-      <motion.path d={path(L)} fill="none" stroke="var(--color-accent)" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: EASE }} />
-      {L.months.map((m, i) => <circle key={i} cx={x(i)} cy={y(m.firstSettled / m.total)} r={3.5} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth={1.75} />)}
-    </svg>
   );
 }
 

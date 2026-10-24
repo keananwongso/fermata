@@ -219,12 +219,29 @@ site redirects it to the demo like the rest of the console.
 * **Knobs in one card inside a `.frame`**, grouped under eyebrows (World, the off-by-default card fee knobs, New lender,
   Learning). Number fields are the record page's field (hairline border, `focus-within:border-accent`), months are a
   plain select, the world is a segmented radiogroup, stores are pressed toggles (`aria-pressed`, accent when on).
-* **One chart, two lines:** learning in `accent` (solid, with points), the baseline in `mute`, dashed. Learned rules are
-  accent pills under it and their months turn accent on the axis. Below it four `Metric`s; year-end held is the hold tone.
+* **One chart, two lines:** the shared `LearningChart` (see Learning comparison chart). Learned rules are also accent pills
+  under it. Below it four `Metric`s; year-end held is the hold tone.
 * **The month table and what it learned** sit side by side on wide screens. Each learned rule shows who answered and
   that the answer came from the answer key, a `Code` pill (never Claude: the simulator's Learner is code), and its fit
   and backtest as `›` lines in a `.panel`. Rules that failed to fit or failed their backtest are listed in red.
 * Every number on the screen comes from the run; the source line repeats that the Learner here is code.
+
+## Learning comparison chart (`src/components/learningChart.tsx`)
+
+`LearningChart` draws the learning claim: one year run twice on the same engine, once learning from people's answers and
+once with the rules frozen at onboarding, as the share settled on first pass by month. One component for the landing
+page's proof, the pitch's Self improving slide and the What if screen, so the comparison reads the same everywhere.
+
+* **Learning** is `accent`, solid, with white points. **Without learning** is `mute`, dashed. Each line ends in its
+  December share (accent and `faint`).
+* **Learned rules:** a `hold` 𝄐 (Noto Music) sits over the learning point of each month in which an answer became a
+  rule, and that month turns `accent` on the axis. This is the demo curve's mark, "an answer became a rule".
+* **A small legend** above (With learning, Without learning, 𝄐 An answer became a rule) and **the caption** under it,
+  always: "Simulated on the same engine: the same year, with and without learning." (`SIM_CAPTION`).
+* Below `sm` it draws a narrower phone chart (single letter months); `stage` draws only the wide one, for the pitch,
+  which scales it with CSS `zoom`. Lines draw in with `pathLength` the first time it scrolls into view.
+* Feed it `{ months, learned }` per run: a run from `/api/simulate`, or `src/demo/learning.json` through
+  `src/components/learningYear.ts`.
 
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
