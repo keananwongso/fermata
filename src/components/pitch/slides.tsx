@@ -269,7 +269,7 @@ function Built() {
               {arrow("M770 50 H828", 2)}
               {arrow("M380 112 V288", 3, [396, 210, `the ${pct(D.heldEver / D.total, 0)} it can't explain`])}
               {arrow("M712 430 H828", 4, [722, 414, "asks once"])}
-              {arrow("M935 380 C935 250 700 230 660 112", 5, [868, 520, "approves"])}
+              {arrow("M935 380 C935 250 700 230 660 112", 5, [872, 236, "approves"])}
             </svg>
             <Node x={0} y={0} w={210} title="Bank lines" sub={`and ${D.channels.length} sources`} />
             <Node x={270} y={0} w={220} title="Engine" sub="code · under a rule" />
