@@ -93,7 +93,8 @@ export function parseMemo(t: EngineTxn): Parsed {
     if (d) return { channel: "dealer", subStore: d.store, dealer: d.name, partial: x[2] === "PART", invoiceNos: x[3] ? x[3].split(" ") : undefined };
     return { channel: "unknown", subStore: null };
   }
-  if ((x = m.match(/^(FIN_[A-Z]) DISB S?(\d\d) \d+$/))) return { channel: "lender", subStore: st(x[2]), lender: x[1] };
+  // Lenders are named by the bank: FIN_X, FIN_Y, FIN_Z this year, and any other name a new partner pays out under.
+  if ((x = m.match(/^([A-Z][A-Z0-9_]{1,19}) DISB S?(\d\d) \d+$/))) return { channel: "lender", subStore: st(x[2]), lender: x[1] };
   if ((x = m.match(/^VA 8800(\d\d)\d{4} (ST\d\d-\d{4})$/))) return { channel: "school_va", subStore: st(x[1]), student: x[2] };
   if ((x = m.match(/^SCHOOL CASH S(\d\d) (\d{4}W\d\d)$/))) return { channel: "school_cash", subStore: st(x[1]), week: x[2] };
   if ((x = m.match(/^TRF (?:OUT|REVERSAL) (\S+)$/))) return { channel: "transfer_pair", subStore: null, pairRef: x[1] };

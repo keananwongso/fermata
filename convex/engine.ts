@@ -98,11 +98,12 @@ export function authorityFor(ids: string[], docs: Map<string, Doc<"rules"> | nul
 export interface BatchStats { firstSettled: number; waiting: number; held: number; settledLater: number; processed: number }
 
 // Rule settlements post to the books as summary entries, accumulated per batch and added to the month's entry.
-type JournalLine = { month: number; date: string; store: string | null; debit: string; credit: string; amount: number; authority: string };
+// A scenario's lines post to entries of their own, keyed from the scenario id so Reset can find them.
+type JournalLine = { month: number; date: string; store: string | null; debit: string; credit: string; amount: number; authority: string; scenario?: string };
 type Journal = Map<string, JournalLine & { lines: number }>;
 
 function addJournal(j: Journal, l: JournalLine) {
-  const key = `${l.month}|${l.debit}|${l.credit}|${l.authority}`;
+  const key = `${l.scenario ? l.scenario + "|" : ""}${l.month}|${l.debit}|${l.credit}|${l.authority}`;
   const e = j.get(key);
   if (!e) { j.set(key, { ...l, lines: 1 }); return; }
   e.amount += l.amount; e.lines++;
@@ -121,9 +122,10 @@ async function flushJournal(ctx: MutationCtx, j: Journal) {
 // `create` is the sync step, and it is written together with the decision as one chain.
 export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | null, txn: EngineTxn, d: Decision, opts: {
   passMonth: number; firstPass: boolean; docs: Map<string, Doc<"rules"> | null>; seen: Map<string, Row>; stats: BatchStats; settledCounts: Map<string, number>;
-  journal: Journal; create?: Step;
+  journal: Journal; create?: Step; scenario?: string;
 }): Promise<void> {
   const month = opts.passMonth;
+  const scenario = opts.scenario ?? item?.scenario;
   const target = { table: "work_items" as const, id: (item?._id ?? null) as Id<ItemTable> | null, month };
   const lead: Step[] = opts.create ? [opts.create] : [];
   if (d.kind === "settle") {
@@ -139,7 +141,7 @@ export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | 
     if (!r.ok) return;
     const store = d.placement.store;
     addJournal(opts.journal, {
-      month, date: txn.date, store, amount: txn.amount, authority,
+      month, date: txn.date, store, amount: txn.amount, authority, scenario,
       debit: `${txn.account}${store ? "/" + store : ""}`, credit: d.counterparts[0]?.table === "bank_transactions" ? "Reversed same day" : `Receivable cleared${store ? " · " + STORE_BY_CODE[store].name : ""}`,
     });
     for (const c of consumption(d)) {
@@ -152,12 +154,14 @@ export async function applyDecision(ctx: MutationCtx, item: Doc<"work_items"> | 
     await transitionChain(ctx, target, [...lead, { action: "wait", actor: "engine", reason: d.note, patch: { placement: d.placement, note: d.note } }]);
     if (opts.firstPass) opts.stats.waiting++;
   } else {
+    // A scenario's holds group into stories of their own, never into the year's.
+    const h = scenario ? { ...d, storyKey: `${d.storyKey}|${scenario}` } : d;
     const r = await transitionChain(ctx, target, [...lead, {
-      action: "hold", actor: "engine", reason: d.note,
-      patch: { placement: d.placement, note: d.note, gap: d.gap, storyKey: d.storyKey, facts: d.facts, everHeld: true },
+      action: "hold", actor: "engine", reason: h.note,
+      patch: { placement: h.placement, note: h.note, gap: h.gap, storyKey: h.storyKey, facts: h.facts, everHeld: true },
     }]);
     if (!r.ok) return;
-    await upsertStory(ctx, d, txn, month);
+    await upsertStory(ctx, h, txn, month, scenario);
     opts.stats.held++;
   }
 }
@@ -166,7 +170,7 @@ const NARRATED: Record<string, "A" | "B" | "C" | "D"> = {
   "placement_conflict|S03|school_va": "A", "unknown_lender|FIN_Z": "B", "petty_cash_retained|cash": "C", "no_store_record|cash": "D",
 };
 
-async function upsertStory(ctx: MutationCtx, d: Extract<Decision, { kind: "hold" }>, txn: EngineTxn, month: number) {
+async function upsertStory(ctx: MutationCtx, d: Extract<Decision, { kind: "hold" }>, txn: EngineTxn, month: number, scenario?: string) {
   const existing = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", d.storyKey)).first();
   const store = d.placement.store;
   if (existing) {
@@ -181,6 +185,7 @@ async function upsertStory(ctx: MutationCtx, d: Extract<Decision, { kind: "hold"
     insert: {
       key: d.storyKey, month, gap: d.gap, title, store: d.storyKey.startsWith("unknown_lender") || d.storyKey.startsWith("petty") || d.storyKey.startsWith("no_store") ? null : store,
       channel: p.channel, counterparty: d.counterparty, count: 1, amount: txn.amount, stores: store ? [store] : [], narrated: NARRATED[d.storyKey] ?? null,
+      ...(scenario ? { scenario } : {}),
     },
     patch: {},
   });
@@ -207,6 +212,15 @@ export const firstPassBatch = internalMutation({
 });
 
 export async function runFirstPass(ctx: MutationCtx, month: number, cursor: string | null, asOf: string) {
+  const page = await ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR).eq("month", month))
+    .paginate({ cursor, numItems: BATCH_ITEMS, maximumRowsRead: BATCH_ITEMS });
+  // Scenario lines are injected after the close and run their own first pass (scenario.ts).
+  const { stats, voteRef } = await firstPassLines(ctx, page.page.filter((b) => !b.scenario), month, asOf);
+  return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats, voteRef };
+}
+
+// The first pass over given bank lines: sync creates each work item, the engine decides, as one chain.
+export async function firstPassLines(ctx: MutationCtx, lines: Doc<"bank_transactions">[], month: number, asOf: string, scenario?: string) {
   const started = Date.now();
   const { programs, docs } = await approvedRules(ctx);
   const seen = new Map<string, Row>();
@@ -215,37 +229,36 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
   const settledCounts = new Map<string, number>();
   const journal: Journal = new Map();
   let voteRef: string | null = null;
-  const page = await ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR).eq("month", month))
-    .paginate({ cursor, numItems: BATCH_ITEMS, maximumRowsRead: BATCH_ITEMS });
-  for (const b of page.page) {
+  for (const b of lines) {
     const txn = strip(b);
     const create: Step = {
       action: "create", actor: "sync", reason: "Synced from the bank statement",
-      insert: { kind: "bank_txn", ref: b.key, year: YEAR, month, amount: b.amount, channel: parseMemo(txn).channel, firstPassMonth: month },
+      insert: { kind: "bank_txn", ref: b.key, year: YEAR, month, amount: b.amount, channel: parseMemo(txn).channel, firstPassMonth: month, ...(scenario ? { scenario } : {}) },
       patch: {},
     };
     const d = await evaluate(txn, programs, port, { asOf, firstPass: true });
-    await applyDecision(ctx, null, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts, journal, create });
+    await applyDecision(ctx, null, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts, journal, create, scenario });
     if (!voteRef && d.kind === "settle" && d.placement.confidence < 0.99 && d.placement.votes.length > 1) voteRef = b.key;
     stats.processed++;
-    if (Date.now() - started > BATCH_MS * 4) break;
+    if (!scenario && Date.now() - started > BATCH_MS * 4) break;
   }
-  await bumpRuleCounts(ctx, settledCounts, docs);
+  await bumpRuleCounts(ctx, settledCounts, docs, !!scenario);
   await flushJournal(ctx, journal);
-  return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats, voteRef };
+  return { stats, voteRef };
 }
 
-export async function bumpRuleCounts(ctx: MutationCtx, counts: Map<string, number>, docs: Map<string, Doc<"rules"> | null>) {
+// A scenario's settlements count only on rules the scenario itself made, so the year's counts never move.
+export async function bumpRuleCounts(ctx: MutationCtx, counts: Map<string, number>, docs: Map<string, Doc<"rules"> | null>, scenario = false) {
   for (const [id, n] of counts) {
     const r = docs.get(id);
-    if (!r) continue;
+    if (!r || (scenario && !r.scenario)) continue;
     const fresh = (await ctx.db.get(r._id))!;
     await ctx.db.patch(r._id, { settledCount: fresh.settledCount + n });
   }
 }
 
 // Later pass: re-check lines that were waiting for their records, or held lines under a newly approved rule.
-export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; state: "WAITING" | "HELD"; storyKey: string | null; cursor: string | null; asOf: string; passMonth: number }) {
+export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; state: "WAITING" | "HELD"; storyKey: string | null; cursor: string | null; asOf: string; passMonth: number; scenario?: string }) {
   const { programs, docs } = await approvedRules(ctx);
   const seen = new Map<string, Row>();
   const port = convexPort(ctx, opts.asOf, YEAR, seen);
@@ -273,7 +286,7 @@ export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; st
     if (d.kind === "wait") { stats.waiting++; continue; } // still waiting, nothing changes
     await applyDecision(ctx, item, txn, d, { passMonth: opts.passMonth, firstPass: false, docs, seen, stats, settledCounts, journal });
   }
-  await bumpRuleCounts(ctx, settledCounts, docs);
+  await bumpRuleCounts(ctx, settledCounts, docs, !!opts.scenario);
   await flushJournal(ctx, journal);
   void heldBefore;
   return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats };
