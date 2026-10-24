@@ -60,6 +60,7 @@ function Entry({ r, animate, onPick }: { r: Row; animate: boolean; onPick: (ref:
         <button className="num calm text-link underline decoration-hairline underline-offset-4 hover:text-accent hover:decoration-accent" onClick={() => onPick(head)}>{r.itemRef}</button>
         {r.allowed ? <span className="text-secondary">{r.fromState ? WORDS[r.fromState] : "created"} → {r.toState ? WORDS[r.toState] : ""}</span> : <Pill tone="danger"><ShieldX size={12} strokeWidth={1.75} />Blocked: {r.denial}</Pill>}
         {r.staged ? <Pill>staged</Pill> : null}
+        {r.scenario ? <Pill>scenario</Pill> : null}
       </div>
       <div className="mt-1 text-[13px] text-body">{r.reason}{r.authority ? <span className="text-faint"> · authority: {r.authority}</span> : null}</div>
       {r.diff.length ? (

@@ -67,7 +67,7 @@ function RoomList({ list, live, active, onPick }: { list: Story[]; live: Story[]
           {live.map((s) => (
             <button key={s.key} onClick={() => onPick(s.key)} aria-current={s.key === active ? "true" : undefined}
               className={`calm mb-1 block w-full rounded-[8px] border px-2.5 py-2 text-left ${s.key === active ? "border-accent/40 bg-accent-tint" : "border-hairline bg-ground hover:bg-hover"}`}>
-              <div className="flex items-center gap-1.5 text-[11px] text-faint">{MONTH_LABELS[s.month - 1]}{s.narrated ? <span className="text-hold-ink">· Story {s.narrated}</span> : null}<span className="ml-auto"><Pill tone="accent">Claude</Pill></span></div>
+              <div className="flex items-center gap-1.5 text-[11px] text-faint">{MONTH_LABELS[s.month - 1]}{s.narrated ? <span className="text-hold-ink">· Story {s.narrated}</span> : null}{s.scenario ? <span>· Scenario</span> : null}<span className="ml-auto"><Pill tone="accent">Claude</Pill></span></div>
               <div className="mt-1 text-[12.5px] font-medium leading-snug text-heading">{s.title}</div>
             </button>
           ))}
@@ -91,6 +91,7 @@ function Chat({ story }: { story: Story }) {
           <div className="flex items-center gap-2 text-[11.5px] text-faint">
             <span>{MONTH_LABELS[story.month - 1]}</span>
             {story.narrated ? <Pill tone="hold">Story {story.narrated}</Pill> : null}
+            {story.scenario ? <Pill>Scenario</Pill> : null}
             {story.room?.live ? <Pill tone="accent">Live agents</Pill> : <Pill>Scripted meeting</Pill>}
           </div>
           <h2 className="title mt-1 truncate text-[19px]" title={story.title}>{story.title}</h2>

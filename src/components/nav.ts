@@ -4,6 +4,7 @@ export const TABS = [
   { href: "/rules", label: "Rules" },
   { href: "/evaluation", label: "Evaluation" },
   { href: "/record", label: "Record" },
+  { href: "/scenarios", label: "Scenarios" },
 ];
 
 // The hosted site is only the landing page and the demo: the console spends real API calls and writes to the

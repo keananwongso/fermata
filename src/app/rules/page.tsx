@@ -24,7 +24,7 @@ export default function RulesPage() {
           <tbody>
             {rules.map((r) => (
               <tr key={r._id} onClick={() => setSel(r.ruleId)} aria-selected={id === r.ruleId} className={`calm cursor-pointer border-b border-hairline last:border-0 ${id === r.ruleId ? "bg-warm shadow-[inset_2px_0_0_var(--color-accent)]" : "hover:bg-hover"}`}>
-                <td className="px-4 py-3.5 lg:px-6"><div className="flex items-center gap-2"><span className="num text-faint">{r.ruleId}</span>{r.learnedInMonth ? <span className="text-hold">𝄐</span> : null}<span className={`font-medium ${id === r.ruleId ? "text-heading" : ""}`}>{r.title}</span></div></td>
+                <td className="px-4 py-3.5 lg:px-6"><div className="flex items-center gap-2"><span className="num text-faint">{r.ruleId}</span>{r.learnedInMonth ? <span className="text-hold">𝄐</span> : null}<span className={`font-medium ${id === r.ruleId ? "text-heading" : ""}`}>{r.title}</span>{r.scenario ? <Pill>Scenario</Pill> : null}</div></td>
                 <td className="hidden py-3.5 text-secondary md:table-cell">{r.origin}</td>
                 <td className="num hidden py-3.5 text-right text-secondary sm:table-cell">{r.seen ? `${num(r.seen.count)}` : "—"}</td>
                 <td className="num py-3.5 pl-3 text-right">{num(r.settledCount)}</td>
