@@ -7,7 +7,7 @@ import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
-import { Button, Pill } from "@/components/ui";
+import { Button, LinkArrow, LinkButton, Pill } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
 import { Arrival, Reveal, RevealItem, Roll, scrollBoxToEnd } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
@@ -150,7 +150,7 @@ function DemoPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {phase === "idle" ? <Button variant="primary" onClick={start}>Close the year</Button>
-            : phase === "done" ? <Button variant="primary" onClick={restart}>Play again</Button>
+            : phase === "done" ? <Button onClick={restart}>Play again</Button>
             : <Button onClick={() => setPaused((x) => !x)}>{paused ? "Resume" : "Pause"}</Button>}
           <div className="flex rounded-[6px] border border-hairline bg-well p-0.5" role="radiogroup" aria-label="Speed">
             {[1, 2, 4].map((s) => <button key={s} role="radio" aria-checked={speed === s} onClick={() => setSpeed(s)} className={`calm num min-h-9 rounded-[4.5px] px-2.5 text-[12px] lg:min-h-7 ${speed === s ? "bg-accent text-white" : "text-secondary hover:text-ink"}`}>{s}×</button>)}
@@ -213,10 +213,15 @@ function DemoPage() {
                   ))}
                   </AnimatePresence>
                 </ul>
+                {/* The hand-off: the guided path ends in the closed books, where the visitor explores on their own. */}
                 {phase === "done" ? (
-                  <div className="mt-4 border-t border-hairline pt-4 text-[12.5px] text-secondary">
-                    The year is closed. {num(R.final.settled)} lines settled, {num(R.rooms.length)} rooms, about 40 decisions for people.
-                    <div className="mt-2"><Link href={CONSOLE_LINK.href} className="text-link hover:text-accent">{CONSOLE_LINK.label} →</Link></div>
+                  <div className="enter mt-4 border-t border-hairline pt-4">
+                    <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} lines settled, {num(R.rooms.length)} rooms, about 40 decisions for people. Explore the closed books, or ask them anything.</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <LinkButton href="/dashboard">Explore the closed books</LinkButton>
+                      <LinkArrow href="/dashboard?view=ask">Ask the books</LinkArrow>
+                    </div>
+                    <Link href={CONSOLE_LINK.href} className="calm mt-3 inline-block text-[12px] text-faint hover:text-accent">{CONSOLE_LINK.label} →</Link>
                   </div>
                 ) : null}
               </motion.aside>

@@ -142,6 +142,10 @@ The transcript of the agents' meeting on one held story.
   `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
+* **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
+  button **Explore the closed books** (`/dashboard`), **Ask the books** (`/dashboard?view=ask`), and Run it yourself as
+  a quiet text link. Play again steps down to a secondary button so the hand-off is the one primary. The demo never
+  embeds the dashboard; it sends the visitor there.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
 
 ## Dashboard (`src/components/dashboard.tsx`, `/dashboard`)
