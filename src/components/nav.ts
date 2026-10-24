@@ -11,9 +11,10 @@ export const TABS = [
 export const PUBLIC_SITE = process.env.NEXT_PUBLIC_FERMATA_PUBLIC === "1";
 export const REPO_URL = "https://github.com/keananwongso/fermata";
 
-// The landing page and the public demo.
+// The landing page, the dashboard and the public demo.
 export const SITE_LINKS = [
   { href: "/#how", label: "How it works" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/demo", label: "Live demo" },
   PUBLIC_SITE ? { href: REPO_URL, label: "Run it yourself" } : { href: "/run", label: "Console" },
 ];
