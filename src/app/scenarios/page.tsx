@@ -17,7 +17,7 @@ const PRESETS: { kind: Kind; name: string; expect: string; params: Params }[] = 
   { kind: "lender", name: "New lender", expect: "Held, a live room, a question for the CFO. Answer yes: a rule, a backtest, and the payouts settle.", params: { lender: "FIN_Q", cut: 4.2, payouts: 6, stores: ["S05", "S09"], unmatched: 0, month: 12 } },
   { kind: "lender_no", name: "New lender, the CFO says no", expect: "The same room and question. Answer no: every payout stays held and nothing is booked.", params: { lender: "FIN_R", cut: 5.5, payouts: 4, stores: ["S02"], unmatched: 0, month: 12 } },
   { kind: "no_store", name: "Deposit no store recorded", expect: "Held, a live room, a question for the Accountant. Not ours: kept held, never booked as income.", params: { amount: 12_500_000, account: "BANK_A", count: 3, month: 12 } },
-  { kind: "dealer", name: "Dealer pays open invoices", expect: "Settles on the first pass under r6. No room and no question: there is nothing to ask.", params: { store: "S03", invoices: 3, fee: false, month: 12 } },
+  { kind: "dealer", name: "Dealer pays open invoices", expect: "Settles on the first pass under r6, plus r1 if the bank kept its fee. No room and no question: there is nothing to ask.", params: { store: "S03", invoices: 3, fee: false, month: 12 } },
 ];
 const KIND_NAME: Record<string, string> = Object.fromEntries(PRESETS.map((p) => [p.kind, p.name]));
 
@@ -82,7 +82,7 @@ function Preset({ preset }: { preset: (typeof PRESETS)[number] }) {
       <p className="mt-2 text-[13px] text-secondary">{preset.expect}</p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         {lender ? <>
-          <Field label="Lender, as the bank names it"><input className="field num" value={p.lender} onChange={set("lender")} /></Field>
+          <Field label="Lender"><input className="field num" value={p.lender} onChange={set("lender")} /></Field>
           <Field label="Its cut, %"><input className="field num" type="number" step={0.1} min={0.5} max={9.5} value={p.cut} onChange={set("cut")} /></Field>
           <Field label="Payouts"><input className="field num" type="number" min={1} max={40} value={p.payouts} onChange={set("payouts")} /></Field>
           <Field label="Without a sale"><input className="field num" type="number" min={0} max={39} value={p.unmatched} onChange={set("unmatched")} /></Field>
@@ -102,7 +102,7 @@ function Preset({ preset }: { preset: (typeof PRESETS)[number] }) {
             </div>
           </div>
         </> : preset.kind === "no_store" ? <>
-          <Field label="Each deposit, about (Rp)"><input className="field num" type="number" step={100000} min={100000} value={p.amount} onChange={set("amount")} /></Field>
+          <Field label="Each, about (Rp)"><input className="field num" type="number" step={100000} min={100000} value={p.amount} onChange={set("amount")} /></Field>
           <Field label="Deposits"><input className="field num" type="number" min={1} max={20} value={p.count} onChange={set("count")} /></Field>
           <Field label="Into the account" wide>
             <select className="field" value={p.account} onChange={set("account")}>{BANK_ACCOUNTS.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select>
@@ -111,7 +111,7 @@ function Preset({ preset }: { preset: (typeof PRESETS)[number] }) {
           <Field label="Dealer" wide>
             <select className="field" value={p.store} onChange={set("store")}>{STORES.map((s) => { const d = DEALERS.find((x) => x.store === s.code)!; return <option key={s.code} value={s.code}>{d.name} ({s.name})</option>; })}</select>
           </Field>
-          <Field label="Open invoices it pays"><input className="field num" type="number" min={1} max={5} value={p.invoices} onChange={set("invoices")} /></Field>
+          <Field label="Invoices it pays"><input className="field num" type="number" min={1} max={5} value={p.invoices} onChange={set("invoices")} /></Field>
           <label className="flex min-h-11 cursor-pointer items-end gap-2 pb-2 text-[13px] text-secondary lg:min-h-0"><input type="checkbox" className="size-4 accent-accent" checked={!!p.fee} onChange={(e) => setP((x) => ({ ...x, fee: e.target.checked }))} />Bank kept Rp 2,500</label>
         </>}
         <Field label="Month">

@@ -33,7 +33,7 @@ const EXPECT: Record<Kind, string> = {
   lender: "Held on the first pass: no approved rule knows this lender. A live room works out its cut and asks the CFO. Answer yes as the CFO: the Learner's rule is approved, backtested and the payouts settle.",
   lender_no: "The same room and question. Answer no as the CFO: every payout stays held and nothing is booked.",
   no_store: "Held: no store's cash matches. A live room checks every store and asks the Accountant. Answer not ours: they stay held and are never booked as income.",
-  dealer: "Settles on the first pass under r6, by the invoice numbers in the memo. No room, no question.",
+  dealer: "Settles on the first pass under r6 (and r1 when the bank kept its Rp 2,500), by the invoice numbers in the memo. No room, no question.",
 };
 
 // Same seed, same lines: a scenario is reproducible from its id.
