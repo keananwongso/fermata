@@ -220,7 +220,7 @@ function CashCard() {
 
 // First-pass share by month, drawn in as a line.
 function SettledCard() {
-  const W = 240, H = 40, pad = 4;
+  const W = 240, H = 34, pad = 4;
   const lo = Math.floor(Math.min(...shares) * 20) / 20, hi = 1;
   const pt = (v: number, i: number) => [(i / (shares.length - 1)) * W, H - pad - ((v - lo) / (hi - lo)) * (H - pad * 2)];
   const pts = shares.map(pt);
