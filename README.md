@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fermata 𝄐
 
-## Getting Started
+**Every line settles on its own. Fermata only holds where it should.**
 
-First, run the development server:
+Fermata is a prototype of an autonomous cash reconciliation system for a fictional Indonesian music retailer: 14 stores with a music school inside them, six sales channels, five bank accounts shared by all stores, and one year of books in rupiah. It closes the year month by month. It places every bank line at a store, matches it to the sales it pays for, settles what an approved rule explains, and holds the rest. Held lines are grouped into stories by root cause, and each story gets one question for the right person. Answers become rules, which are backtested on last year's data before the CFO approves them.
+
+A fermata is the music mark that means hold.
+
+> **All data is synthetic.** Every store, dealer, student, lender, account and amount is invented by a deterministic generator (`convex/lib/generate.ts`). Nothing here is a real business record.
+
+## Run it
+
+Requirements: Node 20+, npm, a Convex account, an Anthropic API key.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local          # fill in values locally, never commit them
+npx convex dev                       # creates or links a deployment, writes NEXT_PUBLIC_CONVEX_URL to .env.local
+npx convex env set ANTHROPIC_API_KEY <your key>   # agents run in Convex actions and read it there
+npm run seed                         # generates the synthetic year and loads it (about 300k rows)
+npm run dev                          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open **Run** and press **Close the year**. The close pauses in March (an Accountant correction becomes a rule) and in June (a question for the CFO). Switch between Accountant and CFO in the header. Tick **Autopilot** for a hands-free recording; autopilot answers are labelled as such in the record.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Other scripts:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run simulate` runs the same engine offline on the generated data and checks the learning curve against the brief.
+- `npm run reset` clears everything the close produced so it can run again on the same synced data.
 
-## Learn More
+### Deploying the frontend
 
-To learn more about Next.js, take a look at the following resources:
+Vercel: import the repository and set `NEXT_PUBLIC_CONVEX_URL` to your Convex deployment URL. For a production Convex deployment, run `npx convex deploy` and set `ANTHROPIC_API_KEY` on it too.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Convex** holds every table (`convex/schema.ts`). One function, `transition()` in `convex/lib/transition.ts`, changes any state. It checks a ROLES table and a TRANSITIONS table in code, and writes the change and an append-only `audit_log` row with a diff in the same mutation. Denied attempts are logged too.
+- **States**: NEW, PROPOSED, APPROVED, POSTED, plus WAITING (its records have not arrived; an existing rule will settle it later), NEEDS_INFO and HELD (only story items).
+- **Roles**: sync, engine, investigator, learner, auditor, accountant, cfo, gateway. Nobody approves their own proposal. Only the gateway posts. The engine approves a settlement only under an approved rule's limit and records "rule rX vN, approved by CFO" as the authority; this delegated approval is the one case where the proposer and approver are both the engine. Agents never approve or post.
+- **Engine** (`convex/lib/engineCore.ts`, plain TypeScript, no AI): parses each memo, places the line at a store by weighing evidence into a confidence, matches one-to-one and many-to-many (marketplace payout to its orders minus commission, dealer transfer to a subset of open invoices, school deposit to a week of receipts), settles under approved rules, and groups what is left into stories. The same code runs offline (`scripts/simulate.ts`) and in Convex batches (`convex/engine.ts`, `convex/run.ts`).
+- **Rules** are small JSON programs (`convex/lib/rules.ts`). r1 to r7 are fitted by the Learner from last year's rows (`convex/learner.ts`).
+- **Agents** (`convex/agents.ts`) call Claude from Convex actions. Real Claude calls: the Investigator's reasoning and question for the FIN_Z story, and the Learner writing rule r8. Other agent text is scripted and labelled "scripted" on screen.
+- **Frontend**: Next.js App Router, TypeScript, Tailwind, Convex React hooks for live updates. Five screens: Run, Stories, Rules, Evaluation, Record.
