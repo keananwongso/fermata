@@ -32,6 +32,7 @@ type Kind = "school_moved" | "card_fee" | "new_lender";
 const LEARNABLE: Record<string, Kind> = { "L:school_moved": "school_moved", A: "school_moved", "L:card_fee": "card_fee", "L:new_lender": "new_lender", B: "new_lender" };
 const RULE_FOR: Record<Kind, string> = { school_moved: "r8", card_fee: "r3", new_lender: "r9" };
 const pct = (x: number) => (x * 100).toFixed(1) + "%";
+const fee = (x: number) => (x * 100).toFixed(2).replace(/0$/, "") + "%";
 
 export async function simulateYear(w: World, opts: SimOptions): Promise<SimResult> {
   const t0 = Date.now();
@@ -208,7 +209,7 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
       const settledOld = year.some((t) => { const s = state.get(t.key); return s?.status === "settled" && s.d.kind === "settle" && s.d.ruleIds.includes("r3") && t.memo.startsWith("EDC ") && s.d.placement.store === store; });
       const from = settledOld ? exact.map((t) => recs.get(t.key)!.date).sort()[0] : undefined;
       fits.push({ store, debitFee, creditFee, from, n: exact.length, of: xs.length });
-      notes.push(`${store}: debit ${pct(debitFee)}, credit ${pct(creditFee)}${from ? ` from ${from}` : ", always"}, reproduces ${exact.length} of ${xs.length} to the rupiah`);
+      notes.push(`${store}: debit ${fee(debitFee)}, credit ${fee(creditFee)}${from ? ` from ${from}` : ", always"}, reproduces ${exact.length} of ${xs.length} to the rupiah`);
     }
     const good = fits.filter((f) => f.n >= 0.9 * f.of);
     if (!good.length) return { why: "no store's batches fit one fee", backtest: { scope: "held card batches", covered: 0, of: lines.length, wrong: 0, pass: false, notes } };
@@ -243,7 +244,7 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
     const now = await covers(inScope, rules.map((r) => (r.id === "r3" ? program : r)));
     notes.push(`settled card batches that would stop matching: ${broken}`, `last October at these stores: ${lyOld} matched the old r3, ${lyNew} match this one`);
     return {
-      program, fit: merged.map((x) => `${x.stores.join(", ")}: debit ${pct(x.debitFee)}, credit ${pct(x.creditFee)}${x.from ? ` from ${x.from}` : ""}`).join("; "),
+      program, fit: merged.map((x) => `${x.stores.join(", ")}: debit ${fee(x.debitFee)}, credit ${fee(x.creditFee)}${x.from ? ` from ${x.from}` : ""}`).join("; "),
       backtest: { scope: `${inScope.length} held card batches at ${good.map((f) => f.store).join(", ")}`, covered: now.n, of: inScope.length, wrong: broken, pass: broken === 0 && now.n >= 0.9 * inScope.length && lyNew >= lyOld, notes },
       stores: good.map((f) => f.store),
     };
@@ -272,7 +273,7 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
     const program: RuleProgram = { id: "r9", version: 1, title: `${lender} payout minus ${(cut * 100).toFixed(2).replace(/0$/, "")}%`, channels: ["lender"], match: "lender_sale", params: { lenders: { [lender]: cut }, windowDays: 7 }, limitIdr: 1_000_000_000 };
     const now = await covers(lines, [...rules, program]);
     return {
-      program, fit: `cut ${pct(cut)}, the most common implied cut over ${rows.length} payouts`,
+      program, fit: `cut ${fee(cut)}, the most common implied cut over ${rows.length} payouts`,
       backtest: {
         scope: `this year's ${lines.length} held ${lender} payouts (no history last year)`, covered: now.n, of: lines.length, wrong: two, pass: one >= 0.95 * lines.length && two === 0 && largest <= program.limitIdr,
         notes: [`${one} match exactly one sale, ${two} match two or more, ${none} match none`, `largest payout under the limit: ${largest <= program.limitIdr ? "yes" : "no"}`],
