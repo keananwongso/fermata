@@ -152,6 +152,8 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
   (Accountant / CFO). On mobile the tabs fold into a menu.
+  The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
+  to an anchor; give anchor targets `scroll-mt-36` so they land below it.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.
 * Tabs live in `src/components/nav.ts`; add a screen there once and the header and footer pick it up.
 

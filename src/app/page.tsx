@@ -37,7 +37,7 @@ function Landing() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="scroll-mt-28 space-y-20 lg:space-y-28">
+      <section id="how" className="scroll-mt-36 space-y-20 lg:space-y-28">
         <Reveal className="max-w-[640px]">
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">From messy books to a closed year.</h2></RevealItem>

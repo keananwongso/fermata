@@ -23,12 +23,14 @@ export function Header() {
   }, [open]);
   return (
     <>
+      <div aria-hidden onClick={() => setOpen(false)}
+        className={`fixed inset-0 z-20 bg-ink/25 transition-opacity duration-350 ease-out lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
+      {/* The notice bar and the header stick together, so the header sits in the same place at every scroll position. */}
+      <div className="sticky top-0 z-30">
       <div className="bg-night px-4 py-2 text-center text-[12px] text-white/75">
         A fictional Indonesian music retailer. Every store, amount and person here is synthetic.
       </div>
-      <div aria-hidden onClick={() => setOpen(false)}
-        className={`fixed inset-0 z-20 bg-ink/25 transition-opacity duration-350 ease-out lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
-      <header className="sticky top-3 z-30 mt-3 px-4 lg:px-6">
+      <header className="mt-3 px-4 lg:px-6">
         <div className="mx-auto max-w-[1180px] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)]">
           <div className="flex h-14 items-center gap-6 pl-4 pr-2 lg:pr-3">
             <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, home">
@@ -66,6 +68,7 @@ export function Header() {
           </div>
         </div>
       </header>
+      </div>
     </>
   );
 }
