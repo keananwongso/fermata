@@ -12,7 +12,7 @@ import { num, rp, rpShort } from "./lib/format";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
 import { draftQuestion, type QuestionDraft } from "./lib/investigate";
 import { ROOM_SPEAKERS, transition, type ItemTable, type Role } from "./lib/transition";
-import { closeRoom, roleName, roomMessages, say, scriptedMeeting } from "./rooms";
+import { closeRoom, openRoom, roleName, roomMessages, say, scriptedMeeting } from "./rooms";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
 export const MAX_TURNS = 6;
@@ -49,8 +49,11 @@ export const heldLines = internalQuery({
     const s = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.storyKey)).first();
     if (!s) return { summary: "no such story", rows: [] };
     const items = await storyItems(ctx, a.storyKey);
-    const rows: Rows = [["Lines", num(s.count)], ["Total", rp(s.amount)], ["Stores", s.stores.map(storeName).join(", ") || "none"], ["Counterparty", s.counterparty], ["Gap", s.gap]];
-    for (const it of items.slice(0, 5)) {
+    const dates: string[] = [];
+    for (const it of items) { const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first(); if (b) dates.push(b.date); }
+    dates.sort();
+    const rows: Rows = [["Lines", num(s.count)], ["Total", rp(s.amount)], ["Bank dates", dates.length ? `${dates[0]} to ${dates[dates.length - 1]}` : "none"], ["Story opened", MONTH_LABELS[s.month - 1]], ["Stores", s.stores.map(storeName).join(", ") || "none"], ["Counterparty", s.counterparty], ["Gap", s.gap]];
+    for (const it of items.slice(0, 3)) {
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
       if (b) rows.push([`${b.date} ${b.account} ${b.memo}`, rp(b.amount)]);
     }
@@ -180,13 +183,13 @@ type Block = { type: "text"; text: string } | { type: "tool_use"; id: string; na
 type Msg = { role: "user" | "assistant"; content: string | unknown[] };
 type ToolDef = { name: string; description: string; input_schema: Record<string, unknown> };
 
-async function claude(system: string, messages: Msg[], tools: ToolDef[], force?: string): Promise<{ content: Block[]; stop_reason: string }> {
+async function claude(system: string, messages: Msg[], tools: ToolDef[]): Promise<{ content: Block[]; stop_reason: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY is not set on the Convex deployment");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2000, system, messages, tools, tool_choice: force ? { type: "tool", name: force } : { type: "auto" } }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 2000, system, messages, tools, tool_choice: { type: "auto" } }),
   });
   if (!res.ok) throw new Error(`Claude returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return (await res.json()) as { content: Block[]; stop_reason: string };
@@ -205,12 +208,13 @@ const SAY: ToolDef = {
   name: "say",
   description: "Say your message to the room. Call exactly once, at the end of your turn.",
   input_schema: obj({
-    think: { type: "array", items: { type: "string" }, description: "2 to 5 short lower-case lines: what you checked and what you concluded" },
+    // Asking the model to write out its reasoning is refused; asking for findings from the tool results is not.
+    findings: { type: "array", items: { type: "string" }, description: "2 to 5 short findings, each one fact from a tool result, lower case" },
     text: { type: "string", description: "Your message, 2 to 4 short sentences, ending by addressing one colleague by name" },
     to: { type: "string", enum: ["investigator", "auditor", "learner", "cfo", "accountant", "room"] },
     question: obj({ ask_of: { type: "string", enum: ["cfo", "accountant"] }, text: { type: "string" }, options: { type: "array", items: obj({ id: { type: "string" }, label: { type: "string" }, impact: { type: "string" } }, ["id", "label", "impact"]) } }, ["ask_of", "text", "options"]),
     rule: { type: "string", description: "A draft rule program as a JSON string (Learner only)" },
-  }, ["think", "text", "to"]),
+  }, ["findings", "text", "to"]),
 };
 const ROLE_TOOLS: Record<string, string[]> = {
   investigator: ["held_lines", "known_lenders", "lender_sales", "lender_history", "school_receipts"],
@@ -266,8 +270,10 @@ export const agentTurn = internalAction({
     try {
       const tools = [...(ROLE_TOOLS[a.speaker] ?? []).map((t) => TOOL_DEFS[t]), SAY];
       const messages: Msg[] = [{ role: "user", content: `${transcript(story, msgs)}\n\nYou have the floor. Do your job, then call say.` }];
-      for (let i = 0; i < 6; i++) {
-        const res = await claude(systemPrompt(a.speaker, spec), messages, tools, i === 5 ? "say" : undefined);
+      const ROUNDS = 6;
+      for (let i = 0; i < ROUNDS; i++) {
+        const res = await claude(systemPrompt(a.speaker, spec), messages, tools);
+        if (res.stop_reason === "refusal") throw new Error("the model declined this turn");
         messages.push({ role: "assistant", content: res.content });
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");
         const said = uses.find((u) => u.name === "say");
@@ -275,14 +281,16 @@ export const agentTurn = internalAction({
           await ctx.runMutation(internal.roomAgents.finishTurn, { storyKey: a.storyKey, messageId: id, speaker: a.speaker, payload: JSON.stringify(said.input) });
           return null;
         }
-        if (!uses.length) { messages.push({ role: "user", content: "Call the say tool now." }); continue; }
-        const results = [];
+        // The model only accepts an automatic tool choice, so the last round asks for say in words.
+        const nudge = i >= ROUNDS - 2 ? [{ type: "text", text: "That is enough research. Call the say tool now." }] : [];
+        if (!uses.length) { messages.push({ role: "user", content: [{ type: "text", text: "Call the say tool now." }] }); continue; }
+        const results: unknown[] = [];
         for (const u of uses) {
           const r = await runTool(ctx, a.storyKey, u.name, u.input);
           await ctx.runMutation(internal.roomAgents.appendTool, { messageId: id, name: u.name, input: toolInput(u.input), rows: r.rows });
           results.push({ type: "tool_result", tool_use_id: u.id, content: JSON.stringify({ summary: r.summary, rows: r.rows }) });
         }
-        messages.push({ role: "user", content: results });
+        messages.push({ role: "user", content: [...results, ...nudge] });
       }
       throw new Error("the agent did not finish its turn");
     } catch (err) {
@@ -334,7 +342,7 @@ export const appendTool = internalMutation({
   },
 });
 
-type SayPayload = { think?: string[]; text?: string; to?: string; question?: { ask_of?: string; text?: string; options?: { id: string; label: string; impact: string }[] }; rule?: string };
+type SayPayload = { findings?: string[]; text?: string; to?: string; question?: { ask_of?: string; text?: string; options?: { id: string; label: string; impact: string }[] }; rule?: string };
 
 // The meeting manager. Records the turn, then decides who has the floor next, or closes the room.
 export const finishTurn = internalMutation({
@@ -359,7 +367,7 @@ export const finishTurn = internalMutation({
     const valid = ["investigator", "auditor", "learner", "cfo", "accountant", "room"];
     let to = p.to && valid.includes(p.to) ? p.to : "room";
     if (to === speaker) to = speaker === "auditor" ? "investigator" : "auditor";
-    await ctx.db.patch(a.messageId, { status: "done", think: (p.think ?? []).slice(0, 6), text: p.text ?? "", to, code, question });
+    await ctx.db.patch(a.messageId, { status: "done", think: (p.findings ?? []).slice(0, 6), text: p.text ?? "", to, code, question });
 
     if (!ROOM_SPEAKERS.includes(speaker)) { await manager(`${roleName(speaker)} may not speak in a case room.`); return null; }
 
@@ -445,5 +453,20 @@ export const roomDraftRule = internalQuery({
   handler: async (ctx, a): Promise<string | null> => {
     const msgs = await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", a.storyKey)).order("desc").take(200);
     return msgs.find((m) => m.speaker === "learner" && m.code)?.code ?? null;
+  },
+});
+
+// For testing one meeting without re-running the year: clears a live room and opens it again.
+export const rerunRoom = internalMutation({
+  args: { storyKey: v.string() },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const story = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.storyKey)).first();
+    if (!story) return null;
+    for (const m of await roomMessages(ctx, a.storyKey)) await ctx.db.delete(m._id);
+    for (const q of await ctx.db.query("questions").withIndex("by_story", (x) => x.eq("storyKey", a.storyKey)).take(5)) await ctx.db.delete(q._id);
+    await ctx.db.patch(story._id, { state: "NEW", room: undefined });
+    await openRoom(ctx, (await ctx.db.get(story._id))!, story.month, LIVE_ROOMS.has(a.storyKey));
+    return null;
   },
 });

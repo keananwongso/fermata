@@ -54,7 +54,7 @@ export async function engineOpening(ctx: MutationCtx, story: Doc<"stories">): Pr
   const where = story.stores.length === 1 ? ` at ${storeName(story.stores[0])}` : story.stores.length ? ` across ${story.stores.length} stores` : "";
   const why: Partial<Record<Gap, string>> = {
     unknown_lender: `No approved rule knows ${story.counterparty}, so I may not settle these.`,
-    placement_conflict: "The bank and the school's receipts point to different stores, so I cannot place them.",
+    placement_conflict: "I cannot tell which store they belong to.",
     petty_cash_retained: "Each deposit is short of the day's cash, so no rule lets me settle it.",
     no_store_record: "No store recorded cash that matches these, so I cannot place them at all.",
   };
