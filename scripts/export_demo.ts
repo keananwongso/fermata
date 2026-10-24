@@ -3,7 +3,8 @@
 //     identical to the run): every month's numbers and a sample of real lines with how each was decided.
 //   - The case rooms, questions and rules come from the real run on Convex, as the agents wrote them.
 // Run after a clean close: npx tsx --env-file=.env scripts/export_demo.ts
-import { writeFileSync, mkdirSync } from "node:fs";
+// With --engine-only it reruns only the offline engine and keeps the recorded run (no Convex needed).
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import { MONTHLY_TOTALS, STORE_BY_CODE, YEAR, isoDate, monthEnd } from "../convex/lib/domain";
@@ -34,7 +35,9 @@ async function engineYear() {
     state.set(t.key, { status: d.kind === "settle" ? "settled" : d.kind === "wait" ? "waiting" : "held", d, month });
   };
   const year = w.bank.filter((b) => b.year === YEAR);
-  const months: { month: number; total: number; firstSettled: number; waiting: number; held: number; settledLater: number }[] = [];
+  // settledLater: waiting lines whose records arrived by this month's end. released: held lines a rule learned this
+  // month settled. Together with yearEnd (December's waiting lines, settled in January) they add up to final.settled.
+  const months: { month: number; total: number; firstSettled: number; waiting: number; held: number; settledLater: number; released: number }[] = [];
   const lines: Record<number, Line[]> = {};
   const toLine = (t: BankTxn, d: Decision): Line => ({
     date: t.date, account: t.account, memo: t.memo, amount: t.amount, channel: parseMemo(strip(t)).channel,
@@ -46,14 +49,16 @@ async function engineYear() {
     note: d.note, story: d.kind === "hold" ? d.storyKey : null,
   });
   const rerun = async () => {
+    let n = 0;
     for (const t of year) {
       const s = state.get(t.key);
-      if (s?.status === "held") { const d = await evaluate(strip(t), rules, port, { asOf, firstPass: false }); if (d.kind === "settle") apply(t, d, s.month); }
+      if (s?.status === "held") { const d = await evaluate(strip(t), rules, port, { asOf, firstPass: false }); if (d.kind === "settle") { apply(t, d, s.month); n++; } }
     }
+    return n;
   };
   for (let m = 1; m <= 12; m++) {
     asOf = monthEnd(YEAR, m);
-    let settledLater = 0;
+    let settledLater = 0, released = 0;
     for (const t of year) {
       const s = state.get(t.key);
       if (s?.status === "waiting") { const d = await evaluate(strip(t), rules, port, { asOf, firstPass: false }); apply(t, d, s.month); if (d.kind === "settle") settledLater++; }
@@ -70,19 +75,23 @@ async function engineYear() {
       const n = perRule.get(k) ?? 0;
       if (n < (d.kind === "settle" ? 4 : 3)) { sample.push(toLine(t, d)); perRule.set(k, n + 1); }
     }
-    if (m === 3) { rules = [...rules, { id: "r8", version: 1, title: "Follow the school's receipts", channels: ["school_va"], match: "follow_receipt", params: {}, limitIdr: 50_000_000 }]; await rerun(); }
-    if (m === 6) { rules = [...rules, { id: "r9", version: 1, title: "FIN_Z payout minus 3.8%", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 }]; await rerun(); }
-    months.push({ month: m, total: MONTHLY_TOTALS[m - 1], firstSettled: first, waiting, held, settledLater });
+    if (m === 3) { rules = [...rules, { id: "r8", version: 1, title: "Follow the school's receipts", channels: ["school_va"], match: "follow_receipt", params: {}, limitIdr: 50_000_000 }]; released = await rerun(); }
+    if (m === 6) { rules = [...rules, { id: "r9", version: 1, title: "FIN_Z payout minus 3.8%", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 }]; released = await rerun(); }
+    months.push({ month: m, total: MONTHLY_TOTALS[m - 1], firstSettled: first, waiting, held, settledLater, released });
     lines[m] = sample.sort((a, b) => a.date.localeCompare(b.date));
   }
   asOf = isoDate(YEAR + 1, 1, 20);
-  for (const t of year) { const s = state.get(t.key); if (s?.status === "waiting") apply(t, await evaluate(strip(t), rules, port, { asOf, firstPass: false }), s.month); }
+  let yearEnd = 0;
+  for (const t of year) {
+    const s = state.get(t.key);
+    if (s?.status === "waiting") { const d = await evaluate(strip(t), rules, port, { asOf, firstPass: false }); apply(t, d, s.month); if (d.kind === "settle") yearEnd++; }
+  }
   const final = { settled: 0, waiting: 0, held: 0 };
   for (const t of year) final[state.get(t.key)!.status]++;
   // The biggest fan-out of the year: one payout settled against the most records.
   let fan: Line | null = null;
   for (const t of year) { const s = state.get(t.key)!; if (s.d.kind === "settle" && (!fan || s.d.fanout > fan.fanout)) fan = toLine(t, s.d); }
-  return { months, lines, final, fan, total: year.length };
+  return { months, yearEnd, lines, final, fan, total: year.length };
 }
 
 async function convexRun() {
@@ -116,6 +125,13 @@ async function convexRun() {
 }
 
 async function main() {
+  if (process.argv.includes("--engine-only")) {
+    const engine = await engineYear();
+    const prev = JSON.parse(readFileSync("src/demo/recording.json", "utf8"));
+    writeFileSync("src/demo/recording.json", JSON.stringify({ ...prev, ...engine }));
+    console.log(`updated the engine numbers in src/demo/recording.json, final ${JSON.stringify(engine.final)}`);
+    return;
+  }
   const [engine, run] = await Promise.all([engineYear(), convexRun()]);
   const out = { recordedAt: new Date().toISOString().slice(0, 10), year: YEAR, ...engine, ...run };
   mkdirSync("src/demo", { recursive: true });

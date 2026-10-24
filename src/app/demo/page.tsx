@@ -25,7 +25,7 @@ type Room = {
 };
 type Rec = {
   recordedAt: string; year: number; total: number; final: { settled: number; waiting: number; held: number };
-  months: { month: number; total: number; firstSettled: number; waiting: number; held: number; settledLater: number }[];
+  months: { month: number; total: number; firstSettled: number; waiting: number; held: number; settledLater: number; released: number }[]; yearEnd: number;
   lines: Record<string, Line[]>; fan: Line | null; rooms: Room[];
   rules: { id: string; title: string; origin: string; learnedInMonth: number; real: boolean; state: string }[];
 };
@@ -131,11 +131,13 @@ function DemoPage() {
   };
   const restart = () => { setPhase("idle"); setMonth(1); setP(0); setRoom(null); setShown([]); setAnswered([]); setLine(null); setPaused(false); };
 
-  // Counters: everything before this month, plus this month's share so far.
+  // Counters: everything before this month, plus this month's share so far. Held lines a new rule releases count once
+  // the month's question is answered, and December's waiting lines once the year closes, so done shows final.settled.
   const m = R.months[month - 1];
   const f = phase === "running" ? p : phase === "idle" ? 0 : 1;
   const processed = phase === "idle" ? 0 : Math.round(cum(month - 1, (x) => x.total) + m.total * f);
-  const settled = phase === "idle" ? 0 : Math.round(cum(month - 1, (x) => x.firstSettled + x.settledLater) + (m.firstSettled + m.settledLater) * f);
+  const settled = phase === "idle" ? 0 : Math.round(cum(month - 1, (x) => x.firstSettled + x.settledLater + x.released) + (m.firstSettled + m.settledLater) * f
+    + (phase === "after" || phase === "done" ? m.released : 0) + (phase === "done" ? R.yearEnd : 0));
   const roomsOpen = R.rooms.filter((r) => r.month < month || (r.month === month && (phase !== "running" || p > 0.6)));
   const visibleRooms = phase === "idle" ? [] : roomsOpen;
   // The engine stream runs on across months and shows at most one new line every 250ms, sampled evenly from the month's
