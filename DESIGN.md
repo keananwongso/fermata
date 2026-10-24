@@ -123,11 +123,12 @@ The transcript of the agents' meeting on one held story.
   description) is pinned while the page scrolls through a tall track, and how far through the track you are picks the
   beat. All three swap together, so only one beat is ever on screen. The card opens out of a strip as the section
   arrives (a scroll-linked `clip-path`, smoothed with a spring), its rows cascade in (`.cascade`), and dots track and
-  jump between beats. When a scroll comes to rest inside the section it glides on to the next beat in the direction it
-  was going, so each gesture turns one beat; past the last beat or above the first, scrolling is free. On narrow
-  screens the beats stack.
+  jump between beats. Each wheel or touch gesture inside the section turns exactly one beat however hard it is, with the
+  rest of the gesture (momentum included) swallowed, and a fling from either side stops on the section's first or last
+  beat. Past the last beat or above the first, scrolling is free. On narrow screens the beats stack.
 * **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased, slightly weighted scrolling that gives
-  the page its friction. Use `withLenis` to hook into it and `scrollToY` to move the page. Both are off under reduced
+  the page its friction. Use `withLenis` to hook into it, `addScrollGate` to hold the page still for a section, and
+  `scrollToY` to move the page. Both are off under reduced
   motion, where the page scrolls natively. Do not add CSS scroll snap on top of it.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
   `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.

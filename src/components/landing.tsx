@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { LinkArrow, Tag } from "./ui";
-import { BrandGrid, scrollToY, withLenis } from "./motion";
+import { BrandGrid, addScrollGate, scrollToY, withLenis } from "./motion";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
@@ -164,9 +164,9 @@ type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
 
 // How it works. On wide screens the whole stage (title, card, description) is pinned while the page scrolls through a
 // tall track; how far through the track you are picks the beat, and all three swap together, so only one beat is ever
-// on screen. When a scroll comes to rest inside the section it glides on to the next beat in the direction it was
-// going, so each gesture turns one beat like a page: that is the section's catch. Scrolling past the last beat or
-// back above the first is never pulled, so nobody gets trapped. The card opens out of a strip as the section arrives. On narrow screens
+// on screen. Each gesture inside the section turns exactly one beat like a page, however hard the scroll, and a fling
+// from outside stops on the section instead of flying past it. Scrolling on past the last beat or back above the
+// first is let through, so nobody gets trapped. The card opens out of a strip as the section arrives. On narrow screens
 // the beats simply stack.
 const HEAD = 104; // the sticky notice bar and header
 export function HowItWorks({ beats }: { beats: Beat[] }) {
@@ -183,29 +183,61 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   const marks = useRef<(HTMLDivElement | null)[]>([]);
   const jump = (i: number) => { const m = marks.current[i]; if (m) scrollToY(m.getBoundingClientRect().top + window.scrollY); };
   useEffect(() => withLenis((l) => {
-    let timer = 0, gliding = false, dir = 0;
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    let locked = false, landed = true, lastInput = 0, timer = 0, dir = 0;
+    const where = () => {
+      const el = track.current;
+      if (!el || !el.offsetParent) return null;
+      const step = window.innerHeight * STEP;
+      return { step, start: el.getBoundingClientRect().top + window.scrollY - HEAD, last: (n - 1) * step };
+    };
+    const glide = (y: number) => {
+      locked = true; landed = false;
+      l.scrollTo(y, { duration: 0.8, easing: ease, lock: true, force: true, onComplete: () => { landed = true; } });
+    };
+
+    // Wheel and touch input: inside the section every gesture turns exactly one beat, and the rest of that gesture,
+    // momentum included, is swallowed until it dies out. A fling that would cross the section from either side is
+    // caught on its first or last beat. Moving on past the last beat, or back above the first, is let through.
+    const removeGate = addScrollGate(({ deltaY }) => {
+      const g = where();
+      if (!g) return true;
+      const now = performance.now(), gap = now - lastInput;
+      lastInput = now;
+      if (locked) {
+        if (!landed || gap < 220) return false;
+        locked = false;
+      }
+      if (Math.abs(deltaY) < 2) return true;
+      const at = l.targetScroll - g.start, d = Math.sign(deltaY), ahead = at + deltaY;
+      if (d > 0 && at < -1 && ahead >= -1) { glide(g.start); return false; }
+      if (d < 0 && at > g.last + 1 && ahead <= g.last + 1) { glide(g.start + g.last); return false; }
+      if (at >= -1 && at <= g.last + 1) {
+        const next = Math.round(at / g.step) + d;
+        if (next >= 0 && next < n) { glide(g.start + next * g.step); return false; }
+      }
+      return true;
+    });
+
+    // Anything else that leaves the page between beats (keys, the scrollbar) glides on to the next beat once it slows.
     const settle = () => {
       timer = 0;
-      const el = track.current;
-      if (!el || gliding || !el.offsetParent) return;
-      const step = window.innerHeight * STEP;
-      const pos = window.scrollY - (el.getBoundingClientRect().top + window.scrollY - HEAD);
-      const last = (n - 1) * step;
-      if (pos < -step * 0.4 || pos > last + 1) return;
-      const target = dir >= 0 ? Math.min(last, Math.ceil((pos - 2) / step) * step) : Math.max(0, Math.floor((pos + 2) / step) * step);
+      const g = where();
+      if (!g || locked) return;
+      const pos = window.scrollY - g.start;
+      if (pos < -g.step * 0.4 || pos > g.last + 1) return;
+      const target = dir >= 0 ? Math.min(g.last, Math.ceil((pos - 2) / g.step) * g.step) : Math.max(0, Math.floor((pos + 2) / g.step) * g.step);
       if (Math.abs(target - pos) < 2 || (dir < 0 && pos < 0)) return;
-      gliding = true;
-      l.scrollTo(window.scrollY + target - pos, { duration: 0.75, easing: (t) => 1 - Math.pow(1 - t, 3), onComplete: () => { gliding = false; } });
+      glide(window.scrollY + target - pos);
     };
-    // Lenis eases to a stop over a long tail, so glide as soon as it slows to a crawl rather than waiting it out.
     const onScroll = () => {
-      if (gliding) return;
+      if (locked) return;
       if (l.direction) dir = l.direction;
       if (Math.abs(l.velocity) > 3) { window.clearTimeout(timer); timer = 0; }
       else if (!timer) timer = window.setTimeout(settle, 90);
     };
     l.on("scroll", onScroll);
-    return () => { window.clearTimeout(timer); l.off("scroll", onScroll); };
+    return () => { removeGate(); window.clearTimeout(timer); l.off("scroll", onScroll); };
   }), [n]);
   const swap = { initial: { opacity: 0, y: 18, filter: "blur(6px)" }, animate: { opacity: 1, y: 0, filter: "blur(0px)" }, exit: { opacity: 0, y: -14, filter: "blur(4px)" } };
 
