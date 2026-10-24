@@ -5,6 +5,7 @@ import { api } from "../../../convex/_generated/api";
 import { num, pct, shortDate } from "../../../convex/lib/format";
 import { Bar, Button, Card, Eyebrow, Metric, PageHead, Pill } from "@/components/ui";
 import { Count } from "@/components/motion";
+import { CONSOLE_KEY } from "@/components/consoleKey";
 import { FlaskConical } from "lucide-react";
 
 export default function EvaluationPage() {
@@ -22,7 +23,7 @@ export default function EvaluationPage() {
     <div className="space-y-10 lg:space-y-14">
       <PageHead tag="Hidden truth" title="Evaluation"
         actions={
-          <Button variant="primary" className="self-start lg:self-auto" disabled={busy || lines === 0} onClick={async () => { setBusy(true); try { await runEval({}); } finally { setBusy(false); } }}>
+          <Button variant="primary" className="self-start lg:self-auto" disabled={busy || lines === 0} onClick={async () => { setBusy(true); try { await runEval({ consoleKey: CONSOLE_KEY }); } finally { setBusy(false); } }}>
             <FlaskConical size={16} strokeWidth={1.75} className={busy ? "animate-pulse" : ""} />{busy ? "Running the checks…" : "Run the checks"}
           </Button>
         }>Checked against the generator’s hidden truth, which the engine never reads.</PageHead>

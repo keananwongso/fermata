@@ -11,13 +11,14 @@ import { LENDER_TRUE_CUT, STORE_BY_CODE, addDays, type StoreCode } from "./lib/d
 import { parseMemo } from "./lib/engineCore";
 import { rpShort, num } from "./lib/format";
 import { validateRuleProgram, type RuleProgram } from "./lib/rules";
+import { CONSOLE_REFUSAL, consoleKey, isConsole } from "./lib/console";
 
 const human = v.union(v.literal("accountant"), v.literal("cfo"));
 
 export const answer = mutation({
-  args: { questionId: v.id("questions"), optionId: v.string(), actor: human, autopilot: v.optional(v.boolean()) },
+  args: { questionId: v.id("questions"), optionId: v.string(), actor: human, autopilot: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doAnswer(ctx, a.questionId, a.optionId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doAnswer(ctx, a.questionId, a.optionId, a.actor, !!a.autopilot) : CONSOLE_REFUSAL),
 });
 
 async function doAnswer(ctx: MutationCtx, questionId: Id<"questions">, optionId: string, actor: Role, autopilot: boolean): Promise<string | null> {
@@ -38,9 +39,9 @@ async function doAnswer(ctx: MutationCtx, questionId: Id<"questions">, optionId:
 }
 
 export const confirm = mutation({
-  args: { questionId: v.id("questions"), actor: human, autopilot: v.optional(v.boolean()) },
+  args: { questionId: v.id("questions"), actor: human, autopilot: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doConfirm(ctx, a.questionId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doConfirm(ctx, a.questionId, a.actor, !!a.autopilot) : CONSOLE_REFUSAL),
 });
 
 async function doConfirm(ctx: MutationCtx, questionId: Id<"questions">, actor: Role, autopilot: boolean): Promise<string | null> {
@@ -157,9 +158,9 @@ async function proposeAndApproveR9(ctx: MutationCtx, story: Doc<"stories">, acto
 }
 
 export const approveRule = mutation({
-  args: { ruleDocId: v.id("rules"), actor: human, autopilot: v.optional(v.boolean()) },
+  args: { ruleDocId: v.id("rules"), actor: human, autopilot: v.optional(v.boolean()), consoleKey },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, a) => doApproveRule(ctx, a.ruleDocId, a.actor, !!a.autopilot),
+  handler: async (ctx, a) => (isConsole(a.consoleKey) ? doApproveRule(ctx, a.ruleDocId, a.actor, !!a.autopilot) : CONSOLE_REFUSAL),
 });
 
 async function doApproveRule(ctx: MutationCtx, ruleDocId: Id<"rules">, actor: Role, autopilot: boolean): Promise<string | null> {

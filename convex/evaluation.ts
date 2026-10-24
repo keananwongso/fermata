@@ -7,6 +7,7 @@ import { convexPort, strip } from "./engine";
 import { evaluate, type EngineTxn } from "./lib/engineCore";
 import type { RuleProgram } from "./lib/rules";
 import { YEAR, STORES, isoDate } from "./lib/domain";
+import { consoleKey, requireConsole } from "./lib/console";
 
 const WEEK_FROM = `${YEAR}-12-15`, WEEK_TO = `${YEAR}-12-21`;
 
@@ -87,9 +88,10 @@ export const save = internalMutation({
 });
 
 export const run = action({
-  args: {},
+  args: { consoleKey },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, a) => {
+    requireConsole(a.consoleKey);
     const tot = { posted: 0, byRule: 0, byPerson: 0, withStore: 0, wrongStore: 0, weekSettled: 0, weekCorrect: 0, weekHeld: 0, weekTotal: 0 };
     const wrongExamples: string[] = [];
     let cursor: string | null = null;

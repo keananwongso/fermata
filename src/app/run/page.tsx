@@ -8,6 +8,7 @@ import { num, pct, rp, rpShort, shortDate } from "../../../convex/lib/format";
 import { Bar, Button, Card, Eyebrow, LinkArrow, Metric, Pill, Tag } from "@/components/ui";
 import { BrandGrid, Reveal, RevealItem, Roll, Splash } from "@/components/motion";
 import { QuestionCard, RuleApproval } from "@/components/question";
+import { CONSOLE_KEY } from "@/components/consoleKey";
 import { ArrowRight, Play } from "lucide-react";
 import { AnimatePresence, motion, useInView } from "motion/react";
 import type { Format } from "@number-flow/react";
@@ -97,12 +98,12 @@ function Controls({ o }: { o: Overview }) {
   const autopilot = idle ? auto : !!run?.autopilot;
   return (
     <section className="flex flex-col gap-5 lg:flex-row lg:flex-wrap lg:items-center">
-      <Button variant="primary" disabled={!idle} onClick={() => start({ autopilot: auto })}>
+      <Button variant="primary" disabled={!idle} onClick={() => start({ autopilot: auto, consoleKey: CONSOLE_KEY })}>
         <Play size={16} strokeWidth={1.75} />{idle ? "Close the year" : done ? (run?.phase === "done" ? "Year closed" : "Final pass") : run?.pausedFor ? "Paused for a person" : `Closing ${MONTH_LABELS[current - 1]}`}
       </Button>
       <label className="flex cursor-pointer items-center gap-2 text-[13px] text-secondary">
         <input type="checkbox" className="size-4 accent-accent" checked={autopilot}
-          onChange={(e) => { if (idle) setAutoLocal(e.target.checked); else void setAuto({ on: e.target.checked }); }} />
+          onChange={(e) => { if (idle) setAutoLocal(e.target.checked); else void setAuto({ on: e.target.checked, consoleKey: CONSOLE_KEY }); }} />
         Autopilot answers for a hands-free recording
       </label>
       <div className="flex flex-wrap gap-1.5 lg:ml-auto">

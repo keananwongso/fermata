@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useRole } from "./providers";
+import { CONSOLE_KEY } from "./consoleKey";
 import { ROLE_LABEL } from "./header";
 import { Button, Pill } from "./ui";
 import { Check, CornerDownRight } from "lucide-react";
@@ -43,7 +44,7 @@ export function QuestionCard({ q }: { q: Doc<"questions"> }) {
             </button>
           ))}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <Button variant="primary" disabled={!mine || !picked || busy} onClick={() => run(() => answer({ questionId: q._id, optionId: picked!, actor: role }))}>Answer as {ROLE_LABEL[role]}</Button>
+            <Button variant="primary" disabled={!mine || !picked || busy} onClick={() => run(() => answer({ questionId: q._id, optionId: picked!, actor: role, consoleKey: CONSOLE_KEY }))}>Answer as {ROLE_LABEL[role]}</Button>
             {!mine ? <span className="text-[12px] text-faint">Switch to {askedOf} in the header to answer.</span> : null}
           </div>
         </div>
@@ -59,7 +60,7 @@ export function QuestionCard({ q }: { q: Doc<"questions"> }) {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button variant="primary" disabled={!mine || busy} onClick={() => run(() => confirm({ questionId: q._id, actor: role }))}>Confirm</Button>
+            <Button variant="primary" disabled={!mine || busy} onClick={() => run(() => confirm({ questionId: q._id, actor: role, consoleKey: CONSOLE_KEY }))}>Confirm</Button>
             {!mine ? <span className="text-[12px] text-faint">Only the {askedOf} can confirm.</span> : null}
           </div>
         </div>
@@ -95,7 +96,7 @@ export function RuleApproval({ rule }: { rule: Doc<"rules"> }) {
       {rule.audit ? <div className="mt-3 text-[13px] text-secondary"><span className="font-medium text-ink">Auditor: </span>{rule.audit.note}</div> : null}
       {rule.state === "PROPOSED" && rule.audit ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={async () => { const e = await approve({ ruleDocId: rule._id, actor: role }); setError(e); }}>Approve {rule.ruleId} as {ROLE_LABEL[role]}</Button>
+          <Button variant="primary" onClick={async () => { const e = await approve({ ruleDocId: rule._id, actor: role, consoleKey: CONSOLE_KEY }); setError(e); }}>Approve {rule.ruleId} as {ROLE_LABEL[role]}</Button>
           {role !== "cfo" ? <span className="text-[12px] text-faint">Only the CFO approves rules. Try it as Accountant to see the denial in the record.</span> : null}
         </div>
       ) : null}
