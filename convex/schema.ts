@@ -100,7 +100,7 @@ export default defineSchema({
     key: v.string(), state, month: v.number(), gap: v.string(), title: v.string(), store: v.union(store, v.null()),
     channel, counterparty: v.string(), count: v.number(), amount: v.number(), stores: v.array(store),
     narrated: v.union(v.literal("A"), v.literal("B"), v.literal("C"), v.literal("D"), v.null()),
-    askOf: v.optional(role), resolution: v.optional(v.string()), heldAtYearEnd: v.optional(v.number()),
+    askOf: v.optional(role), resolution: v.optional(v.string()), heldAtYearEnd: v.optional(v.number()), proposer: v.optional(role),
     investigation: v.optional(v.object({ summary: v.string(), hypothesis: v.string(), real: v.boolean() })),
     auditorOpinion: v.optional(v.object({ text: v.string(), real: v.boolean() })),
   })
@@ -123,7 +123,7 @@ export default defineSchema({
   questions: defineTable({
     storyKey: v.string(), state, askOf: role, text: v.string(),
     options: v.array(v.object({ id: v.string(), label: v.string(), impact: v.string() })),
-    answer: v.optional(v.string()), answeredBy: v.optional(role), confirmed: v.optional(v.boolean()),
+    answer: v.optional(v.string()), answeredBy: v.optional(role), confirmed: v.optional(v.boolean()), proposer: v.optional(role),
     real: v.boolean(), month: v.number(),
   })
     .index("by_story", ["storyKey"])

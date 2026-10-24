@@ -53,7 +53,7 @@ export const resetRunState = internalMutation({
     const items = await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "month")).take(20);
     for (const it of items) await ctx.db.patch(it._id, { stats: { total: MONTHLY_TOTALS[it.month - 1] } });
     const close = await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", "close")).first();
-    if (close) await ctx.db.patch(close._id, { run: { phase: "idle", month: 0, cursor: null, pausedFor: null, autopilot: false, startedAt: 0, finishedAt: null, rerunRule: null } });
+    if (close) await ctx.db.patch(close._id, { note: undefined, run: { phase: "idle", month: 0, cursor: null, pausedFor: null, autopilot: false, startedAt: 0, finishedAt: null, rerunRule: null } });
     for (const r of await ctx.db.query("rules").take(100)) {
       if (["r8", "r9"].includes(r.ruleId)) await ctx.db.delete(r._id);
       else await ctx.db.patch(r._id, { settledCount: 0 });

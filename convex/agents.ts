@@ -21,8 +21,10 @@ async function claude(system: string, user: string, maxTokens = 1500): Promise<s
     body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
   });
   if (!res.ok) throw new Error(`Claude returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const body = (await res.json()) as { content: { type: string; text?: string }[] };
-  return body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
+  const body = (await res.json()) as { content: { type: string; text?: string }[]; stop_reason?: string };
+  const text = body.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
+  if (!text) throw new Error(`Claude returned no text (stop reason: ${body.stop_reason ?? "unknown"}, blocks: ${body.content.map((c) => c.type).join(",")})`);
+  return text;
 }
 
 function extractJson(text: string): unknown {
@@ -47,6 +49,7 @@ export const storyBEvidence = internalQuery({
     const cuts: number[] = [];
     const examples: string[] = [];
     let firstDate = "9999", lastDate = "0000";
+    const rows: { b: { date: string; memo: string; amount: number }; sales: { amount: number; date: string; key: string }[] }[] = [];
     for (const it of items) {
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
       if (!b) continue;
@@ -56,15 +59,24 @@ export const storyBEvidence = internalQuery({
       const p = parseMemo({ ...b, account: b.account as never });
       if (p.subStore) stores.add(p.subStore);
       const sales = p.subStore ? await ctx.db.query("erp_invoices").withIndex("by_store_kind_date", (q) => q.eq("store", p.subStore as StoreCode).eq("kind", "installment_sale").gte("date", addDays(b.date, -7)).lte("date", addDays(b.date, -1))).take(100) : [];
-      const fz = sales.filter((s) => s.lender === "FIN_Z").map((s) => ({ s, cut: 1 - b.amount / (s.amount ?? 1) })).filter((x) => x.cut > 0 && x.cut < 0.1).sort((x, y) => Math.abs(x.cut - 0.038) - Math.abs(y.cut - 0.038));
-      if (fz.length) { matched++; matchedAmount += b.amount; cuts.push(Math.round(fz[0].cut * 10000) / 10000); if (examples.length < 4) examples.push(`${b.date} ${b.memo}: payout ${b.amount}, FIN_Z installment sale ${fz[0].s.amount} on ${fz[0].s.date} at the same store`); }
-      else if (examples.length < 6) examples.push(`${b.date} ${b.memo}: payout ${b.amount}, no FIN_Z sale at that store in the 7 days before`);
+      const fz = sales.filter((s) => s.lender === "FIN_Z").map((s) => ({ amount: s.amount ?? 0, date: s.date, key: s.key }));
+      rows.push({ b, sales: fz });
+      for (const s of fz) { const c = Math.round((1 - b.amount / s.amount) * 1000) / 1000; if (c > 0 && c < 0.1) cuts.push(c); }
     }
+    // The most common implied cut, then an exact rupiah check against it.
+    const hist: Record<string, number> = {};
+    for (const c of cuts) hist[c.toFixed(3)] = (hist[c.toFixed(3)] ?? 0) + 1;
+    const ranked = Object.entries(hist).sort((x, y) => y[1] - x[1]);
+    const mode = ranked.length ? Number(ranked[0][0]) : 0;
+    const used = new Set<string>();
+    for (const r of rows) {
+      const hit = r.sales.find((s) => !used.has(s.key) && Math.round(s.amount * (1 - mode)) === r.b.amount);
+      if (hit) { used.add(hit.key); matched++; matchedAmount += r.b.amount; if (examples.length < 4) examples.push(`${r.b.date} ${r.b.memo}: payout ${r.b.amount}, FIN_Z installment sale ${hit.amount} on ${hit.date} at the same store`); }
+      else if (examples.length < 6) examples.push(`${r.b.date} ${r.b.memo}: payout ${r.b.amount}, no FIN_Z sale at that store matches it exactly`);
+    }
+    const top = ranked.filter(([, n]) => n >= cuts.length * 0.05).slice(0, 3).map(([k]) => Number(k));
     const rules = await ctx.db.query("rules").withIndex("by_ruleId", (q) => q.eq("ruleId", "r7")).first();
     const known = rules ? JSON.stringify((JSON.parse(rules.program) as RuleProgram).params.lenders) : "{}";
-    const hist: Record<string, number> = {};
-    for (const c of cuts) hist[c.toFixed(4)] = (hist[c.toFixed(4)] ?? 0) + 1;
-    const top = Object.entries(hist).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k]) => Number(k));
     return { count: items.length, amount, stores: stores.size, matched, matchedAmount, orphans: items.length - matched, impliedCuts: top, knownLenders: known, examples, firstDate, lastDate };
   },
 });
@@ -80,13 +92,13 @@ export const investigateStoryB = internalAction({
       "Voice: calm, plainspoken, sentence case, no emoji, no exclamation marks. Money in rupiah like 'Rp 9.8bn' or 'Rp 412m'. Reply with JSON only.";
     const user = `Story: ${num(e.count)} bank credits on the lender channel from "FIN_Z", ${e.firstDate} to ${e.lastDate}, total ${rpShort(e.amount)}, across ${e.stores} stores.
 Known lenders in approved rule r7 (lender: cut): ${e.knownLenders}. FIN_Z is not among them and did not appear last year.
-Evidence from the books: ${num(e.matched)} of the payouts have an installment sale booked with lender FIN_Z at the same store 1 to 7 days earlier. Most common implied cut (1 - payout / sale): ${e.impliedCuts.join(", ")}.
+Evidence from the books: ${num(e.matched)} of the payouts have an installment sale booked with lender FIN_Z at the same store 1 to 7 days earlier. Most common implied cut (1 - payout / sale), then checked to the rupiah: ${e.impliedCuts.join(", ")}.
 ${num(e.orphans)} payouts match no FIN_Z sale.
 Examples:
 ${e.examples.join("\n")}
 
 Return JSON with these keys:
-"steps": 4 to 6 short reasoning lines, as a terminal trace (lower case is fine),
+"steps": 4 to 6 short reasoning lines (lower case is fine),
 "summary": two sentences of evidence,
 "hypothesis": one sentence,
 "ask_of": "cfo" or "accountant",
@@ -95,7 +107,14 @@ Return JSON with these keys:
     let parsed: { steps: string[]; summary: string; hypothesis: string; ask_of: string; question: string; options: { id: string; label: string; impact: string }[] };
     let real = true;
     try {
-      parsed = extractJson(await claude(system, user)) as typeof parsed;
+      let reply: string;
+      try { reply = await claude(system, user, 4000); }
+      catch (first) {
+        // One retry without the example lines if the model declines.
+        if (!String(first).includes("refusal")) throw first;
+        reply = await claude(system, user.replace(/Examples:[\s\S]*?\n\nReturn JSON/, "Return JSON"), 4000);
+      }
+      try { parsed = extractJson(reply) as typeof parsed; } catch { throw new Error(`unreadable reply: ${reply.slice(0, 120)}`); }
       if (!Array.isArray(parsed.options) || parsed.options.length !== 3 || !parsed.question) throw new Error("Claude's reply is missing fields");
     } catch (err) {
       real = false;

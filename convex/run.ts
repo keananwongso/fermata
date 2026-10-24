@@ -81,6 +81,7 @@ export const step = internalMutation({
     if (run.phase === "first") {
       const r = await runFirstPass(ctx, m, run.cursor, monthEnd(YEAR, m));
       await addStats(ctx, m, { firstSettled: r.stats.firstSettled, waiting: r.stats.waiting, held: r.stats.held, processed: r.stats.processed });
+      if (r.voteRef && !close.note) await ctx.db.patch(close._id, { note: JSON.stringify({ vote: r.voteRef }) });
       if (!r.done) return save({ cursor: r.cursor });
       return save({ phase: "stories", cursor: null });
     }

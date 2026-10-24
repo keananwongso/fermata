@@ -178,7 +178,7 @@ const BATCH_MS = 700;
 // First pass over one month's bank lines: sync creates the work item, the engine decides.
 export const firstPassBatch = internalMutation({
   args: { month: v.number(), cursor: v.union(v.string(), v.null()), asOf: v.string() },
-  returns: v.object({ done: v.boolean(), cursor: v.union(v.string(), v.null()), stats: v.object({ firstSettled: v.number(), waiting: v.number(), held: v.number(), settledLater: v.number(), processed: v.number() }) }),
+  returns: v.object({ done: v.boolean(), cursor: v.union(v.string(), v.null()), voteRef: v.union(v.string(), v.null()), stats: v.object({ firstSettled: v.number(), waiting: v.number(), held: v.number(), settledLater: v.number(), processed: v.number() }) }),
   handler: async (ctx, args) => runFirstPass(ctx, args.month, args.cursor, args.asOf),
 });
 
@@ -189,6 +189,7 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
   const port = convexPort(ctx, asOf, YEAR, seen);
   const stats: BatchStats = { firstSettled: 0, waiting: 0, held: 0, settledLater: 0, processed: 0 };
   const settledCounts = new Map<string, number>();
+  let voteRef: string | null = null;
   const page = await ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR).eq("month", month))
     .paginate({ cursor, numItems: BATCH_ITEMS, maximumRowsRead: BATCH_ITEMS });
   for (const b of page.page) {
@@ -202,11 +203,12 @@ export async function runFirstPass(ctx: MutationCtx, month: number, cursor: stri
     const item = (await ctx.db.get(c.id as Id<"work_items">))!;
     const d = await evaluate(txn, programs, port, { asOf, firstPass: true });
     await applyDecision(ctx, item, txn, d, { passMonth: month, firstPass: true, docs, seen, stats, settledCounts });
+    if (!voteRef && d.kind === "settle" && d.placement.confidence < 0.99 && d.placement.votes.length > 1) voteRef = b.key;
     stats.processed++;
     if (Date.now() - started > BATCH_MS * 4) break;
   }
   await bumpRuleCounts(ctx, settledCounts, docs);
-  return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats };
+  return { done: page.isDone, cursor: page.isDone ? null : page.continueCursor, stats, voteRef };
 }
 
 export async function bumpRuleCounts(ctx: MutationCtx, counts: Map<string, number>, docs: Map<string, Doc<"rules"> | null>) {

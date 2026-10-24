@@ -7,7 +7,7 @@ import {
   type BankAccountCode, type Channel, type Lender, type Platform, type StoreCode,
 } from "./domain";
 import type {
-  BankTxn, CardSales, CashDay, DealerInvoice, GatewaySettlement, InstallmentSale, LedgerAccount, MarketOrder,
+  BankTxn, CardSales, CashDay, DealerInvoice, GatewaySettlement, InstallmentSale, LedgerAccount,
   SchoolReceipt, World,
 } from "./world";
 
@@ -291,7 +291,7 @@ function buildYear(c: Ctx) {
           const n = showcase ? 840 : plantHere ? ri(4, 9) : ri(20, 85);
           let gross = 0, refunds = 0;
           for (let i = 0; i < n; i++) {
-            const amt = showcase ? money(250_000, 545_000) : money(120_000, 2_400_000);
+            const amt = showcase ? money(255_000, 553_000) : money(120_000, 2_400_000);
             const refund = rand() < 0.02 ? Math.round(amt * 0.5 / 100) * 100 : 0;
             c.w.orders.push({ key: nextKey(c, "mo"), year, platform, store: s.code, week: weekRef, date: addDays(payDate, -ri(7, 13)), amount: amt, refund });
             gross += amt; refunds += refund;
@@ -391,7 +391,7 @@ function buildYear(c: Ctx) {
       const bStores = STORES.slice(0, STORY_B.stores).map((s) => s.code);
       const bLines: Planned[] = [];
       for (let i = 0; i < STORY_B.matched; i++) bLines.push(lenderLine(c, year, month, "FIN_Z", bStores[i % bStores.length], "B", 6_000_000, 21_000_000));
-      scaleLenderTotal(bLines, STORY_B.matchedTotal, c);
+      scaleLenderTotal(bLines, STORY_B.matchedTotal);
       m.planned.push(...bLines);
       const orphans = splitTotal(STORY_B.orphanTotal, STORY_B.orphan, 7_000_000, 13_000_000, 100);
       orphans.forEach((a, i) => {
@@ -578,7 +578,7 @@ function lenderLine(c: Ctx, year: number, month: number, lender: Lender, store: 
   return { txn, lateable: (r) => { sale.recordedOn = r; } };
 }
 
-function scaleLenderTotal(lines: Planned[], target: number, _c: Ctx) {
+function scaleLenderTotal(lines: Planned[], target: number) {
   const sum = lines.reduce((a, p) => a + p.txn.amount, 0);
   const f = target / sum;
   for (const p of lines) {

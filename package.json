@@ -9,10 +9,12 @@
     "lint": "eslint",
     "convex:dev": "convex dev",
     "simulate": "tsx scripts/simulate.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "reset": "tsx scripts/reset.ts"
   },
   "dependencies": {
     "convex": "^1.48.0",
+    "lucide-react": "^1.61.0",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"

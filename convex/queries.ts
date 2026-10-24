@@ -18,12 +18,13 @@ export const overview = query({
     const accounts = await ctx.db.query("bank_accounts").take(10);
     const sum = (k: string) => months.reduce((a, m) => a + (m.stats?.[k] ?? 0), 0);
     const processed = sum("processed");
-    const settledAuto = sum("firstSettled") + sum("settledLater") + sum("settledByNewRule");
+    const settledAuto = sum("firstSettled") + sum("settledLater");
+    const settledAfterAnswer = sum("settledByNewRule");
     const everHeld = stories.reduce((a, s) => a + s.count, 0);
     return {
       run: close?.run ?? null,
       months: months.map((m) => ({ month: m.month, stats: m.stats ?? {} })),
-      counters: { processed, settledAuto, held, waiting, questions: questions.length, openQuestions: questions.filter((x) => x.state === "NEEDS_INFO" || x.state === "PROPOSED").length, everHeld, stories: stories.length },
+      counters: { processed, settledAuto, settledAfterAnswer, held, waiting, questions: questions.length, openQuestions: questions.filter((x) => x.state === "NEEDS_INFO" || x.state === "PROPOSED").length, everHeld, stories: stories.length },
       pipeline: { synced: processed, placed: processed - waiting, matched: settledAuto + held, settledByRule: settledAuto, waiting, held },
       headOffice: ledger.reduce((a, l) => a + l.bookBalance, 0),
       headOfficeBank: accounts.find((a) => a.code === "HEAD_OFFICE")?.statementBalance ?? 0,
@@ -70,10 +71,10 @@ export const trace = query({
 export const showcase = query({
   args: {},
   handler: async (ctx) => {
-    // Placement vote: a January cash deposit where a teller in another city made the vote less than unanimous.
-    const jan = await ctx.db.query("work_items").withIndex("by_kind_month_state", (q) => q.eq("kind", "bank_txn").eq("month", 1).eq("state", "POSTED")).take(1500);
-    const vote = jan.find((w) => w.channel === "cash" && w.placement && w.placement.confidence < 0.99 && w.placement.store === "S07")
-      ?? jan.find((w) => w.channel === "cash" && w.placement && w.placement.confidence < 0.99) ?? null;
+    // Placement vote: the first settled line whose evidence was not unanimous (recorded by the run).
+    const close = await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", "close")).first();
+    const voteKey = close?.note ? (JSON.parse(close.note) as { vote?: string }).vote : undefined;
+    const vote = voteKey ? await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", voteKey)).first() : null;
     let voteTxn: Doc<"bank_transactions"> | null = null;
     if (vote) voteTxn = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", vote.ref)).first();
     // Fan-out: the largest Shopee payout in the first week of January.

@@ -8,13 +8,47 @@
  * @module
  */
 
+import type * as agents from "../agents.js";
+import type * as engine from "../engine.js";
+import type * as evaluation from "../evaluation.js";
+import type * as humans from "../humans.js";
+import type * as learner from "../learner.js";
+import type * as lib_domain from "../lib/domain.js";
+import type * as lib_engineCore from "../lib/engineCore.js";
+import type * as lib_format from "../lib/format.js";
+import type * as lib_generate from "../lib/generate.js";
+import type * as lib_investigate from "../lib/investigate.js";
+import type * as lib_rules from "../lib/rules.js";
+import type * as lib_transition from "../lib/transition.js";
+import type * as lib_world from "../lib/world.js";
+import type * as queries from "../queries.js";
+import type * as run from "../run.js";
+import type * as seed from "../seed.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  agents: typeof agents;
+  engine: typeof engine;
+  evaluation: typeof evaluation;
+  humans: typeof humans;
+  learner: typeof learner;
+  "lib/domain": typeof lib_domain;
+  "lib/engineCore": typeof lib_engineCore;
+  "lib/format": typeof lib_format;
+  "lib/generate": typeof lib_generate;
+  "lib/investigate": typeof lib_investigate;
+  "lib/rules": typeof lib_rules;
+  "lib/transition": typeof lib_transition;
+  "lib/world": typeof lib_world;
+  queries: typeof queries;
+  run: typeof run;
+  seed: typeof seed;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
