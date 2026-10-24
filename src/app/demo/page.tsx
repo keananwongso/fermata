@@ -2,12 +2,14 @@
 // The public demo: a replay of one recorded run. No Claude calls and no writes; the agents' messages are the
 // real output from that run, and the engine's lines are the same engine replayed on the same year.
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, Pill } from "@/components/ui";
+import { Roll } from "@/components/motion";
+import { AnimatePresence, motion } from "motion/react";
 
 type Line = {
   date: string; account: string; memo: string; amount: number; channel: string; outcome: "settled" | "waiting" | "held";
@@ -139,18 +141,18 @@ export default function DemoPage() {
       <Timeline month={month} phase={phase} p={p} answered={answered} />
 
       <div className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
-        <Stat label="Bank lines processed" value={num(processed)} sub={`of ${num(R.total)}`} />
-        <Stat label="Settled automatically" value={processed ? `${((settled / processed) * 100).toFixed(1)}%` : "—"} sub={`${num(settled)} lines`} tone="success" />
-        <Stat label="Case rooms opened" value={num(visibleRooms.length)} sub="one per held story" tone="hold" />
-        <Stat label="Questions to people" value={num(visibleRooms.length)} sub={`${answered.length} answered by you`} />
-        <Stat label="Rules learned" value={num(rules.length)} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
+        <Stat label="Bank lines processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
+        <Stat label="Settled automatically" value={processed ? <Roll value={settled / processed} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> : "—"} sub={`${num(settled)} lines`} tone="success" />
+        <Stat label="Case rooms opened" value={<Roll value={visibleRooms.length} />} sub="one per held story" tone="hold" />
+        <Stat label="Questions to people" value={<Roll value={visibleRooms.length} />} sub={`${answered.length} answered by you`} />
+        <Stat label="Rules learned" value={<Roll value={rules.length} />} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:grid-cols-[320px_minmax(0,1fr)_280px]">
         <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} />
         <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden" aria-label={room ? "Case room" : "Learning curve"}>
           {room ? (
-            <>
+            <motion.div key={room.key} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
               <header className="flex flex-wrap items-center gap-2 border-b border-hairline px-4 py-3">
                 <Pill tone="hold">Story {room.narrated}</Pill><Pill tone="accent">Live agents</Pill>
                 <h2 className="title min-w-0 flex-1 truncate text-[17px]" title={room.title}>{room.title}</h2>
@@ -160,21 +162,24 @@ export default function DemoPage() {
                 <div ref={end} />
               </div>
               {phase === "question" && room.question ? <Ask room={room} onAnswer={answer} /> : null}
-            </>
+            </motion.div>
           ) : line ? <Inspector line={line} onClose={() => setLine(null)} /> : <Curve curve={curve} answered={answered} phase={phase} />}
         </section>
         <aside className="card p-4 lg:col-span-2 xl:col-span-1">
           <div className="eyebrow">Case rooms</div>
           {visibleRooms.length === 0 ? <p className="mt-2 text-[12px] text-faint">Rooms open here when the engine holds something it can&apos;t explain.</p> : null}
           <ul className="mt-2 max-h-[420px] space-y-1 overflow-y-auto">
+            <AnimatePresence initial={false}>
             {[...visibleRooms].reverse().map((r) => (
-              <li key={r.key} className={`flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] ${r.live ? "bg-accent-tint" : ""}`}>
+              <motion.li key={r.key} layout initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className={`flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] ${r.live ? "bg-accent-tint" : ""}`}>
                 <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${answered.includes(r.key) ? "bg-success" : r.live && room?.key === r.key ? "bg-accent breathe-dot" : "bg-hold"}`} />
                 <span className="num w-7 shrink-0 text-faint">{MONTH_LABELS[r.month - 1]}</span>
                 <span className="min-w-0 flex-1 truncate" title={r.title}>{r.title}</span>
                 {r.live ? <span className="text-[10.5px] text-accent">Claude</span> : <span className="text-[10.5px] text-faint">scripted</span>}
-              </li>
+              </motion.li>
             ))}
+            </AnimatePresence>
           </ul>
           {phase === "done" ? (
             <div className="mt-4 border-t border-hairline pt-4 text-[12.5px] text-secondary">
@@ -188,7 +193,9 @@ export default function DemoPage() {
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub: string; tone?: "success" | "hold" }) {
+const WHOLE = { maximumFractionDigits: 0 };
+
+function Stat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub: string; tone?: "success" | "hold" }) {
   return (
     <div className="min-w-0">
       <div className="eyebrow">{label}</div>
@@ -209,7 +216,8 @@ function Timeline({ month, phase, p, answered }: { month: number; phase: Phase; 
         return (
           <div key={label} className="min-w-0">
             <div className="h-1.5 overflow-hidden rounded-full bg-inset"><div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: done ? "100%" : cur ? `${(phase === "running" ? p : 1) * 100}%` : "0%" }} /></div>
-            <div className={`mt-1 flex items-center justify-center gap-1 text-[11px] ${cur ? "font-medium text-accent" : "text-faint"}`}>
+            <div className={`relative mx-auto mt-1 flex w-fit items-center justify-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${cur ? "font-medium text-accent" : "text-faint"}`}>
+              {cur ? <motion.span layoutId="demo-month" aria-hidden className="absolute inset-0 -z-10 rounded-full bg-accent-tint" transition={{ type: "spring", stiffness: 380, damping: 32 }} /> : null}
               {label}{live ? <span className={answered.includes(live.key) ? "text-success" : "text-hold"} style={{ fontFamily: "var(--font-music)" }} aria-label={`story ${live.narrated}`}>𝄐</span> : null}
             </div>
           </div>
@@ -229,8 +237,9 @@ function Stream({ stream, month, running, onPick, picked }: { stream: Line[]; mo
       <p className="mt-1 text-[11.5px] text-faint">A sample of real lines. Click one to see why.</p>
       <ul className="mt-3 space-y-1.5">
         {stream.length === 0 ? <li className="hatch rounded-[6px] border border-hairline px-3 py-8 text-center text-[12px] text-faint">Press Close the year</li> : null}
+        <AnimatePresence initial={false}>
         {stream.map((l) => (
-          <li key={l.memo + l.date + l.amount} className="arrive">
+          <motion.li key={l.memo + l.date + l.amount} layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
             <button onClick={() => onPick(l)} className={`calm w-full rounded-[6px] border px-2.5 py-1.5 text-left ${picked === l ? "border-accent bg-accent-tint" : "border-hairline bg-ground hover:bg-hover"}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="num truncate text-[11px] text-secondary" title={l.memo}>{l.memo}</span>
@@ -242,8 +251,9 @@ function Stream({ stream, month, running, onPick, picked }: { stream: Line[]; mo
                 {l.fanout > 1 ? <span className="text-faint">· {num(l.fanout)} records</span> : null}
               </div>
             </button>
-          </li>
+          </motion.li>
         ))}
+        </AnimatePresence>
       </ul>
     </section>
   );
