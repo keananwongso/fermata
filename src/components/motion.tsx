@@ -5,6 +5,15 @@ import { AnimatePresence, motion, useInView, type Variants } from "motion/react"
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// Scrolls the nearest scrolling box around an element to its end. Unlike scrollIntoView it never moves the page,
+// so a transcript can follow its newest message while the reader stays where they are.
+export function scrollBoxToEnd(el: HTMLElement | null) {
+  let box = el?.parentElement ?? null;
+  while (box && box !== document.body && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+  if (!box || box === document.body) return;
+  box.scrollTo({ top: box.scrollHeight, behavior: reduced() ? "auto" : "smooth" });
+}
+
 // Eases a number toward its latest value, so live Convex counters count instead of jumping.
 export function useTween(target: number, ms = 900) {
   const [shown, setShown] = useState(0);

@@ -9,7 +9,7 @@ import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, Pill } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { Arrival, Reveal, RevealItem, Roll } from "@/components/motion";
+import { Arrival, Reveal, RevealItem, Roll, scrollBoxToEnd } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
 
 type Line = {
@@ -101,7 +101,15 @@ function DemoPage() {
   }, [phase, paused, room, shown, split, speed, month]);
 
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [shown.length]);
+  useEffect(() => { scrollBoxToEnd(end.current); }, [shown, phase]);
+
+  // Starting the year brings the timeline, the counters and the workspace into view together, once; after that
+  // the page stays still and each panel scrolls inside itself.
+  const stage = useRef<HTMLDivElement>(null);
+  const start = () => {
+    setPhase("running");
+    stage.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
 
   const answer = () => {
     if (!room) return;
@@ -133,7 +141,7 @@ function DemoPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {phase === "idle" ? <Button variant="primary" onClick={() => setPhase("running")}>Close the year</Button>
+          {phase === "idle" ? <Button variant="primary" onClick={start}>Close the year</Button>
             : phase === "done" ? <Button variant="primary" onClick={restart}>Play again</Button>
             : <Button onClick={() => setPaused((x) => !x)}>{paused ? "Resume" : "Pause"}</Button>}
           <div className="flex rounded-[6px] border border-hairline bg-well p-0.5" role="radiogroup" aria-label="Speed">
@@ -143,7 +151,7 @@ function DemoPage() {
         </div>
       </RevealItem>
 
-      <RevealItem><Timeline month={month} phase={phase} p={p} answered={answered} /></RevealItem>
+      <RevealItem><div ref={stage} className="scroll-mt-32"><Timeline month={month} phase={phase} p={p} answered={answered} /></div></RevealItem>
 
       <RevealItem className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
         <Stat label="Bank lines processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
@@ -153,27 +161,27 @@ function DemoPage() {
         <Stat label="Rules learned" value={<Roll value={rules.length} />} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
       </RevealItem>
 
-      <RevealItem className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:grid-cols-[320px_minmax(0,1fr)_280px]">
+      <RevealItem className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:h-[max(520px,calc(100dvh-21.5rem))] xl:grid-cols-[320px_minmax(0,1fr)_280px] xl:grid-rows-[minmax(0,1fr)]">
         <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} />
-        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden" aria-label={room ? "Case room" : "Learning curve"}>
+        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Learning curve"}>
           {room ? (
             <motion.div key={room.key} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
-              <header className="flex flex-wrap items-center gap-2 border-b border-hairline px-4 py-3">
+              <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-hairline px-4 py-3">
                 <Pill tone="hold">Story {room.narrated}</Pill><Pill tone="accent">Live agents</Pill>
                 <h2 className="title min-w-0 flex-1 truncate text-[17px]" title={room.title}>{room.title}</h2>
               </header>
-              <div className="max-h-[560px] flex-1 overflow-y-auto bg-canvas px-4 pb-4 pt-1" role="log" aria-live="polite">
+              <div className="max-h-[560px] min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-4 pb-4 pt-1 xl:max-h-none" role="log" aria-live="polite">
                 <ChatList msgs={shown} animate />
                 <div ref={end} />
               </div>
               {phase === "question" && room.question ? <Ask room={room} onAnswer={answer} /> : null}
             </motion.div>
-          ) : line ? <Inspector line={line} onClose={() => setLine(null)} /> : <Curve curve={curve} answered={answered} phase={phase} />}
+          ) : <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{line ? <Inspector line={line} onClose={() => setLine(null)} /> : <Curve curve={curve} answered={answered} phase={phase} />}</div>}
         </section>
-        <aside className="card p-4 lg:col-span-2 xl:col-span-1">
+        <aside className="card flex min-w-0 flex-col p-4 lg:col-span-2 xl:col-span-1 xl:min-h-0">
           <div className="eyebrow">Case rooms</div>
           {visibleRooms.length === 0 ? <p className="mt-2 text-[12px] text-faint">Rooms open here when the engine holds something it can&apos;t explain.</p> : null}
-          <ul className="mt-2 max-h-[420px] space-y-1 overflow-y-auto">
+          <ul className="mt-2 max-h-[420px] min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain xl:max-h-none">
             <AnimatePresence initial={false}>
             {[...visibleRooms].reverse().map((r) => (
               <motion.li key={r.key} layout initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -234,13 +242,13 @@ function Timeline({ month, phase, p, answered }: { month: number; phase: Phase; 
 
 function Stream({ stream, month, running, onPick, picked }: { stream: Line[]; month: number; running: boolean; onPick: (l: Line) => void; picked: Line | null }) {
   return (
-    <section className="card min-w-0 p-4" aria-label="The engine">
+    <section className="card flex min-w-0 flex-col p-4 xl:min-h-0" aria-label="The engine">
       <div className="flex items-center justify-between">
         <div className="eyebrow">The engine · {MONTH_LABELS[month - 1]}</div>
         {running ? <span className="flex items-center gap-1.5 text-[11px] text-accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full bg-accent" />settling</span> : null}
       </div>
       <p className="mt-1 text-[11.5px] text-faint">A sample of real lines. Click one to see why.</p>
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain">
         {stream.length === 0 ? <li className="hatch rounded-[6px] border border-hairline px-3 py-8 text-center text-[12px] text-faint">Press Close the year</li> : null}
         <AnimatePresence initial={false}>
         {stream.map((l) => (
@@ -320,7 +328,7 @@ function Ask({ room, onAnswer }: { room: Room; onAnswer: () => void }) {
   const q = room.question!;
   const who = q.askOf === "cfo" ? "CFO" : "Accountant";
   return (
-    <div className="enter border-t border-hairline bg-warm p-4">
+    <div className="enter max-h-[60%] shrink-0 overflow-y-auto overscroll-contain border-t border-hairline bg-warm p-4">
       <div className="flex items-center gap-2"><Avatar who={q.askOf} size={24} /><span className="eyebrow">You are the {who} · one question</span></div>
       <p className="title mt-2 text-[17px] leading-snug">{q.text}</p>
       <div className="mt-3 grid gap-2">

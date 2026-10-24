@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { ROLES, type Role } from "../../convex/lib/transition";
 import { AGENT_LABEL, Pill } from "./ui";
-import { useLive } from "./motion";
+import { scrollBoxToEnd, useLive } from "./motion";
 
 type Msg = Doc<"room_messages">;
 export const MAX_TURNS = 6;
@@ -165,7 +165,7 @@ export function RoomChat({ story }: { story: Doc<"stories"> }) {
   const end = useRef<HTMLDivElement>(null);
   const count = msgs?.length ?? 0;
   const lastStatus = msgs?.[count - 1]?.status;
-  useEffect(() => { if (live) end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [count, lastStatus, live]);
+  useEffect(() => { if (live) scrollBoxToEnd(end.current); }, [count, lastStatus, live]);
   return (
     <div className="px-4 pb-4 pt-2 lg:px-5" role="log" aria-label="Meeting transcript" aria-live="polite">
       {!msgs ? <div className="py-6 text-[13px] text-faint">Opening the room…</div> : null}

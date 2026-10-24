@@ -104,6 +104,8 @@ The transcript of the agents' meeting on one held story.
 * **Manager lines** are short rows with the `MG` tile and `secondary` text; the manager only appears when it
   enforces something.
 * **Refusals** are a `danger-tint` block, indented to the text column, titled "Blocked by the gateway".
+* **Following the newest message:** use `scrollBoxToEnd` (`motion.tsx`), never `scrollIntoView`, which also scrolls
+  the page and makes it jump every time an agent speaks.
 * **Working** agents show a breathing amber dot and "working", and their queries appear as they run.
 * The room header shows the turn count ("Turn n of 6") and the room state: In meeting (accent, breathing),
   Asked (hold, 𝄐), Closed (success).
@@ -148,6 +150,8 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 ## Layout
 
 * Content width 1240px (`max-w-[1240px]`), gutters `px-4` mobile and `lg:px-10` desktop.
+* **Workspaces that play over time** (the demo) have a fixed height on wide screens and scroll inside each panel, so the page
+  stays still while they run. Starting the run scrolls the page once to bring the whole workspace into view.
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.
 * Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
