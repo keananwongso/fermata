@@ -114,7 +114,7 @@ The transcript of the agents' meeting on one held story.
 
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
-* `/` is the site; `/demo` replays a recorded run; the console lives at `/run`, `/stories`, `/rules`,
+* `/` is the site; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
   `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/` and
   `/demo`, console tabs and the Acting as switch everywhere else.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
@@ -129,6 +129,25 @@ The transcript of the agents' meeting on one held story.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
+
+## Pitch deck (`src/app/pitch`, `src/components/pitch`)
+
+`/pitch` is the deck for the Devpost video and any live pitch. It is a page of the app, not a slide file, so it
+uses the same tokens, type classes, components and motion as the screens it introduces.
+
+* **A fixed 1920×1080 stage**, scaled to fit the window and letterboxed on `inset`. Write slide sizes in px for
+  that canvas (no `clamp` or `vw`). It covers the header and footer while open.
+* **Keys:** → / space step through a slide's builds, then the slides; ← goes back; `N` shows the spoken script;
+  `F` full screen; `H` hides the slide counter for recording. `#n` in the URL opens slide n.
+* **One idea per slide.** A slide is a `Frame` (chapter eyebrow top left, the mark and page number below), a
+  `.title` heading in sentence case, then one visual. Chapters use the judges' words (Why, How it works,
+  Case rooms, How it's built, Self improving, Proves every step, The result).
+* **Every figure comes from the recording** through `pitch/data.ts`; assumptions (minutes per match, per
+  decision) are printed on the slide that uses them. Something not yet measured shows a `.hatch` placeholder,
+  never a typed number.
+* **Builds** use `In` (rise with a short blur, optional delay, or shown from a build step). Charts draw in with
+  `pathLength`; numbers `Roll`.
+* App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
 
 ## Motion (`globals.css`, `src/components/motion.tsx`)
 
