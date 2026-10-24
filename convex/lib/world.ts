@@ -31,6 +31,7 @@ export type ErpInvoice = CardSales | InstallmentSale;
 
 export interface CashDay {
   key: string; year: number; store: StoreCode; date: string; cashSales: number; pettyCashKept: number; recordedOn: string;
+  reversed?: boolean; // the day's cash voucher was posted and then reversed
 }
 export interface MarketOrder {
   key: string; year: number; platform: Platform; store: StoreCode; week: string; date: string; amount: number; refund: number;
