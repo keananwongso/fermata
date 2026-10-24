@@ -2,13 +2,13 @@
 // The pitch, one slide per beat of the video plan. Copy follows the philosophy doc's words; every figure comes
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
 import { BANK_ACCOUNTS } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
 import { ROLES, type Role } from "../../../convex/lib/transition";
 import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
 import { LearningChart } from "../learningChart";
+import { usdApprox } from "../money";
 import { Pill } from "../ui";
 import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
@@ -34,6 +34,7 @@ function Hook(step: number) {
               initial={{ scaleX: 0 }} animate={{ scaleX: step >= 1 ? 1 : 0 }} transition={{ duration: 0.55, ease: EASE_OUT }} style={{ width: "calc(100% + 24px)" }} />
           </div>
         </In>
+        <In delay={0.3}><div className="mt-2 text-[34px] text-faint">{usdApprox(D.headOffice)}</div></In>
         <div className="mt-6 flex items-baseline gap-12">
           <In show={step >= 1}><div className="display text-[120px]">It isn&apos;t.</div></In>
           <In show={step >= 2} delay={0.1}>
@@ -65,6 +66,7 @@ function Mess() {
             <ul className="absolute left-0 top-[14px] w-[280px] space-y-3">
               {D.channels.map((c) => <li key={c} className="flex h-[52px] items-center rounded-[8px] border border-hairline bg-ground px-5 text-[24px] text-body shadow-[0_1px_1px_rgb(85_40_20/0.04)]">{c}</li>)}
             </ul>
+            <p className="absolute left-0 top-[412px] w-[820px] text-[20px] text-faint">Shopee and Tokopedia are Southeast Asia&apos;s Amazon and eBay.</p>
             <svg aria-hidden className="absolute left-[280px] top-0" width="240" height="400">
               {ROUTES.map(([i, code], k) => (
                 <motion.path key={k} d={`M0 ${chY(i)} C120 ${chY(i)} 120 ${acY(acIndex(code))} 240 ${acY(acIndex(code))}`} fill="none" stroke="var(--color-mute)" strokeWidth="2"
@@ -109,29 +111,31 @@ function Fact({ figure, text }: { figure: string; text: string }) {
   );
 }
 
-// 3 · The cost: what matching it by hand takes, with its assumption on the slide.
+// 3 · Why people can't keep up: the systems disagree with each other. Patterns from the business Fermata is
+// modelled on, never its numbers; the team size is the demo company's.
+const DISAGREE: [string, string][] = [
+  ["One lesson fee, typed into three systems.", "One of them is older than the accountant typing it."],
+  ["How a customer paid lives in a chat message.", "A salesperson's, and nowhere else."],
+  ["Head office lives inside one store's books.", "So that store looks like it is losing money."],
+];
 function Cost() {
   return (
     <Frame chapter="Why" n={3}>
       <div className="flex h-full flex-col justify-center">
-        <div className="flex items-start justify-between gap-16">
-          <Big delay={0} figure={<Roll value={D.total} />} label="bank lines in a year" />
-          <Big delay={0.15} figure={<Roll value={D.team} />} label="people in the accounting team" />
-          <Big delay={0.3} figure={<Roll value={D.manualDays} prefix="~" />} label="working days to match it by hand" />
+        <In><h2 className="title text-[72px]">And the systems disagree with each other.</h2></In>
+        <div className="mt-16 grid grid-cols-3 gap-8">
+          {DISAGREE.map(([head, sub], i) => (
+            <In key={head} delay={0.2 + i * 0.15}>
+              <div className="card h-full p-10">
+                <div className="text-[36px] font-medium leading-snug text-ink">{head}</div>
+                <div className="mt-5 text-[26px] leading-snug text-secondary">{sub}</div>
+              </div>
+            </In>
+          ))}
         </div>
-        <In delay={0.9}><p className="display mt-24 max-w-[1400px] text-[80px]">Until they finish, nobody sees the real number.</p></In>
-        <In delay={1.1}><p className="mt-10 text-[22px] text-faint">Assumes {D.minutesPerMatch} minutes per manual match and 8 hour days.</p></In>
+        <In delay={0.9}><p className="display mt-20 max-w-[1500px] text-[72px]">So a team of {D.team} works for weeks after every month ends before anyone sees the real cash.</p></In>
       </div>
     </Frame>
-  );
-}
-
-function Big({ figure, label, delay }: { figure: ReactNode; label: string; delay: number }) {
-  return (
-    <In delay={delay}>
-      <div className="figure text-[140px] text-heading">{figure}</div>
-      <div className="mt-4 text-[30px] text-secondary">{label}</div>
-    </In>
   );
 }
 
@@ -373,6 +377,7 @@ function Proof() {
           ))
         )}
       </div>
+      <In delay={0.9}><p className="mt-8 text-[22px] text-faint">All data is synthetic, from a fixed seed, and scored against an answer key the engine never reads. The big meetings ran live on Claude; the rest are scripted, and labelled that way.</p></In>
     </Frame>
   );
 }
@@ -427,7 +432,7 @@ function End() {
         <In delay={0.45}>
           <div className="mt-20 max-w-[1300px] space-y-4 text-[30px] text-white/70">
             <p>My family&apos;s business is the first design partner.</p>
-            <p>Next: shadow mode at one store, where it proposes and people still decide. Then a cash report a bank can trust.</p>
+            <p>Next: shadow mode at one store, where it proposes and people still decide.</p>
           </div>
         </In>
         <In delay={0.7}>
@@ -443,18 +448,19 @@ function End() {
 }
 
 export const SLIDES: Slide[] = [
-  { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus forty eight point six billion rupiah." (click) "It isn't." (click) "The bank holds three point two four billion."` },
-  { id: "mess", chapter: "Why", render: Mess, notes: `"This is built from what I've seen in my family's music business in Indonesia. Money comes in six ways: fourteen stores, Shopee, Tokopedia, a website, dealers and a music school. None of them pays one sale at a time: one Shopee payout covers eight hundred and forty orders. And it all lands in five bank accounts shared by fourteen stores. The books pretend each store has its own, so they keep seventy balances no bank holds."` },
-  { id: "cost", chapter: "Why", render: Cost, notes: `"A twenty person accounting team spends about a month matching it by hand. Until they finish, nobody sees the real number."` },
-  { id: "title", chapter: "Fermata", render: Title, notes: `"In music, a fermata is the mark that tells you to hold. Fermata closes the year on its own, and only holds where it should."` },
-  { id: "how", chapter: "How it works", render: How, notes: `"It settles every line an approved rule can explain. It holds the rest and groups it by cause. Then its agents meet on each story, ask one person one checked question, and turn the answer into a tested rule."` },
-  { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"A hundred and two thousand lines never need a meeting. Thirty one stories do, and the agents hold that meeting themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns and only lets them ask a person once."
+  { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus forty eight point six billion rupiah. About three million dollars." (click) "It isn't." (click) "The bank holds three point two four billion."` },
+  { id: "mess", chapter: "Why", render: Mess, notes: `"This is built from what I've seen in my family's music business in Indonesia. Money comes in six ways: fourteen stores, Shopee and Tokopedia, which are Southeast Asia's Amazon and eBay, a website, dealers, and a music school. None of them pays one sale at a time. And it all lands in five bank accounts shared by fourteen stores, so the books keep seventy balances that no bank holds."` },
+  { id: "cost", chapter: "Why", render: Cost, notes: `"And the systems disagree with each other. One music lesson fee gets typed into three systems, one of them older than the accountant typing it. How a customer paid lives in a salesperson's chat message, nowhere else. So a twenty person team works for weeks after every month ends before anyone sees the real cash."
+(Keanan's call: "weeks" is the safe wording; "about twenty days after every month ends" is a real figure from the family business.)` },
+  { id: "title", chapter: "Fermata", render: Title, notes: `"In music, a fermata is the mark that tells you to hold. Fermata closes the books on its own, and only holds where it should."` },
+  { id: "how", chapter: "How it works", render: How, notes: `"It settles every line an approved rule can explain. It holds the rest and groups it by cause. Then its agents meet on each story, ask one person one checked question, and turn the answer into a rule that's tested before anyone approves it."` },
+  { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"Most lines never need a meeting. The ones that do, the agents meet on themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns, and only lets them ask a person once."
 
-Video: cut to the demo here (close the year, then story A's room and story B's room).` },
-  { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood: a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. The permissions are a table in code, checked on every step, and every change is written together with its record, in Convex."` },
+Video: cut to the demo here (/demo?tips=off: close the year, the school story's room, the new lender's room, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
+  { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood, a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. Every change is written together with its record, in Convex."` },
   { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is one year, simulated on the same engine twice: once learning from people's answers, once with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
 (Say "simulated": here the answers come from the simulator's answer key and its Learner is code. Never present the demo's recorded curve as learning.)` },
-  { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is tested on last year before a person sees it: the school fee rule got two thousand three hundred and three of two thousand three hundred and ten right, and its seven counterexamples went to the CFO. Then we scored the whole year against the hidden truth: a week it never saw, wrong stores, and a fuzzer that alters real lines to see if any slip through." (Read the three bottom numbers from the slide; never say a number that is not on it.)` },
-  { id: "result", chapter: "The result", render: Result, notes: `"A hundred and four thousand bank lines became about forty decisions for people. About a month of the team's work, down to an afternoon."` },
-  { id: "end", chapter: "Fermata", render: End, notes: `"My family's business is the first design partner. Next is shadow mode at one store: it proposes, people still decide. Then a cash report a bank can trust." (Hold on the card for three seconds.)` },
+  { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is fitted from the data and tested on past books before a person sees it. Then we scored the whole year against an answer key the engine never reads: a week it never saw, lines at the wrong store, and altered lines thrown at it by a fuzzer." (Read the three bottom numbers from the slide; never say a number that is not on it.) "All of this data is synthetic, from a fixed seed. The big meetings ran live on Claude; the rest are scripted, and labelled that way."` },
+  { id: "result", chapter: "The result", render: Result, notes: `"A hundred and four thousand bank lines became about forty decisions for people. Weeks of work, down to an afternoon." (Read both numbers from the slide.)` },
+  { id: "end", chapter: "Fermata", render: End, notes: `"My family's business is the first design partner. Next is shadow mode at one store: it proposes, people still decide." (Hold on the card for three seconds.)` },
 ];
