@@ -1,16 +1,15 @@
 "use client";
 // The dashboard's overview: the closed year at a glance. Three metric cards, what each agent did, and the questions
 // still waiting on a person.
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rpShort } from "../../../convex/lib/format";
 import { Avatar } from "../caseRoom";
 import { Reveal, RevealItem, Roll } from "../motion";
-import { PUBLIC_SITE } from "../nav";
 import { AGENT_LABEL, Pill } from "../ui";
 import { EASE_OUT, MUSIC, PEOPLE, R, answered, asked, bn, denied, firstPass, lastMonth, learned, monthSpan, mostAsked, openMonths, openRooms, pctOf, shares, signedRp } from "./data";
+import { useDashboardNav } from "./nav";
 
 export function Overview() {
   return (
@@ -194,7 +193,8 @@ function ActivityCard() {
 }
 
 function WaitingCard() {
-  const review = PUBLIC_SITE ? "/demo" : "/stories";
+  // Review opens the room inside the window, in the case rooms view.
+  const go = useDashboardNav();
   return (
     <section className="card h-full min-w-0 overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-hold-tint-strong bg-hold-tint/50 px-4 py-3 lg:px-5">
@@ -220,7 +220,7 @@ function WaitingCard() {
                         <div className="line-clamp-2 text-[12.5px] leading-snug text-body" title={r.title}>{r.title}</div>
                         <div className="eyebrow mt-0.5">{num(r.count)} lines · {rpShort(r.amount)} · {MONTH_LABELS[r.month - 1]}</div>
                       </div>
-                      <Link href={review} className="calm inline-flex min-h-11 shrink-0 items-center rounded-[4.5px] bg-hold-tint px-2.5 font-mono text-[11px] uppercase tracking-[0.04em] text-hold-ink hover:bg-hold-tint-strong lg:min-h-7">Review</Link>
+                      <button type="button" onClick={() => go({ view: "case-rooms", room: r.key })} aria-label={`Review: ${r.title}`} className="calm inline-flex min-h-11 shrink-0 items-center rounded-[4.5px] bg-hold-tint px-2.5 font-mono text-[11px] uppercase tracking-[0.04em] text-hold-ink hover:bg-hold-tint-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-7">Review</button>
                     </li>
                   ))}
                   {list.length > (p === mostAsked ? 3 : 1) ? <li className="px-1 text-[11.5px] text-faint">and {list.length - (p === mostAsked ? 3 : 1)} more</li> : null}
