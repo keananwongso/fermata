@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
 import { CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
@@ -30,7 +31,11 @@ function Landing() {
         <div className="relative mt-12 lg:mt-16">
           <BrandGrid cols={24} rows={8} className="absolute -inset-x-4 -top-10 h-[70%] w-[calc(100%+2rem)] opacity-50 [mask-image:linear-gradient(to_bottom,transparent,#000_30%,transparent)] lg:-inset-x-10 lg:w-[calc(100%+5rem)]" />
           <Reveal className="relative min-w-0" delay={0.35}><RevealItem><Dashboard /></RevealItem></Reveal>
-          <div className="relative mt-4 text-center"><LinkArrow href="/dashboard">Open the dashboard</LinkArrow></div>
+          {/* The window is the year already closed: the way on is to watch it close; full screen is the quiet second. */}
+          <div className="relative mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <LinkArrow href="/demo">Watch this year close in the live demo</LinkArrow>
+            <Link href="/dashboard" className="calm text-[13px] text-secondary hover:text-accent">Open it full screen</Link>
+          </div>
         </div>
       </section>
 

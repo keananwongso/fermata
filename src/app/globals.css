@@ -108,6 +108,17 @@
   .arrow-link .arrow-track { transition: transform 400ms var(--ease-brand); }
   .arrow-link:hover .arrow-track { transform: translateX(13px); }
 
+  /* Tips: a small night bubble that points at what it explains. `data-arrow` says which way its arrow points (up: the
+     bubble sits under its target); `--tip-x` moves the arrow along the edge. Inside a `.has-tip` it is a tooltip,
+     shown on hover and keyboard focus after a short wait. */
+  .tip { position: relative; width: max-content; max-width: 260px; border-radius: var(--radius-panel); background: var(--color-night); color: #fff; padding: 6px 10px; font-size: 12px; font-weight: 400; line-height: 1.4; letter-spacing: -0.005em; text-align: left; box-shadow: 0 10px 24px -12px rgb(85 40 20 / 0.5); }
+  .tip::before { content: ""; position: absolute; left: var(--tip-x, 16px); width: 8px; height: 8px; border-radius: 1.5px; background: inherit; transform: rotate(45deg); }
+  .tip[data-arrow="up"]::before { top: -4px; }
+  .tip[data-arrow="down"]::before { bottom: -4px; }
+  .has-tip { position: relative; }
+  .has-tip > .tip { position: absolute; z-index: 10; top: calc(100% + 8px); left: 50%; --tip-x: calc(50% - 4px); translate: -50% 4px; opacity: 0; pointer-events: none; white-space: nowrap; transition: opacity 200ms var(--ease-out), translate 200ms var(--ease-out); }
+  .has-tip:hover > .tip, .has-tip:focus-visible > .tip { opacity: 1; translate: -50% 0; transition-delay: 250ms; }
+
   /* Scroll boxes inside a card: a thin scrollbar that stays invisible until the box is hovered. */
   .scroll-quiet { scrollbar-width: thin; scrollbar-color: transparent transparent; overscroll-behavior: contain; }
   .scroll-quiet:hover, .scroll-quiet:focus-within { scrollbar-color: var(--color-mute) transparent; }

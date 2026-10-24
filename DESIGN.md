@@ -92,6 +92,10 @@ inside rule code and the record.
   then the whole screen fades into the page. Only on a cold load; returning to the page skips it.
 * **`Arrival`** (`motion.tsx`): wraps the landing page and the demo. The same splash once per visit, on the first page
   opened, with the page hidden underneath so its own entrance plays as the splash fades. Client navigations skip it.
+* **`.tip`** (`globals.css`): a small `night` bubble with an arrow (`data-arrow="up"` or `"down"`, `--tip-x` to move
+  it). Inside a `.has-tip` element it is a tooltip, shown on hover and keyboard focus (the header's GitHub icon); on its
+  own it is a hint (the demo's).
+  Icon-only controls still carry an `aria-label`; the tip is `aria-hidden`.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
 ## Case rooms (`src/components/caseRoom.tsx`)
@@ -115,8 +119,12 @@ The transcript of the agents' meeting on one held story.
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
 * `/` is the site; `/dashboard` is the overview; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
-  `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/`,
-  `/dashboard` and `/demo`, console tabs and the Acting as switch everywhere else.
+  `/evaluation`, `/record`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
+  links (How it works, Dashboard; plus Console when run locally), the GitHub icon and the **Watch the live demo**
+  button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
+  there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
+  the explore path is the dashboard (Ask the books lives inside it), and the demo hands off to the dashboard when the
+  year closes. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
 * **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens the whole stage (title, card,
@@ -135,6 +143,17 @@ The transcript of the agents' meeting on one held story.
   `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
+* **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
+  button **Explore the closed books** (`/dashboard`), **Ask the books** (`/dashboard?view=ask`), and Run it yourself as
+  a quiet text link. Play again steps down to a secondary button so the hand-off is the one primary. The demo never
+  embeds the dashboard; it sends the visitor there.
+* **Hints only for a visitor who hesitates** (`useHints`, `Hint` in `demo/page.tsx`, drawn as `.tip`). Each waits for
+  a pause with no click or key (any click or key restarts the wait): Close the year after 3.5s idle (the splash counts),
+  the question card after 5s (under its scroll box, so it shows however far the options run), the hand-off after 3s at
+  the close, and the engine stream after a mouse lingers 1.5s without clicking. One at a time, each at most once per
+  visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
+  moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
+  recorded, scripted or a replay.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
 
 ## Dashboard (`src/components/dashboard.tsx`, `/dashboard`)
@@ -216,7 +235,7 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 ## Layout
 
-* Content width 1440px (`max-w-page`, the `--container-page` token; the header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
+* Content width 1440px (`max-w-page`, the `--container-page` token; the console header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
 * **Workspaces that play over time** (the demo) have a fixed height on wide screens and scroll inside each panel, so the page
   stays still while they run. Starting the run scrolls the page once to bring the whole workspace into view.
   In the demo, a meeting takes the workspace: the engine column (paused) collapses so the transcript gets the width,
@@ -226,7 +245,9 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.
 * Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
-  (Accountant / CFO). On mobile the tabs fold into a menu.
+  (Accountant / CFO). On the site pages the card hugs its contents and sits centred (wordmark, two links, the GitHub
+  icon, the demo button, with modest gaps), never stretched to the page; the console's card keeps the page width
+  (60px narrower) for its five tabs and the switch. On mobile both are full width and the links fold into a menu.
   The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
   to an anchor; give anchor targets `scroll-mt-36` so they land below it.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.
