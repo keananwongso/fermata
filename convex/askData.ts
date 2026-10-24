@@ -14,9 +14,9 @@ export const overview = internalQuery({
   args: {},
   handler: async (ctx) => {
     const months = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "month")).take(12)).sort((a, b) => a.month - b.month);
-    const stories = await ctx.db.query("stories").take(200);
-    const questions = await ctx.db.query("questions").take(200);
-    const rules = await ctx.db.query("rules").take(100);
+    const stories = (await ctx.db.query("stories").take(200)).filter((x) => !x.scenario);
+    const questions = (await ctx.db.query("questions").take(200)).filter((x) => !x.scenario);
+    const rules = (await ctx.db.query("rules").take(100)).filter((x) => !x.scenario);
     const accounts = await ctx.db.query("bank_accounts").take(10);
     const ledger = await ctx.db.query("ledger_accounts").take(200);
     const books: Record<string, number> = {};
@@ -38,7 +38,7 @@ export const overview = internalQuery({
 export const held = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const items = await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "HELD")).take(4000);
+    const items = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "HELD")).take(4000)).filter((x) => !x.scenario);
     const out = [];
     for (const it of items) {
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
@@ -91,7 +91,7 @@ export const linesPage = internalQuery({
       ? ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR).eq("month", a.month!))
       : ctx.db.query("bank_transactions").withIndex("by_year_month_date", (q) => q.eq("year", YEAR));
     const page = await base.paginate({ cursor: a.cursor, numItems: a.month ? 1500 : 3000 });
-    const r = await collectLines(ctx, page.page, a, null, a.limit);
+    const r = await collectLines(ctx, page.page.filter((b) => !b.scenario), a, null, a.limit);
     return { ...r, cursor: page.isDone ? null : page.continueCursor };
   },
 });
@@ -108,7 +108,7 @@ export const linesOf = internalQuery({
     for (const it of items) {
       if (a.month && it.month !== a.month) continue;
       const b = await ctx.db.query("bank_transactions").withIndex("by_key", (q) => q.eq("key", it.ref)).first();
-      if (b) lines.push(b);
+      if (b && !b.scenario) lines.push(b);
     }
     lines.sort((x, y) => x.date.localeCompare(y.date) || x.key.localeCompare(y.key));
     return await collectLines(ctx, lines, a, byRef, a.limit);
@@ -120,7 +120,7 @@ export const story = internalQuery({
   args: { key: v.string() },
   handler: async (ctx, a) => {
     const s = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.key)).first();
-    if (!s) return null;
+    if (!s || s.scenario) return null;
     const question = await ctx.db.query("questions").withIndex("by_story", (q) => q.eq("storyKey", a.key)).first();
     const messages = await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", a.key)).take(300);
     const audit = await ctx.db.query("audit_log").withIndex("by_item", (q) => q.eq("itemId", s._id)).take(30);
@@ -138,7 +138,7 @@ export const rule = internalQuery({
   args: { ruleId: v.string() },
   handler: async (ctx, a) => {
     const r = await ctx.db.query("rules").withIndex("by_ruleId", (q) => q.eq("ruleId", a.ruleId)).order("desc").first();
-    if (!r) return null;
+    if (!r || r.scenario) return null;
     const audit = await ctx.db.query("audit_log").withIndex("by_item", (q) => q.eq("itemId", r._id)).take(30);
     const key = RULE_STORY[a.ruleId];
     const messages = key ? (await ctx.db.query("room_messages").withIndex("by_story_seq", (q) => q.eq("storyKey", key)).take(300)).filter((m) => m.status === "done" && (m.code || m.text.includes(a.ruleId))) : [];
@@ -154,10 +154,11 @@ export const target = internalQuery({
     const id = t.toLowerCase().match(/\br(\d{1,2})\b/)?.[0];
     if (id) {
       const r = await ctx.db.query("rules").withIndex("by_ruleId", (q) => q.eq("ruleId", id)).order("desc").first();
-      if (r) return { table: "rules" as const, id: r._id as string, label: `rule ${r.ruleId}` };
+      if (r && !r.scenario) return { table: "rules" as const, id: r._id as string, label: `rule ${r.ruleId}` };
     }
-    const s = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", t)).first()
-      ?? (await ctx.db.query("stories").take(200)).find((x) => t.toUpperCase().includes(x.counterparty.toUpperCase()) && x.counterparty.length > 2);
+    const exact = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", t)).first();
+    const s = (exact && !exact.scenario ? exact : null)
+      ?? (await ctx.db.query("stories").take(200)).find((x) => !x.scenario && t.toUpperCase().includes(x.counterparty.toUpperCase()) && x.counterparty.length > 2);
     if (s) return { table: "stories" as const, id: s._id as string, label: s.title };
     const close = await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", "close")).first();
     return close ? { table: "work_items" as const, id: close._id as string, label: "the year's close" } : null;

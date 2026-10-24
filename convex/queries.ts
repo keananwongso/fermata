@@ -9,11 +9,13 @@ export const overview = query({
   handler: async (ctx) => {
     const close = await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", "close")).first();
     const months = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "month")).take(12)).sort((a, b) => a.month - b.month);
-    const held = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "HELD")).take(4000)).length;
-    const waiting = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "WAITING")).take(4000)).length;
-    const questions = await ctx.db.query("questions").take(200);
-    const stories = await ctx.db.query("stories").take(200);
-    const rules = await ctx.db.query("rules").take(100);
+    // The year's figures leave out scenario rows (scenario.ts); open scenario rooms still show among the open rooms.
+    const held = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "HELD")).take(4000)).filter((x) => !x.scenario).length;
+    const waiting = (await ctx.db.query("work_items").withIndex("by_kind_state", (q) => q.eq("kind", "bank_txn").eq("state", "WAITING")).take(4000)).filter((x) => !x.scenario).length;
+    const questions = (await ctx.db.query("questions").take(200)).filter((x) => !x.scenario);
+    const allStories = await ctx.db.query("stories").take(200);
+    const stories = allStories.filter((x) => !x.scenario);
+    const rules = (await ctx.db.query("rules").take(100)).filter((x) => !x.scenario);
     const ledger = await ctx.db.query("ledger_accounts").withIndex("by_bank", (q) => q.eq("bankAccount", "HEAD_OFFICE")).take(20);
     const accounts = await ctx.db.query("bank_accounts").take(10);
     const sum = (k: string) => months.reduce((a, m) => a + (m.stats?.[k] ?? 0), 0);
@@ -30,7 +32,7 @@ export const overview = query({
       headOfficeBank: accounts.find((a) => a.code === "HEAD_OFFICE")?.statementBalance ?? 0,
       rulesLearned: rules.filter((r) => r.learnedInMonth).map((r) => ({ ruleId: r.ruleId, month: r.learnedInMonth ?? 0, state: r.state })),
       roomsByMonth: Array.from({ length: 12 }, (_, i) => stories.filter((s) => s.month === i + 1).length),
-      openRooms: stories.filter((s) => s.room && s.room.state !== "closed").sort((a, b) => b.month - a.month).slice(0, 5).map((s) => ({ key: s.key, title: s.title, state: s.room!.state })),
+      openRooms: allStories.filter((s) => s.room && s.room.state !== "closed").sort((a, b) => b.month - a.month).slice(0, 5).map((s) => ({ key: s.key, title: s.title, state: s.room!.state })),
       pausedQuestion: close?.run?.pausedFor ? questions.find((x) => x.storyKey === (close.run!.pausedFor === "A" ? "placement_conflict|S03|school_va" : "unknown_lender|FIN_Z")) ?? null : null,
       pausedRule: close?.run?.pausedFor === "A" ? rules.find((r) => r.ruleId === "r8") ?? null : null,
     };
@@ -120,16 +122,19 @@ export const rule = query({
 export const record = query({
   args: { itemRef: v.optional(v.string()), deniedOnly: v.boolean() },
   handler: async (ctx, a) => {
+    // Rows of a scenario that was reset stay in the log (append only) but are not shown.
+    const live = new Set((await ctx.db.query("scenarios").take(100)).map((s) => s.sid));
+    const shown = (rows: Doc<"audit_log">[], n = 120) => rows.filter((r) => !r.scenario || live.has(r.scenario)).slice(0, n);
     if (a.itemRef) {
       const wi = await ctx.db.query("work_items").withIndex("by_ref", (q) => q.eq("ref", a.itemRef!)).first();
       const st = await ctx.db.query("stories").withIndex("by_key", (q) => q.eq("key", a.itemRef!)).first();
       const ru = await ctx.db.query("rules").withIndex("by_ruleId", (q) => q.eq("ruleId", a.itemRef!)).first();
       const id = wi?._id ?? st?._id ?? ru?._id;
       if (!id) return [];
-      return await ctx.db.query("audit_log").withIndex("by_item", (q) => q.eq("itemId", id)).take(100);
+      return shown(await ctx.db.query("audit_log").withIndex("by_item", (q) => q.eq("itemId", id)).take(100));
     }
-    if (a.deniedOnly) return await ctx.db.query("audit_log").withIndex("by_allowed", (q) => q.eq("allowed", false)).order("desc").take(100);
-    return await ctx.db.query("audit_log").order("desc").take(120);
+    if (a.deniedOnly) return shown(await ctx.db.query("audit_log").withIndex("by_allowed", (q) => q.eq("allowed", false)).order("desc").take(300), 100);
+    return shown(await ctx.db.query("audit_log").order("desc").take(400));
   },
 });
 
