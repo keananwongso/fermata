@@ -13,6 +13,8 @@ export type Preset = {
   forbid?: string[];
 };
 
+const MONTH_WORDS = ["january", "february", "march", "april", "=may", "june", "july", "august", "september", "october", "november", "december"];
+
 export const PRESETS: Preset[] = [
   {
     id: "approve-r9", question: "Approve r9 for me",
@@ -27,10 +29,11 @@ export const PRESETS: Preset[] = [
   {
     id: "auto-settling", question: "How has auto settling changed?",
     patterns: [
-      [["auto", "first pass", "on its own", "automatic"], ["chang", "trend", "month", "over", "improv", "grow", "climb", "time", "year", "go", "went", "share"]],
+      [["auto", "first pass", "on its own", "automatic"], ["chang", "trend", "over", "improv", "grow", "climb", "time", "went", "go up", "evolv", "progress"]],
       [["settl", "match"], ["chang", "trend", "over time", "improv", "climb", "grow"]],
     ],
-    forbid: ["store", "finz", "school", "show", "list", "december", "january"],
+    // A month named means one month's figure, not the year's trend.
+    forbid: ["store", "finz", "school", "show", "list", "held", "hold", "most", ...MONTH_WORDS],
   },
   {
     id: "held-by-store", question: "Which stores have the most held?",

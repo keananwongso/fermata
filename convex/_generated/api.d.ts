@@ -25,6 +25,7 @@ import type * as lib_generate from "../lib/generate.js";
 import type * as lib_investigate from "../lib/investigate.js";
 import type * as lib_rules from "../lib/rules.js";
 import type * as lib_transition from "../lib/transition.js";
+import type * as lib_voiceMatch from "../lib/voiceMatch.js";
 import type * as lib_world from "../lib/world.js";
 import type * as queries from "../queries.js";
 import type * as roomAgents from "../roomAgents.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/investigate": typeof lib_investigate;
   "lib/rules": typeof lib_rules;
   "lib/transition": typeof lib_transition;
+  "lib/voiceMatch": typeof lib_voiceMatch;
   "lib/world": typeof lib_world;
   queries: typeof queries;
   roomAgents: typeof roomAgents;
