@@ -14,6 +14,7 @@ import { MUSIC, R, mostAsked, openRooms } from "./dashboard/data";
 import { DashboardNav, HOME, navFromQuery, navQuery, type Nav } from "./dashboard/nav";
 import { Overview } from "./dashboard/overview";
 import { CaseRooms } from "./dashboard/rooms";
+import { Rules } from "./dashboard/rules";
 
 // ---- The views ---------------------------------------------------------------------------------------------------
 
@@ -21,6 +22,7 @@ import { CaseRooms } from "./dashboard/rooms";
 type View = { id: string; label: string; count?: ReactNode; console?: string; Panel: (p: { room: string | null }) => ReactNode };
 const PANELS: Record<string, { id: string; Panel: View["Panel"]; count?: ReactNode }> = {
   "/stories": { id: "case-rooms", Panel: CaseRooms, count: <span className="num rounded-full bg-hold-tint px-1.5 text-[11px] text-hold-ink">{openRooms.length}<span className="sr-only"> waiting</span></span> },
+  "/rules": { id: "rules", Panel: Rules, count: <span className="num text-[11px] text-faint">{R.rules.length}<span className="sr-only"> rules</span></span> },
 };
 const VIEWS: View[] = [
   { id: HOME.view, label: "Dashboard", Panel: Overview },
