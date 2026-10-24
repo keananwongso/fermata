@@ -10,6 +10,8 @@ import recording from "@/demo/recording.json";
 import { num, pct, rpShort } from "../../convex/lib/format";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll, SmoothScroll } from "@/components/motion";
 import { Dashboard } from "@/components/dashboard";
+import { AskChips, AskLesson } from "@/components/ask/lesson";
+import { AskHint } from "@/components/ask/overlay";
 
 // What the books claimed for the head office account on 31 December, read from the recording.
 const HEAD_OFFICE = (recording as unknown as { headOffice: number }).headOffice;
@@ -37,6 +39,7 @@ function Landing() {
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href="#how">See how it works</LinkArrow>
           </RevealItem>
+          <RevealItem><AskHint className="mt-1" /></RevealItem>
           <RevealItem><p className="mt-6 text-[12px] text-faint">Shown on a fictional 14-store music retailer. Every number here comes from a real run on synthetic books.</p></RevealItem>
         </Reveal>
         <div className="relative mt-12 lg:mt-16">
@@ -79,6 +82,20 @@ function Landing() {
             body: <>Every change is written in the same step as the change itself: the evidence, the rule that allowed it, who approved it. No agent can approve or post anything, and when one tries, the refusal is on record too.</>,
             visual: <RecordSample /> },
         ]} />
+      </section>
+
+      {/* Ask the books: teach the shortcut. Holding Control + Option anywhere on the site opens the popup
+          (src/components/ask/overlay.tsx); the suggested questions here open it and ask. */}
+      <section id="ask" className="scroll-mt-36 grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+        <Reveal className="min-w-0 max-w-[560px]" stagger={0.1}>
+          <RevealItem><Tag tone="neutral">Ask the books</Tag></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">Ask the books. Out loud.</h2></RevealItem>
+          <RevealItem><p className="mt-5 text-[15px] leading-relaxed text-body">
+            It answers from the closed books, out loud and on screen, and every number comes from the books, not from the model. Read only: it can explain the books, never change them.
+          </p></RevealItem>
+          <RevealItem className="mt-6"><div className="eyebrow mb-2.5">Try asking</div><AskChips /></RevealItem>
+        </Reveal>
+        <Reveal className="min-w-0"><RevealItem><AskLesson /></RevealItem></Reveal>
       </section>
 
       {/* Proof: the learning claim is one year closed twice on the same engine, learning and with the rules frozen. Every

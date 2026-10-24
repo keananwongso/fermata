@@ -47,7 +47,7 @@ export function Figure({ v }: { v: FigureView }) {
       <div className="mt-5 grid gap-6 sm:grid-cols-[1.4fr_1fr] sm:items-end">
         <div className="min-w-0">
           <div className="eyebrow">{v.label}</div>
-          <div className="display mt-2 text-[clamp(44px,7vw,76px)] tabular-nums"><RollValue value={v.value} unit={v.unit} /></div>
+          <div className="display mt-2 text-[clamp(40px,11cqi,76px)] tabular-nums"><RollValue value={v.value} unit={v.unit} /></div>
         </div>
         {v.compare ? (
           <div className="min-w-0 border-hairline sm:border-l sm:pl-6">

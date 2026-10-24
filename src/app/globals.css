@@ -155,6 +155,19 @@
      and the small bars beside a caption while its answer plays. */
   .listen { animation: listen 1400ms var(--ease-out) infinite; box-shadow: 0 0 0 0 rgb(31 95 192 / 0.45); }
   .speak-bar { height: 4px; animation: speak 900ms ease-in-out infinite; }
+
+  /* Ask the books, anywhere: the coach card that teaches the shortcut. Warm graphite (ink) with a faint grain and
+     white text: the one dark card on the site pages. Opaque, because the page's own dark headings show through any
+     translucency and make the card hard to read. */
+  .coach {
+    color: #fff; border-radius: 16px; border: 1px solid rgb(255 255 255 / 0.14);
+    background-color: var(--color-ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.08'/%3E%3C/svg%3E");
+    box-shadow: 0 1px 2px rgb(85 40 20 / 0.12), 0 24px 60px -24px rgb(85 40 20 / 0.5);
+  }
+  /* A key or a shortcut: "⌃ + ⌥". Light on the page, frosted inside the coach card. */
+  .kbd { display: inline-block; border-radius: var(--radius-button); border: 1px solid var(--color-strong); background: var(--color-ground); padding: 0 6px; font-family: var(--font-mono); font-size: 0.8em; line-height: 1.6; letter-spacing: 0; color: var(--color-ink); white-space: nowrap; vertical-align: 0.08em; }
+  .coach .kbd { border-color: rgb(255 255 255 / 0.3); background: rgb(255 255 255 / 0.12); color: #fff; }
 }
 
 @keyframes enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }

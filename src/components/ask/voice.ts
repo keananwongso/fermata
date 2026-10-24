@@ -6,10 +6,12 @@
 import Cartesia from "@cartesia/cartesia-js";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
+import { canRecognize, recognize } from "./speech";
 
 export const VOICE_ID = "630ed21c-2c5c-41cf-9d82-10a7fd668370";
 const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-// Without a Convex URL (the hosted site today) there is no live answer and no voice input; recorded audio still plays.
+// Without a Convex URL (the hosted site today) there is no live answer and no Cartesia voice. Recorded audio still
+// plays, and the browser's recognizer still turns a spoken question into words (`listen`).
 export const LIVE = !!url;
 let convex: ConvexHttpClient | null = null;
 export function liveClient(): ConvexHttpClient | null {
@@ -213,4 +215,71 @@ export async function transcribe(clip: Blob): Promise<{ text: string } | { error
   } catch {
     return { error: "Voice input failed. Type your question instead." };
   }
+}
+
+// ---------------- one pipeline for every hold to talk control ----------------
+// The orb, the overlay's shortcut and the case room's round button all listen through `listen`: the microphone
+// recorder (for Cartesia when the live service is there, and for the orb's level) and the browser's recognizer (for
+// the words while the person speaks, and the transcript when there is no live service). Either one is enough.
+
+export function canListen(): boolean {
+  return (LIVE && canRecord()) || canRecognize();
+}
+
+export type Listening = { stop: () => Promise<{ text: string } | { error: string }>; cancel: () => void };
+
+export async function listen(onWords?: (text: string) => void): Promise<Listening> {
+  let rec: Recording | null = null;
+  if (canRecord()) {
+    try { rec = await startRecording(); }
+    // Without the live service the recorder only drives the orb, so the recognizer can carry on alone.
+    catch (e) { if (LIVE || !canRecognize()) throw e; }
+  }
+  const words = recognize((t) => onWords?.(t));
+  if (!rec && !words) throw new Error("No voice input in this browser.");
+  return {
+    stop: async () => {
+      const [heard, clip] = await Promise.all([words ? words.stop() : Promise.resolve(""), rec ? rec.stop() : Promise.resolve(null)]);
+      if (LIVE && clip) {
+        const t = await transcribe(clip);
+        return "text" in t || !heard ? t : { text: heard };
+      }
+      if (heard) return { text: heard };
+      // Too short to be speech: a tap, not a question.
+      return rec && !clip ? { error: "Hold while you speak, then let go." } : { error: "I didn't catch that. Hold and try again, or type it." };
+    },
+    cancel: () => { words?.abort(); rec?.cancel(); },
+  };
+}
+
+// ---------------- earcons ----------------
+// A rising blip when listening starts and a falling note when the question is taken. Synthesised on the spot and
+// faded in and out, so neither end clicks. Without audio the orb and the card still show it.
+
+function note(ctx: AudioContext, at: number, from: number, to: number, ms: number, gain: number) {
+  const osc = ctx.createOscillator();
+  const amp = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(from, at);
+  osc.frequency.exponentialRampToValueAtTime(to, at + ms / 1000);
+  amp.gain.setValueAtTime(0, at);
+  amp.gain.linearRampToValueAtTime(gain, at + 0.008);
+  amp.gain.exponentialRampToValueAtTime(0.0001, at + ms / 1000);
+  osc.connect(amp).connect(ctx.destination);
+  osc.start(at);
+  osc.stop(at + ms / 1000 + 0.02);
+}
+
+export function blipIn() {
+  const ctx = context();
+  if (!ctx) return;
+  const t = ctx.currentTime + 0.005;
+  note(ctx, t, 620, 660, 70, 0.06);
+  note(ctx, t + 0.065, 880, 940, 90, 0.06);
+}
+
+export function blipOut() {
+  const ctx = context();
+  if (!ctx) return;
+  note(ctx, ctx.currentTime + 0.005, 900, 700, 110, 0.05);
 }
