@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --font-sans: var(--font-inter-tight), var(--font-music), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), var(--font-music), ui-monospace, monospace;
+
+  --color-ground: #ffffff;
+  --color-well: #f4f6f9;
+  --color-hover: #eceff3;
+  --color-hairline: #d6dce5;
+  --color-strong: #c0c7d2;
+  --color-faint: #8b93a1;
+  --color-secondary: #5f6775;
+  --color-ink: #1a1f29;
+
+  --color-accent: #1f5fc0;
+  --color-accent-hover: #0f3d7a;
+  --color-accent-tint: #eaf1fb;
+
+  --color-hold: #b27d10;
+  --color-hold-tint: #fbf0d6;
+  --color-success: #2e9e5b;
+  --color-success-tint: #e7f4ec;
+  --color-danger: #d23b30;
+  --color-danger-tint: #fae7e5;
+  --color-info: #00a3a0;
+  --color-info-tint: #e3f5f4;
+
+  --radius-card: 22px;
+  --radius-button: 12px;
+  --radius-input: 8px;
+
+  --ease-calm: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+html, body { background: var(--color-ground); color: var(--color-ink); }
+body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.num, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.card { background: var(--color-ground); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgba(15,15,15,0.04); }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-faint); font-weight: 500; }
+.tight { letter-spacing: -0.02em; }
+.calm { transition: all 160ms var(--ease-calm); }
+.bar { transition: width 260ms var(--ease-calm); }
+@media (prefers-reduced-motion: reduce) { .calm, .bar { transition: none; } }
