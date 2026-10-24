@@ -5,6 +5,9 @@ import { execFileSync } from "node:child_process";
 const run = (fn: string, args: object = {}): string =>
   execFileSync("npx", ["convex", "run", fn, JSON.stringify(args)], { encoding: "utf8" }).trim();
 
+// Stop a close that is still running first: its steps write work_items while the batches delete them.
+run("seed:resetRunState");
+
 let deleted = 0;
 for (;;) {
   const r = JSON.parse(run("seed:resetBatch")) as { deleted: number; done: boolean };
