@@ -25,7 +25,7 @@ Then open **Run** and press **Close the year**. The close pauses in March (an Ac
 
 Other scripts:
 
-- `npm run simulate` runs the same engine offline on the generated data and checks the learning curve against the brief.
+- `npm run simulate` runs the same engine offline over a year, with learning and without, and prints both curves. Its default world is the learning year (`learningMess` in `convex/lib/generate.ts`): no first-pass rate is planted, so the gap between the curves is what learning did. Knobs answer what-ifs, e.g. `npm run simulate -- --drift 0.021@4 --lender 0.038@3 --learn r9@8`; `--preset default` runs the recorded demo's world, whose late records are planted to hit the brief's rates. The simulator's Learner is deterministic code: answers come from the generator's answer key, and each rule's parameters are fitted from the data and backtested before it applies.
 - `npm run reset` clears everything the close produced so it can run again on the same synced data.
 
 ### Deploying the frontend
