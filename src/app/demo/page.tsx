@@ -8,6 +8,7 @@ import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, Pill } from "@/components/ui";
+import { CONSOLE_LINK } from "@/components/nav";
 import { Arrival, Reveal, RevealItem, Roll } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -188,7 +189,7 @@ function DemoPage() {
           {phase === "done" ? (
             <div className="mt-4 border-t border-hairline pt-4 text-[12.5px] text-secondary">
               The year is closed. {num(R.final.settled)} lines settled, {num(R.rooms.length)} rooms, about 40 decisions for people.
-              <div className="mt-2"><Link href="/run" className="text-link hover:text-accent">Open the console →</Link></div>
+              <div className="mt-2"><Link href={CONSOLE_LINK.href} className="text-link hover:text-accent">{CONSOLE_LINK.label} →</Link></div>
             </div>
           ) : null}
         </aside>

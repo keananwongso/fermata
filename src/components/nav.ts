@@ -17,3 +17,6 @@ export const SITE_LINKS = [
   { href: "/demo", label: "Live demo" },
   PUBLIC_SITE ? { href: REPO_URL, label: "Run it yourself" } : { href: "/run", label: "Console" },
 ];
+
+// The call to action after the demo: the console where it is served, otherwise the repo to run it from.
+export const CONSOLE_LINK = PUBLIC_SITE ? { href: REPO_URL, label: "Run it yourself" } : { href: "/run", label: "Open the console" };

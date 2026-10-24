@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
+import { CONSOLE_LINK } from "@/components/nav";
 import { AgentWorking, CurveAndMeetings, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll } from "@/components/motion";
 
@@ -77,7 +78,7 @@ function Landing() {
         <RevealItem><p className="mx-auto mt-4 max-w-[520px] text-[15px] text-secondary">The demo replays a recorded run. You answer the two questions the agents bring you.</p></RevealItem>
         <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <LinkButton href="/demo">Watch the live demo</LinkButton>
-          <LinkArrow href="/run">Open the console</LinkArrow>
+          <LinkArrow href={CONSOLE_LINK.href}>{CONSOLE_LINK.label}</LinkArrow>
         </RevealItem>
       </Reveal>
     </div>
