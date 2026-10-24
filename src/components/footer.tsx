@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PUBLIC_SITE, SITE_LINKS, TABS } from "./nav";
+import { FOOTER_LINKS, PUBLIC_SITE, TABS } from "./nav";
 
 export function Footer() {
   return (
@@ -12,7 +12,7 @@ export function Footer() {
         </div>
         <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-[13px] sm:grid-cols-3" aria-label="Footer">
           <div className="eyebrow col-span-full mb-1 text-white/45">Screens</div>
-          {(PUBLIC_SITE ? SITE_LINKS : TABS).map((t) => <Link key={t.href} href={t.href} className="calm text-white/80 hover:text-white">{t.label}</Link>)}
+          {(PUBLIC_SITE ? FOOTER_LINKS : TABS).map((t) => <Link key={t.href} href={t.href} className="calm text-white/80 hover:text-white">{t.label}</Link>)}
         </nav>
       </div>
       <div className="relative border-t border-white/10">

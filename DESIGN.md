@@ -92,6 +92,9 @@ inside rule code and the record.
   then the whole screen fades into the page. Only on a cold load; returning to the page skips it.
 * **`Arrival`** (`motion.tsx`): wraps the landing page and the demo. The same splash once per visit, on the first page
   opened, with the page hidden underneath so its own entrance plays as the splash fades. Client navigations skip it.
+* **`.tip`** (`globals.css`): a small `night` bubble with an arrow (`data-arrow="up"` or `"down"`, `--tip-x` to move
+  it). Inside a `.has-tip` element it is a tooltip, shown on hover and keyboard focus (the header's GitHub icon).
+  Icon-only controls still carry an `aria-label`; the tip is `aria-hidden`.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
 ## Case rooms (`src/components/caseRoom.tsx`)
@@ -115,8 +118,12 @@ The transcript of the agents' meeting on one held story.
 ## Landing page and public demo (`src/app/page.tsx`, `src/app/demo`, `src/components/landing.tsx`)
 
 * `/` is the site; `/dashboard` is the overview; `/demo` replays a recorded run; `/pitch` is the deck; the console lives at `/run`, `/stories`, `/rules`,
-  `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/`,
-  `/dashboard` and `/demo`, console tabs and the Acting as switch everywhere else.
+  `/evaluation`, `/record`. The header switches: on the site pages (`/`, `/dashboard`, `/demo`, `/ask`) it is two
+  links (How it works, Dashboard; plus Console when run locally), the GitHub icon and the **Watch the live demo**
+  button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
+  there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
+  the explore path is the dashboard (Ask the books lives inside it), and the demo hands off to the dashboard when the
+  year closes. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
 * **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens the whole stage (title, card,

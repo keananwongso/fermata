@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRole, type HumanRole } from "./providers";
-import { SITE_LINKS, TABS } from "./nav";
+import { REPO_URL, SITE_LINKS, TABS } from "./nav";
 import { LinkButton } from "./ui";
 
 export const ROLE_LABEL: Record<HumanRole, string> = { accountant: "Accountant", cfo: "CFO" };
@@ -14,6 +14,8 @@ export function Header() {
   // The landing page, the public demo and the dashboard get the site navigation; the console gets its tabs and role switch.
   const site = path === "/" || ["/demo", "/dashboard", "/ask", "/pitch"].some((p) => path.startsWith(p));
   const links = site ? SITE_LINKS : TABS;
+  // The live demo is the call to action everywhere but the demo itself, where running it is the action.
+  const cta = site && !path.startsWith("/demo");
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -39,7 +41,10 @@ export function Header() {
             </Link>
             <Tabs path={path} links={links} />
             <div className="ml-auto hidden items-center gap-3 lg:flex">
-              {site ? <LinkButton href="/demo">Watch the live demo</LinkButton> : <>
+              {site ? <>
+                <GitHub />
+                {cta ? <LinkButton href="/demo">Watch the live demo</LinkButton> : null}
+              </> : <>
                 <span className="hidden text-[12px] text-faint xl:inline">Acting as</span>
                 <RoleSwitch />
               </>}
@@ -62,7 +67,10 @@ export function Header() {
                     </Link>
                   );
                 })}
-                {site ? <div className="px-3 pt-3"><LinkButton href="/demo">Watch the live demo</LinkButton></div> : <div className="flex items-center justify-between px-3 pt-3 text-[12px] text-faint">Acting as <RoleSwitch /></div>}
+                {site ? <>
+                  <a href={REPO_URL} className="calm flex min-h-11 items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-ink hover:bg-hover hover:text-accent"><GitHubMark />Source on GitHub</a>
+                  {cta ? <div className="px-3 pt-3"><LinkButton href="/demo">Watch the live demo</LinkButton></div> : null}
+                </> : <div className="flex items-center justify-between px-3 pt-3 text-[12px] text-faint">Acting as <RoleSwitch /></div>}
               </nav>
             </div>
           </div>
@@ -101,5 +109,24 @@ function RoleSwitch() {
         </button>
       ))}
     </div>
+  );
+}
+
+// The repo as an icon, named by a tooltip on hover and focus.
+function GitHub() {
+  return (
+    <a href={REPO_URL} aria-label="Source on GitHub"
+      className="has-tip calm flex h-9 w-9 items-center justify-center rounded-[6px] text-secondary hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+      <GitHubMark />
+      <span className="tip" data-arrow="up" aria-hidden>Source on GitHub</span>
+    </a>
+  );
+}
+
+function GitHubMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
   );
 }

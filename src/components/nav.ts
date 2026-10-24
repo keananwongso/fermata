@@ -11,13 +11,20 @@ export const TABS = [
 export const PUBLIC_SITE = process.env.NEXT_PUBLIC_FERMATA_PUBLIC === "1";
 export const REPO_URL = "https://github.com/keananwongso/fermata";
 
-// The landing page, the dashboard and the public demo.
+// The site header: the guided path is the live demo (its button), the explore path is the dashboard (Ask the books
+// lives inside it). Locally the console is one more link.
 export const SITE_LINKS = [
   { href: "/#how", label: "How it works" },
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/ask", label: "Ask the books" },
+  ...(PUBLIC_SITE ? [] : [{ href: "/run", label: "Console" }]),
+];
+
+// The footer has room for every way in.
+export const FOOTER_LINKS = [
+  ...SITE_LINKS,
   { href: "/demo", label: "Live demo" },
-  PUBLIC_SITE ? { href: REPO_URL, label: "Run it yourself" } : { href: "/run", label: "Console" },
+  { href: "/dashboard?view=ask", label: "Ask the books" },
+  { href: REPO_URL, label: "Source on GitHub" },
 ];
 
 // The call to action after the demo: the console where it is served, otherwise the repo to run it from.
