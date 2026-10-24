@@ -374,7 +374,7 @@ export const finishTurn = internalMutation({
     // Staged in story B: the Investigator tries to approve its own story. The gateway refuses in code.
     const msgs = await roomMessages(ctx, a.storyKey);
     const mine = msgs.filter((m) => m.speaker === "investigator" && m.kind === "message").length;
-    if (a.storyKey === STORY_B_KEY && speaker === "investigator" && mine === 2 && !msgs.some((m) => m.staged)) {
+    if (a.storyKey === STORY_B_KEY && speaker === "investigator" && mine === 1 && !msgs.some((m) => m.staged)) {
       const r = await transition(ctx, { table: "stories", id: story._id as Id<ItemTable>, action: "approve", actor: "investigator", month, reason: "Staged attempt: the Investigator approves its own story", staged: true, patch: {} });
       await say(ctx, story, month, { speaker: "investigator", to: "room", kind: "denied", source: "code", staged: true, text: r.ok ? "Approved its own story. This should never happen." : `Tried to approve this story itself. Blocked in code: ${r.denial}.` });
     }
@@ -390,6 +390,11 @@ export const finishTurn = internalMutation({
     if (wantsPerson) {
       if (speaker === "learner") { await manager("The Learner drafts rules; it does not ask people. Floor goes to the Auditor."); return await next(ctx, a.storyKey, "auditor"); }
       if (!lastQ) { await manager("There is no question for a person yet. Floor goes to the Investigator to write it."); return await next(ctx, a.storyKey, "investigator"); }
+      // When a yes would create a rule, the person sees the exact rule they would approve.
+      if (spec?.ruleId === "r9" && !after.some((m) => m.speaker === "learner" && m.code)) {
+        await manager("A yes here creates a rule, so the Learner drafts it first. The CFO should see exactly what they would approve. Floor goes to the Learner.");
+        return await next(ctx, a.storyKey, "learner");
+      }
       if (!lastAuditor || (lastProposal && lastAuditor.seq < lastProposal.seq)) {
         await manager(`People are asked once, after the Auditor has checked. Floor goes to the Auditor.`);
         return await next(ctx, a.storyKey, "auditor");
