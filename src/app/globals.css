@@ -108,6 +108,14 @@
   .arrow-link .arrow-track { transition: transform 400ms var(--ease-brand); }
   .arrow-link:hover .arrow-track { transform: translateX(13px); }
 
+  /* Scroll boxes inside a card: a thin scrollbar that stays invisible until the box is hovered. */
+  .scroll-quiet { scrollbar-width: thin; scrollbar-color: transparent transparent; overscroll-behavior: contain; }
+  .scroll-quiet:hover, .scroll-quiet:focus-within { scrollbar-color: var(--color-mute) transparent; }
+  .scroll-quiet::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-quiet::-webkit-scrollbar-track { background: transparent; }
+  .scroll-quiet::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+  .scroll-quiet:hover::-webkit-scrollbar-thumb { background: var(--color-mute); }
+
   .enter { animation: enter 400ms var(--ease-out) both; }
   .arrive { animation: arrive 1200ms var(--ease-out) both; }
   .breathe { animation: breathe 1200ms ease-in-out infinite; }
