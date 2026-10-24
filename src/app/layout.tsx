@@ -21,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="flex min-h-dvh flex-col">
         <Providers>
           <Header />
-          <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 pb-20 pt-8 lg:px-10 lg:pb-28 lg:pt-12">{children}</main>
+          <main className="mx-auto w-full max-w-page flex-1 px-4 pb-20 pt-8 lg:px-10 lg:pb-28 lg:pt-12">{children}</main>
           <Footer />
         </Providers>
       </body>

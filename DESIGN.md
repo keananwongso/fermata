@@ -149,7 +149,7 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 ## Layout
 
-* Content width 1240px (`max-w-[1240px]`), gutters `px-4` mobile and `lg:px-10` desktop.
+* Content width 1440px (`max-w-page`, the `--container-page` token; the header card is 60px narrower so it lines up), gutters `px-4` mobile and `lg:px-10` desktop.
 * **Workspaces that play over time** (the demo) have a fixed height on wide screens and scroll inside each panel, so the page
   stays still while they run. Starting the run scrolls the page once to bring the whole workspace into view.
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.

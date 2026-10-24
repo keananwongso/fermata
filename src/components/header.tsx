@@ -31,7 +31,7 @@ export function Header() {
         A fictional Indonesian music retailer. Every store, amount and person here is synthetic.
       </div>
       <header className="mt-3 px-4 lg:px-6">
-        <div className="mx-auto max-w-[1180px] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)]">
+        <div className="mx-auto max-w-[calc(var(--container-page)-60px)] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)]">
           <div className="flex h-14 items-center gap-6 pl-4 pr-2 lg:pr-3">
             <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, home">
               <span className="text-[20px] leading-none text-hold" aria-hidden>𝄐</span>

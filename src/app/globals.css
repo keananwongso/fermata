@@ -45,6 +45,9 @@
   --color-info: #00a3a0;
   --color-info-tint: #e3f5f4;
 
+  /* Page width: header, content and footer all line up on it. */
+  --container-page: 1440px;
+
   --radius-card: 10px;
   --radius-panel: 6px;
   --radius-button: 4.5px;
