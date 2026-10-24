@@ -225,6 +225,7 @@ uses the same tokens, type classes, components and motion as the screens it intr
 | Sliding highlight | A `motion` `layoutId` background that slides between options, e.g. the current month on the run view |
 | `useLive` | Only rows that arrive after first paint animate |
 | `BrandGrid` | Stepped blue cells at the edges of a hero, clearing toward a readable centre |
+| `ThinkingOrb` | Ask the books' voice: a point sphere that rests, listens, works and speaks (see Ask the books). Blue only |
 
 Component motion uses `motion/react`; CSS classes stay for anything that does not need it. Patterns are ported from
 Watermelon UI (ui.watermelon.sh) into our tokens, never installed as-is, because its blocks carry their own colours.
@@ -278,12 +279,37 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 A voice first, read only way to ask about the books. `/ask` shows it alone; `AskPanel` (`ask/panel.tsx`) mounts anywhere.
 
-* **Not a chat.** One question at a time: the question, a caption of the spoken sentence (with a play button), the answer
-  in one template, then suggested questions and at most four recent ones. No message list, no bubbles.
-* **Push to talk is the primary control** (`PushToTalk`, `ask/pushToTalk.tsx`): a 64px blue round button. Hold it (or hold
-  Space or Enter while it is focused), speak, let go. While it listens it pulses blue (`.listen`), never amber: the person is
-  talking, nothing is held. The typed field is secondary and sits beside it. Under the controls, always: "Read only: it can
-  explain the books, never change them."
+* **Not a chat.** One question and its answer at a time, at most three recent questions as small links, and four
+  suggested questions at a time. No message list, no bubbles.
+* **One flow, driven by the orb** (`ask/panel.tsx`): **invite** (a large orb, "Hold to ask", four suggestions in a two by two
+  grid with More questions to step through the rest, the typed field) → **listening** (the orb follows the microphone) →
+  **writing down the question** → **reading the books** → **speaking** (the orb shrinks beside the answer and the
+  spoken sentence is the caption) → **done** (the answer's template under it, with Play and Ask again). A new question
+  clears the old answer back to the large orb. The orb moves with a `motion` layout animation and is one element the
+  whole way, so a press that starts on it always ends on it.
+* **The orb is the push to talk control** (`ThinkingOrb`, `ask/orb.tsx`, behaviour from `usePushToTalk` in
+  `ask/pushToTalk.tsx`): hold it (or focus it and hold Space or Enter), speak, let go. A small round badge on its lower
+  edge says what it does: a blue mic, a blue stop square while listening, a grey crossed mic when there is no voice input.
+  It is ported from **Speaking Orb** in Ship Notes components (github.com/aqualang89/shipnotes-components, MIT; the notice
+  is in the file), not installed: a sphere of points drawn with WebGL (canvas fallback) whose shape blends between
+  states. Our port draws for a cream page (solid points with normal blending; the nearest points deepen to `heading` navy
+  instead of sparking white), reads its colours from the tokens, and drops the particle captions.
+  * **Idle:** a slowly turning wave sphere in `heading-2` navy.
+  * **Listening:** the same sphere in `accent`, its waves following the microphone level.
+  * **Writing down the question:** three tilted rings, `accent` toward `info`.
+  * **Reading the books:** a turning knot, halfway between `accent` and `info`.
+  * **Speaking:** a soft lobed sphere in `accent` that swells with the answer's audio level, each syllable sending a ring up it.
+  * Never amber (nothing is held) and never red. Levels come from `voiceLevel()` in `voice.ts`: an analyser on the
+    microphone while recording, on the player while it speaks, or a syllable-like pulse when the browser has not
+    started audio. Reduced motion draws one still frame per state and stops the loop; it also stops off screen.
+* **The caption follows the voice** (`SpokenCaption`, `ask/caption.tsx`): the whole sentence is laid out faint from the start,
+  so the line never reflows, and each word darkens as it is said (the current one in `accent`). Cartesia's mp3 has no word
+  timings, so they are estimated from each word's spoken length (figures count longer) and stretched over the audio's real
+  duration. The template rises in shortly after the caption starts. Screen readers get the question and the whole
+  answer once, from an `aria-live` region; the word by word caption is hidden from them.
+* **Labels stay on every answer:** "Recorded answer" or "Live: Claude chose the query", and "Every number checked against
+  the data" or "Sentence written by code", as pills beside Play and Ask again. The typed field is secondary, a quiet
+  rounded field under the suggestions. Under it, once and quietly: "Read only: it can explain the books, never change them."
 * **Five templates** (`ask/views.tsx`), each inside a `.frame` around a `.card`, each ending with its source:
   * **Figure**: one number in `.display` that `Roll`s in, a comparison beside it in `.figure`, an optional note.
   * **Trend**: twelve months as a line (shares) or bars (counts), with learned rules as accent pills. Never 𝄐.
@@ -302,9 +328,13 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   matching) are answered from `src/demo/ask.json` with the recorded audio in `public/ask/`, with no Claude call. Re-record
   with `npx tsx --env-file=.env scripts/export_ask.ts`. Only unmatched questions go live, rate limited per visitor and
   capped per day; past the cap the answer is "I can only answer the suggested questions right now".
-* **Without a Convex URL** (the hosted site today) the push to talk button is disabled with a line saying why, typed
-  questions only match presets, and recorded answers still play out loud.
-* **Voice answers in a case room** (`voiceAnswer.tsx`): a question for the CFO can be answered by voice under its options.
+* **Without a Convex URL** (the hosted site today) the orb cannot be pressed, its badge is a crossed mic, and the line under
+  it says why ("Voice questions need the live service"). Typed questions only match presets, and recorded answers still
+  play out loud and still drive the orb. A rate limit or a failed answer shows as a short note under the orb.
+* **Screenshots in development:** `/ask?orb=listening` (or `transcribing`, `thinking`, `speaking`) holds the orb in that
+  state; the check is compiled out of production builds. `/ask?q=<preset id>` opens a recorded answer without playing it.
+* **Voice answers in a case room** (`voiceAnswer.tsx`): a question for the CFO can be answered by voice under its options,
+  with the plain round `PushToTalk` button (64px or 48px, blue, `.listen` pulse while it listens).
   The answer is read back ("You said …. That means …") and only a spoken yes sends it, marked "By voice". Confirming the
   restated answer and approving a rule stay clicks.
 * **Speech** is Cartesia: one voice, `sonic-3.6`, mp3. The browser gets a one minute access token from Convex, never the key.

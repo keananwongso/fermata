@@ -64,7 +64,67 @@ export async function playUrl(src: string, onEnd?: () => void): Promise<boolean>
   player.src = src;
   playingUrl = src;
   player.onended = () => onEnd?.();
+  tapPlayer(player);
   try { await player.play(); return true; } catch { onEnd?.(); return false; }
+}
+
+// Where the answer's audio is, so a caption can reveal its words in time with it. Null when nothing is loaded.
+export function playback(): { time: number; duration: number; playing: boolean } | null {
+  if (!player || !playingUrl) return null;
+  const d = player.duration;
+  return { time: player.currentTime, duration: Number.isFinite(d) ? d : 0, playing: !player.paused && !player.ended };
+}
+
+// ---------------- levels, for the orb ----------------
+// How loud the voice is right now, 0 to 1: the microphone while a question is being recorded, the answer while it
+// plays. Read once per frame by the orb (orb.tsx). Analysis only: the microphone is never sent to the speakers.
+
+let audioCtx: AudioContext | null = null;
+let outAnalyser: AnalyserNode | null = null;
+let micAnalyser: AnalyserNode | null = null;
+let tapped: HTMLAudioElement | null = null;
+const buf = new Float32Array(1024);
+
+function context(): AudioContext | null {
+  try {
+    audioCtx ??= new AudioContext();
+    if (audioCtx.state === "suspended") void audioCtx.resume();
+    return audioCtx;
+  } catch { return null; }
+}
+
+// Routes the player through an analyser once. Only while the context is running: a media element routed through a
+// suspended context goes silent, so without a running context the orb estimates the level instead.
+function tapPlayer(el: HTMLAudioElement) {
+  if (tapped === el) return;
+  const ctx = context();
+  if (!ctx || ctx.state !== "running") return;
+  try {
+    const src = ctx.createMediaElementSource(el);
+    outAnalyser = ctx.createAnalyser();
+    outAnalyser.fftSize = 1024;
+    src.connect(outAnalyser);
+    outAnalyser.connect(ctx.destination);
+    tapped = el;
+  } catch { outAnalyser = null; }
+}
+
+function rms(an: AnalyserNode, gain: number): number {
+  an.getFloatTimeDomainData(buf);
+  let s = 0;
+  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+  return Math.min(1, Math.sqrt(s / buf.length) * gain);
+}
+
+export function voiceLevel(): number {
+  if (micAnalyser) return rms(micAnalyser, 9);
+  if (player && playingUrl && !player.paused && !player.ended) {
+    if (outAnalyser && tapped === player && audioCtx?.state === "running") return rms(outAnalyser, 5);
+    // No analyser: a soft syllable-like pulse, so the orb still talks.
+    const t = player.currentTime;
+    return 0.35 + 0.3 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 2.1 + 1));
+  }
+  return 0;
 }
 
 // Speak a sentence with the Fermata voice. Resolves once playback starts (true) or fails (false).
@@ -104,6 +164,8 @@ function pickType(): string | undefined {
 
 // Starts recording from the microphone. stop() resolves with the clip, or null if it was too short to be speech.
 export async function startRecording(): Promise<Recording> {
+  // Made (or resumed) before the permission prompt, while the press still counts as a user gesture.
+  const ctx = context();
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   const type = pickType();
   const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
@@ -111,7 +173,17 @@ export async function startRecording(): Promise<Recording> {
   const started = performance.now();
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   rec.start();
-  const release = () => stream.getTracks().forEach((t) => t.stop());
+  // A level for the orb while it listens. Not connected to any output.
+  let source: MediaStreamAudioSourceNode | null = null;
+  if (ctx) {
+    try {
+      source = ctx.createMediaStreamSource(stream);
+      micAnalyser = ctx.createAnalyser();
+      micAnalyser.fftSize = 1024;
+      source.connect(micAnalyser);
+    } catch { micAnalyser = null; }
+  }
+  const release = () => { source?.disconnect(); micAnalyser = null; stream.getTracks().forEach((t) => t.stop()); };
   return {
     stop: () => new Promise((resolve) => {
       const finish = () => {
