@@ -3,7 +3,8 @@ import type { Channel } from "./domain";
 
 export type MatchKind =
   | "card_batch" | "cash_deposit" | "marketplace_payout" | "gateway_settlement" | "open_invoices"
-  | "lender_sale" | "school_receipt" | "school_cash" | "cancel_pair" | "bank_fee" | "follow_receipt";
+  | "lender_sale" | "school_receipt" | "school_cash" | "cancel_pair" | "bank_fee" | "follow_receipt"
+  | "school_bills" | "reversed_voucher";
 
 export interface RuleProgram {
   id: string;
@@ -15,6 +16,10 @@ export interface RuleProgram {
     debitFee?: number; creditFee?: number; toleranceIdr?: number; feeIdr?: number; fee?: number;
     commission?: Record<string, number>; lenders?: Record<string, number>; windowDays?: number;
     lookbackDays?: number; maxInvoices?: number; receiptWeight?: number; subAccountWeight?: number;
+    // Card fee changes by store, newest last; `from` is the first sale date it applies to (absent: always).
+    cardFees?: { stores: string[]; from?: string; debitFee: number; creditFee: number }[];
+    maxMonths?: number; recordedWithinDays?: number; // school_bills: one credit pays up to maxMonths consecutive monthly bills
+    roundTo?: number; withinDays?: number; // reversed_voucher: a round deposit within withinDays of a reversed cash voucher
   };
   limitIdr: number;
 }
@@ -33,7 +38,7 @@ export const SEED_RULES: RuleProgram[] = [
 export function validateRuleProgram(x: unknown): { ok: true; rule: RuleProgram } | { ok: false; error: string } {
   if (typeof x !== "object" || x === null) return { ok: false, error: "not an object" };
   const r = x as Record<string, unknown>;
-  const kinds: MatchKind[] = ["card_batch", "cash_deposit", "marketplace_payout", "gateway_settlement", "open_invoices", "lender_sale", "school_receipt", "school_cash", "cancel_pair", "bank_fee", "follow_receipt"];
+  const kinds: MatchKind[] = ["card_batch", "cash_deposit", "marketplace_payout", "gateway_settlement", "open_invoices", "lender_sale", "school_receipt", "school_cash", "cancel_pair", "bank_fee", "follow_receipt", "school_bills", "reversed_voucher"];
   if (typeof r.id !== "string" || !/^r\d+$/.test(r.id)) return { ok: false, error: "id must look like r8" };
   if (typeof r.title !== "string" || r.title.length < 4) return { ok: false, error: "title missing" };
   if (!Array.isArray(r.channels) || r.channels.length === 0) return { ok: false, error: "channels missing" };

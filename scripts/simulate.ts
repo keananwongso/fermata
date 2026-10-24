@@ -1,93 +1,121 @@
-// Offline check: run the engine on the generated world month by month and compare with the brief.
-// Run: npm run simulate
-import { MONTH_LABELS, MONTHLY_TOTALS, YEAR, monthEnd, isoDate, type StoreCode } from "../convex/lib/domain";
-import { evaluate, consumption, type Decision, type EngineTxn } from "../convex/lib/engineCore";
-import { generateWorld, plannedFirstPassSettled, plannedWaiting } from "../convex/lib/generate";
-import { SEED_RULES, type RuleProgram } from "../convex/lib/rules";
-import type { BankTxn } from "../convex/lib/world";
-import { memoryPort } from "./memoryPort";
+// What-ifs, offline: generate a world, run the real engine over the year with and without learning, print both.
+//   npx tsx scripts/simulate.ts                                  the learning year, learned vs baseline
+//   npx tsx scripts/simulate.ts --no-learn --advance 500          baseline only, twice the advance school payments
+//   npx tsx scripts/simulate.ts --lender 0.038@3 --learn r9@8     the new lender in March, its answer in August
+//   npx tsx scripts/simulate.ts --preset default                 the recorded demo's world (checks the brief's curve)
+// Knobs (learning preset): --seed N --late 0.05 --school-moved 400 --advance 250 --reversals 40|off
+//   --reversal-stores S02,S05 --lender CUT@MONTH|off --lender-volume 300 --no-oneoffs
+//   Card fees (off by default, no evidence they change): --onboarding 0.7 [--regional-fee 0.02] puts the regional
+//   stores on a credit fee r3 does not know; --drift FEE@MONTH [--drift-stores S08,S09] raises it at some stores.
+// Learning: --answers N (questions answered per close), --learn RULE@MONTH (repeatable), --skip RULE, --json
+import { MONTH_LABELS, type StoreCode } from "../convex/lib/domain";
+import { DEFAULT_MESS, DRIFT_EXAMPLE, LEARNING_DEFAULTS, generateWorld, learningMess, plannedFirstPassSettled, type LearningKnobs, type MessConfig } from "../convex/lib/generate";
+import { SIM_NOTE, simulateYear, type SimOptions, type SimResult } from "./simulateYear";
 
-const strip = (b: BankTxn): EngineTxn => { const { truth: _t, ...rest } = b; void _t; return rest; };
+export function parseArgs(argv: string[]) {
+  const val = (name: string) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
+  const all = (name: string) => argv.flatMap((a, i) => (a === name && argv[i + 1] ? [argv[i + 1]] : []));
+  const num = (name: string) => (val(name) !== undefined ? Number(val(name)) : undefined);
+  const at = (s: string) => { const [v, m] = s.split("@"); return { v: Number(v), m: Number(m) }; };
+  const k: LearningKnobs = {};
+  if (num("--seed") !== undefined) k.seed = num("--seed");
+  if (num("--onboarding") !== undefined) k.onboarding = num("--onboarding");
+  if (num("--late") !== undefined) k.late = num("--late");
+  if (num("--school-moved") !== undefined) k.schoolMoved = num("--school-moved");
+  if (num("--advance") !== undefined) k.advance = num("--advance");
+  const rv = val("--reversals"), rvStores = val("--reversal-stores"), rvDefault = LEARNING_DEFAULTS.cashReversals!;
+  if (rv === "off") k.cashReversals = null;
+  else if (rv || rvStores) k.cashReversals = { ...rvDefault, perMonth: rv ? Number(rv) : rvDefault.perMonth, stores: rvStores ? (rvStores.split(",") as StoreCode[]) : rvDefault.stores };
+  if (num("--regional-fee") !== undefined) k.regionalFee = num("--regional-fee");
+  if (argv.includes("--no-oneoffs")) k.oneOffs = false;
+  const drift = val("--drift"), stores = val("--drift-stores");
+  if (drift === "off") k.drift = null;
+  else if (drift || stores) {
+    const d = drift ? at(drift) : { v: DRIFT_EXAMPLE.creditFee, m: DRIFT_EXAMPLE.month };
+    k.drift = { creditFee: d.v, month: d.m, stores: stores ? (stores.split(",") as StoreCode[]) : DRIFT_EXAMPLE.stores };
+  }
+  const lender = val("--lender"), volume = num("--lender-volume");
+  if (lender === "off") k.lender = null;
+  else if (lender || volume !== undefined) {
+    const l = lender ? at(lender) : { v: LEARNING_DEFAULTS.lender.cut, m: LEARNING_DEFAULTS.lender.month };
+    k.lender = { cut: l.v, month: l.m, perMonth: volume ?? LEARNING_DEFAULTS.lender.perMonth };
+  }
+  const learnAt: Record<string, number> = {};
+  for (const s of all("--learn")) { const [r, m] = s.split("@"); learnAt[r] = Number(m); }
+  for (const r of all("--skip")) learnAt[r] = 13;
+  const preset = val("--preset") ?? "learning";
+  const config: MessConfig = preset === "default" ? DEFAULT_MESS : learningMess(k);
+  const sim: Omit<SimOptions, "learn"> = { learnAt, answersPerMonth: num("--answers") };
+  const runs = argv.includes("--no-learn") ? [false] : argv.includes("--learn-only") ? [true] : [true, false];
+  return { preset, config, sim, runs, json: argv.includes("--json") };
+}
+
+export function describe(config: MessConfig): string[] {
+  const out: string[] = [];
+  out.push(`late records: ${config.late === "brief" ? "planted to hit the brief's first-pass rates" : `${(config.late * 100).toFixed(1)}% of each month`}`);
+  for (const f of config.cardFees) out.push(`card fee: ${f.stores.join(", ")} at debit ${(f.debitFee * 100).toFixed(2)}%, credit ${(f.creditFee * 100).toFixed(2)}% ${f.from ? `from ${f.from}` : "since before go-live"} (r3 assumes 1.00% / 1.80%)`);
+  if (config.schoolMoved) out.push(`school: ${config.schoolMoved} payments a month into S03's virtual accounts for students who moved to S11`);
+  if (config.advance) out.push(`school: ${config.advance} credits a month that pay 2 to 6 monthly bills at once`);
+  if (config.cashReversals) out.push(`cash: ${config.cashReversals.perMonth} deposits a month at ${config.cashReversals.stores.join(", ")} after a reversed voucher, rounded down to Rp ${config.cashReversals.roundTo.toLocaleString("en-US")}`);
+  if (config.storyA) out.push("school: story A (S03 virtual accounts, receipts at S11 keyed in March)");
+  if (config.newLender) out.push(`new lender FIN_Z from ${MONTH_LABELS[config.newLender.month - 1]}, cut ${(config.newLender.cut * 100).toFixed(2)}%, ${config.newLender.launch ? "story B launch then 90" : config.newLender.perMonth} payouts a month`);
+  out.push(`one-off anomalies (small stories, C, D): ${config.oneOffs ? "on" : "off"}`);
+  return out;
+}
+
+const p1 = (x: number) => (x * 100).toFixed(1).padStart(5) + "%";
+const n = (x: number) => x.toLocaleString("en-US");
+
+export function table(runs: SimResult[]): string[] {
+  const L = runs.find((r) => r.learn), B = runs.find((r) => !r.learn);
+  const out: string[] = [];
+  const head = ["Month", "Lines", ...(L ? ["Learned", "Waiting", "Held", "Later", "Released", "Rules"] : []), ...(B ? ["Baseline", "B held"] : [])];
+  out.push(head.map((h, i) => (i === 0 ? h.padEnd(5) : i === head.length - 1 && L && !B ? h : h.padStart(i === 6 ? 9 : 8))).join(" "));
+  for (let i = 0; i < 12; i++) {
+    const r = (L ?? B)!.months[i];
+    const cells = [MONTH_LABELS[i].padEnd(5), n(r.total).padStart(8)];
+    if (L) { const m = L.months[i]; cells.push(p1(m.firstSettled / m.total).padStart(8), n(m.waiting).padStart(8), n(m.held).padStart(8), n(m.settledLater).padStart(8), n(m.released).padStart(9), (m.learned.join(" ") || "").padStart(8)); }
+    if (B) { const m = B.months[i]; cells.push(p1(m.firstSettled / m.total).padStart(8), n(m.held).padStart(8)); }
+    out.push(cells.join(" "));
+  }
+  for (const r of runs) out.push(`${r.learn ? "Learned " : "Baseline"}  year-end pass settles ${n(r.yearEnd)}; final ${n(r.final.settled)} settled, ${n(r.final.waiting)} waiting, ${n(r.final.held)} held (${Object.entries(r.heldAtYearEnd).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${n(v)} ${k}`).join(", ")}); wrong store vs truth ${r.wrongStore}; ${r.ms} ms`);
+  return out;
+}
+
+export function learnedReport(r: SimResult): string[] {
+  const out: string[] = [];
+  for (const x of r.learned) {
+    out.push(`${MONTH_LABELS[x.month - 1]}  ${x.id} v${x.version}  ${x.title}`);
+    out.push(`       answer (${x.answeredBy}, from the answer key): ${x.answer}`);
+    out.push(`       fitted from the data: ${x.fit}`);
+    out.push(`       backtest on ${x.backtest.scope}: covers ${x.backtest.covered} of ${x.backtest.of}, ${x.backtest.wrong} wrong, ${x.backtest.pass ? "PASS" : "FAIL"}`);
+    for (const note of x.backtest.notes) out.push(`         ${note}`);
+    out.push(`       released ${n(x.released)} held lines at the close`);
+  }
+  for (const x of r.rejected) out.push(`${MONTH_LABELS[x.month - 1]}  ${x.id} not applied: ${x.why}${x.backtest ? ` (${x.backtest.notes.join("; ")})` : ""}`);
+  const oneOff = r.questions.filter((q) => !r.learned.some((l) => l.month === q.month && l.answer === q.answer)).length;
+  out.push(`${r.questions.length} questions answered, ${oneOff} of them one-offs with no rule`);
+  return out;
+}
 
 async function main() {
+  const { preset, config, sim, runs, json } = parseArgs(process.argv.slice(2));
   const t0 = Date.now();
-  const w = generateWorld();
-  console.log(`generated in ${Date.now() - t0} ms: ${w.bank.filter((b) => b.year === YEAR).length} bank lines this year, ${w.bank.filter((b) => b.year !== YEAR).length} last year`);
-  const applied = new Map<string, number>();
-  let asOf = "";
-  let passMonth = 1;
-  const port = memoryPort(w, () => asOf, applied);
-  let rules: RuleProgram[] = [...SEED_RULES];
-  const state = new Map<string, { status: "settled" | "waiting" | "held"; d: Decision; month: number }>();
-  const stories = new Map<string, { month: number; n: number }>();
-  const apply = (t: BankTxn, d: Decision, month: number) => {
-    if (d.kind === "settle") for (const c of consumption(d)) applied.set(c.key, (applied.get(c.key) ?? 0) + c.amount);
-    state.set(t.key, { status: d.kind === "settle" ? "settled" : d.kind === "wait" ? "waiting" : "held", d, month });
-    if (d.kind === "hold") { const s = stories.get(d.storyKey) ?? { month: passMonth, n: 0 }; s.n++; stories.set(d.storyKey, s);
-      if (!t.truth.story && process.env.DEBUG) console.log("UNPLANNED HOLD", passMonth, t.key, t.date, t.memo, t.amount, d.gap, d.note, JSON.stringify(d.facts)); }
-  };
-  const year = w.bank.filter((b) => b.year === YEAR);
-  const rows: string[] = [];
-  let ok = true;
-  for (let m = 1; m <= 12; m++) {
-    asOf = monthEnd(YEAR, m);
-    passMonth = m;
-    for (const t of year) {
-      const s = state.get(t.key);
-      if (s && s.status === "waiting") apply(t, await evaluate(strip(t), rules, port, { asOf, firstPass: false }), s.month);
-    }
-    let first = 0, waiting = 0, held = 0;
-    for (const t of year.filter((x) => x.month === m)) {
-      const d = await evaluate(strip(t), rules, port, { asOf, firstPass: true });
-      apply(t, d, m);
-      if (d.kind === "settle") first++; else if (d.kind === "wait") waiting++; else held++;
-    }
-    if (m === 3) {
-      rules = [...rules, { id: "r8", version: 1, title: "Follow the school's receipts", channels: ["school_va"], match: "follow_receipt", params: {}, limitIdr: 50_000_000 }];
-      await rerun();
-    }
-    if (m === 6) {
-      rules = [...rules, { id: "r9", version: 1, title: "FIN_Z payout minus 3.8%", channels: ["lender"], match: "lender_sale", params: { lenders: { FIN_Z: 0.038 }, windowDays: 7 }, limitIdr: 1_000_000_000 }];
-      await rerun();
-    }
-    const newStories = [...stories.values()].filter((s) => s.month === m).length;
-    const want = plannedFirstPassSettled(m);
-    const line = `${MONTH_LABELS[m - 1]}  total ${MONTHLY_TOTALS[m - 1]}  first pass ${first} (${(first / MONTHLY_TOTALS[m - 1] * 100).toFixed(1)}%, want ${want})  waiting ${waiting} (want ${plannedWaiting(m)})  held ${held}  new stories ${newStories}`;
-    if (first !== want || year.filter((x) => x.month === m).length !== MONTHLY_TOTALS[m - 1]) ok = false;
-    rows.push(line); console.log(line);
+  const w = generateWorld(config);
+  const genMs = Date.now() - t0;
+  const results: SimResult[] = [];
+  for (const learn of runs) results.push(await simulateYear(w, { ...sim, learn }));
+  if (json) { console.log(JSON.stringify({ preset, config, results }, null, 1)); return; }
+  console.log(`preset ${preset}, world generated in ${genMs} ms`);
+  for (const d of describe(config)) console.log("  " + d);
+  console.log(SIM_NOTE + "\n");
+  for (const line of table(results)) console.log(line);
+  const L = results.find((r) => r.learn);
+  if (L) { console.log(""); for (const line of learnedReport(L)) console.log(line); }
+  if (preset === "default" && L) {
+    const ok = L.months.every((m) => m.firstSettled === plannedFirstPassSettled(m.month));
+    console.log(`\nfirst pass vs the brief's planted curve: ${ok ? "matches every month" : "differs"}`);
   }
-  asOf = isoDate(YEAR + 1, 1, 20);
-  for (const t of year) { const s = state.get(t.key); if (s && s.status === "waiting") apply(t, await evaluate(strip(t), rules, port, { asOf, firstPass: false }), s.month); }
-
-  async function rerun() {
-    for (const t of year) {
-      const s = state.get(t.key);
-      if (s && s.status === "held") {
-        const d = await evaluate(strip(t), rules, port, { asOf, firstPass: false });
-        if (d.kind === "settle") { apply(t, d, s.month); }
-      }
-    }
-  }
-
-  const everHeld = new Set<string>();
-  for (const [k] of state) void k;
-  const heldKeys = year.filter((t) => [...stories.keys()].length && t.truth.story !== null);
-  void heldKeys;
-  const final = { settled: 0, waiting: 0, held: 0 };
-  for (const t of year) final[state.get(t.key)!.status]++;
-  console.log("final state", final, "stories", stories.size);
-  const byStory = [...stories.entries()].sort((a, b) => a[1].month - b[1].month);
-  for (const [k, v] of byStory) console.log(`  ${MONTH_LABELS[v.month - 1]}  ${String(v.n).padStart(5)}  ${k}`);
-  // evaluation against truth
-  let wrongStore = 0, settledPlaced = 0;
-  for (const t of year) {
-    const s = state.get(t.key)!;
-    if (s.d.kind === "settle" && s.d.placement.store) { settledPlaced++; if (s.d.placement.store !== t.truth.store) wrongStore++; }
-  }
-  console.log(`settled with a store: ${settledPlaced}, wrong store vs truth: ${wrongStore}`);
-  const plantedHeldNotHeld = year.filter((t) => t.truth.story && state.get(t.key)!.status === "settled" && !["A", "B"].includes(t.truth.story!) ).length;
-  console.log(`planted anomalies that settled anyway: ${plantedHeldNotHeld}`);
-  console.log(ok ? "CURVE OK" : "CURVE MISMATCH");
-  void everHeld; void ({} as StoreCode);
 }
-main();
+
+if (process.argv[1]?.endsWith("simulate.ts")) main().catch((e) => { console.error(e); process.exit(1); });

@@ -9,10 +9,11 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import { MONTHLY_TOTALS, STORE_BY_CODE, YEAR, isoDate, monthEnd } from "../convex/lib/domain";
 import { consumption, evaluate, parseMemo, type Decision, type EngineTxn } from "../convex/lib/engineCore";
-import { generateWorld } from "../convex/lib/generate";
+import { generateWorld, learningMess } from "../convex/lib/generate";
 import { SEED_RULES, type RuleProgram } from "../convex/lib/rules";
 import type { BankTxn } from "../convex/lib/world";
 import { memoryPort } from "./memoryPort";
+import { SIM_NOTE, simulateYear } from "./simulateYear";
 
 const strip = (b: BankTxn): EngineTxn => { const { truth: _t, ...rest } = b; void _t; return rest; };
 const storeName = (s: string | null | undefined) => (s ? STORE_BY_CODE[s]?.name ?? s : null);
@@ -129,6 +130,17 @@ async function convexRun() {
 const baselineOf = (b: Awaited<ReturnType<typeof engineYear>>) => ({ months: b.months.map((m) => ({ month: m.month, firstSettled: m.firstSettled, held: m.held })), final: b.final });
 
 async function main() {
+  // The learning year (no planted first-pass curve), learning and baseline, for later. Never touches the recording.
+  if (process.argv.includes("--preset") && process.argv[process.argv.indexOf("--preset") + 1] === "learning") {
+    const config = learningMess();
+    const w = generateWorld(config);
+    const [learned, baseline] = [await simulateYear(w, { learn: true }), await simulateYear(w, { learn: false })];
+    const keep = (r: typeof learned) => ({ months: r.months, yearEnd: r.yearEnd, final: r.final, heldAtYearEnd: r.heldAtYearEnd, learned: r.learned });
+    mkdirSync("src/demo", { recursive: true });
+    writeFileSync("src/demo/learning.json", JSON.stringify({ note: SIM_NOTE, config, learned: keep(learned), baseline: keep(baseline) }));
+    console.log(`wrote src/demo/learning.json: learned ${learned.learned.map((r) => `${r.id} v${r.version}`).join(", ")}; held at year end ${learned.final.held} learning, ${baseline.final.held} baseline`);
+    return;
+  }
   if (process.argv.includes("--engine-only")) {
     const engine = { ...(await engineYear()), baseline: baselineOf(await engineYear(false)) };
     const prev = JSON.parse(readFileSync("src/demo/recording.json", "utf8"));

@@ -125,13 +125,21 @@ function place(t: EngineTxn, p: Parsed, recordStore: StoreCode | null, followRec
 
 // ---------- helpers ----------
 function sortedDigits(n: number): string { return String(Math.abs(n)).split("").sort().join(""); }
+// Rules that add to a channel's own rule rather than replace it.
+const ADD_ON: string[] = ["bank_fee", "follow_receipt", "school_bills", "reversed_voucher"];
 function ruleFor(rules: RuleProgram[], channel: Channel, match?: string): RuleProgram | undefined {
-  return rules.find((r) => r.channels.includes(channel) && (match ? r.match === match : r.match !== "bank_fee" && r.match !== "follow_receipt"));
+  return rules.find((r) => r.channels.includes(channel) && (match ? r.match === match : !ADD_ON.includes(r.match)));
 }
 function holdKey(gap: Gap, store: StoreCode | null, channel: Channel, counterparty: string): string {
   if (gap === "unknown_lender") return `${gap}|${counterparty}`;
   if (gap === "petty_cash_retained" || gap === "no_store_record") return `${gap}|${channel}`;
   return `${gap}|${store ?? "none"}|${channel}`;
+}
+
+// What a card batch should pay: the day's sales minus the rule's fees (a store's newest fee change, if any).
+export function cardNet(rule: RuleProgram, rec: CardSales): number {
+  const f = (rule.params.cardFees ?? []).filter((x) => x.stores.includes(rec.store) && (!x.from || rec.date >= x.from)).pop();
+  return Math.round(rec.debitGross * (1 - (f?.debitFee ?? rule.params.debitFee ?? 0.01))) + Math.round(rec.creditGross * (1 - (f?.creditFee ?? rule.params.creditFee ?? 0.018)));
 }
 
 export interface PassInfo { asOf: string; firstPass: boolean }
@@ -166,7 +174,7 @@ export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPor
       if (!rec) return waitOrMissing(place(t, p, null, false), "Card sales record");
       const pl = place(t, p, rec.store, false);
       if ((await port.applied(rec.key)) > 0) return hold("duplicate_credit", pl, "card acquirer", "This batch was already paid", { batchAmount: t.amount });
-      const expected = Math.round(rec.debitGross * (1 - (rule.params.debitFee ?? 0.01))) + Math.round(rec.creditGross * (1 - (rule.params.creditFee ?? 0.018)));
+      const expected = cardNet(rule, rec);
       if (t.amount === expected) return settle([rule.id], pl, [{ table: "erp_invoices", key: rec.key, amount: t.amount }], "Card batch matches the day's card sales minus the contract fee");
       const gross = rec.debitGross + rec.creditGross;
       const facts = { expected, gross, impliedFee: Math.round((1 - t.amount / gross) * 10000) / 10000 };
@@ -197,6 +205,12 @@ export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPor
       if (Math.abs(expected - t.amount) <= (rule.params.toleranceIdr ?? CASH_TOLERANCE))
         return settle([rule.id], pl, days.map((d) => ({ table: "cash_book", key: d.key, amount: d.cashSales })), weekday(t.date) === 1 ? "Monday deposit covers Friday to Sunday" : "Deposit matches the day's cash");
       if (petty > 0 && Math.abs(expected - petty - t.amount) <= CASH_TOLERANCE) return hold("petty_cash_retained", pl, "cash deposit", "The gap equals cash the store kept as petty cash", facts);
+      // A learned rule: the store reversed the day's voucher and banked a round amount; the rest stays in petty cash.
+      const voucher = rules.find((r) => r.match === "reversed_voucher" && r.channels.includes("cash"));
+      const unit = voucher?.params.roundTo ?? 0;
+      const rev = days.find((d) => d.reversed && dayDiff(d.date, t.date) <= (voucher?.params.withinDays ?? 2));
+      if (voucher && rev && unit > 0 && t.amount % unit === 0 && expected - t.amount > 0 && expected - t.amount < unit)
+        return settle([voucher.id], pl, days.map((d) => ({ table: "cash_book", key: d.key, amount: d.cashSales })), `Round deposit after a reversed voucher; Rp ${(expected - t.amount).toLocaleString("en-US")} stays in petty cash`);
       if (sortedDigits(t.amount) === sortedDigits(expected)) return hold("transposition", pl, "cash deposit", "Same digits in a different order", facts);
       return hold(t.amount < expected ? "short_deposit" : "over_deposit", pl, "cash deposit", t.amount < expected ? "Deposit is short of the day's cash" : "Deposit is above the day's cash", facts);
     }
@@ -283,7 +297,12 @@ export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPor
       const recs = p.student ? await port.receiptsByStudent(p.student, addDays(t.date, -3), addDays(t.date, 3)) : [];
       let rec: SchoolReceipt | undefined;
       for (const r of recs) if (r.amount === t.amount && (await port.applied(r.key)) === 0) { rec = r; break; }
-      if (!rec) return waitOrMissing(place(t, p, null, false), "School receipt");
+      if (!rec) {
+        const bills = rules.find((r) => r.match === "school_bills" && r.channels.includes("school_va"));
+        const run = bills && p.student ? await billRun(t, p.student, bills, port) : null;
+        if (bills && run) return settle([bills.id], place(t, p, run[0].store, false), run.map((b) => ({ table: "school_bills", key: b.key, amount: b.amount })), `Pays ${run.length} monthly bills in advance`, run.length);
+        return waitOrMissing(place(t, p, null, false), "School receipt");
+      }
       const pl = place(t, p, rec.store, !!follow);
       if (rec.store !== p.subStore && !follow)
         return hold("placement_conflict", pl, "music school", "The bank's virtual account says one store, the school's receipt says another", { vaStore: p.subStore ?? "", receiptStore: rec.store });
@@ -306,6 +325,26 @@ export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPor
     }
   }
   return hold("no_rule", place(t, p, null, false), p.channel, "No approved rule covers this channel");
+}
+
+// A learned rule: one credit pays several consecutive monthly bills of one student (the school pre-creates a bill per
+// month at zero and records the billing month, not the cash date). Bills at zero are skipped. Exactly one run must fit.
+async function billRun(t: EngineTxn, student: string, rule: RuleProgram, port: DataPort): Promise<SchoolReceipt[] | null> {
+  const maxN = rule.params.maxMonths ?? 6, within = rule.params.recordedWithinDays ?? 3;
+  const month = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7));
+  const open: SchoolReceipt[] = [];
+  for (const b of (await port.receiptsByStudent(student, addDays(t.date, -31), addDays(t.date, 31 * maxN))).sort((a, b) => a.date.localeCompare(b.date)))
+    if (b.amount > 0 && Math.abs(dayDiff(b.recordedOn, t.date)) <= within && (await port.applied(b.key)) === 0) open.push(b);
+  const found: SchoolReceipt[][] = [];
+  for (let i = 0; i < open.length; i++) {
+    let sum = 0;
+    for (let j = i; j < open.length && j - i < maxN; j++) {
+      if (j > i && month(open[j].date) !== month(open[j - 1].date) + 1) break;
+      sum += open[j].amount;
+      if (j > i && sum === t.amount) found.push(open.slice(i, j + 1));
+    }
+  }
+  return found.length === 1 ? found[0] : null;
 }
 
 // Counterparts a settlement consumes (so a second credit for the same batch is caught).
