@@ -36,14 +36,15 @@ export function Overview() {
 
 // ---- Agent activity ------------------------------------------------------------------------------------------------
 
-// What each agent said, and where it came from (Claude, code or scripted).
+// What each agent said, and where it came from. The summary names only Claude or code; the case rooms label every
+// message real, scripted or staged.
 function spoke(role: string) {
   const own = R.rooms.flatMap((r) => r.messages.filter((m) => m.speaker === role && m.kind === "message").map((m) => ({ m, month: r.month, key: r.key })));
   const by = (s: string) => own.filter((x) => x.m.source === s).length;
   return { rooms: new Set(own.map((x) => x.key)).size, months: own.map((x) => x.month), claude: by("claude"), scripted: by("scripted"), code: by("code") };
 }
-function sourceLabel(s: { claude: number; scripted: number; code: number }) {
-  return [s.claude ? "Claude" : "", s.code ? "Code" : "", s.scripted ? "scripted" : ""].filter(Boolean).join(" · ") || "Code";
+function sourceLabel(s: { claude: number; code: number }) {
+  return [s.claude ? "Claude" : "", s.code ? "Code" : ""].filter(Boolean).join(" · ");
 }
 
 const checked = learned.filter((r) => r.audit);
@@ -53,12 +54,11 @@ const passed = checked.filter((r) => r.audit?.result === "pass");
 type Activity = { who: string; did: ReactNode; sub: string; source: string; blocked?: boolean };
 function activity(): Activity[] {
   const inv = spoke("investigator"), aud = spoke("auditor"), lea = spoke("learner");
-  const split = (s: { claude: number; scripted: number }) => [s.claude ? `${s.claude} on Claude` : "", s.scripted ? `${s.scripted} scripted` : ""].filter(Boolean).join(", ");
   const rows: Activity[] = [
     { who: "engine", did: <>settled <b className="num font-medium text-ink">{num(firstPass)}</b> bank lines on first pass</>,
       sub: `${num(R.final.settled)} of ${num(R.total)} settled by ${MONTH_LABELS[lastMonth - 1]}`, source: "Code" },
     { who: "investigator", did: <>worked <b className="num font-medium text-ink">{inv.rooms}</b> held stories</>,
-      sub: `${monthSpan(inv.months)} · ${split(inv)}`, source: sourceLabel(inv) },
+      sub: monthSpan(inv.months), source: sourceLabel(inv) },
     { who: "auditor", did: <>checked <b className="num font-medium text-ink">{checked.length}</b> new rules{flagged.length ? <>, flagged <b className="num font-medium text-hold-ink">{flagged.length}</b></> : null}</>,
       sub: [...flagged.map((r) => `${r.id} flagged: ${r.backtest?.errors ?? 0} counterexamples`), ...passed.map((r) => `${r.id} passed`)].join(" · "), source: sourceLabel(aud) },
     { who: "learner", did: <>learned <b className="num font-medium text-ink">{learned.length}</b> rules from answers, all backtested</>,
@@ -184,7 +184,7 @@ function ActivityCard() {
               <div className="text-[13px] leading-snug text-body"><span className="font-medium text-ink">{AGENT_LABEL[r.who]}</span> {r.did}</div>
               <div className="eyebrow mt-0.5 sm:truncate" title={r.sub}>{r.sub}</div>
             </div>
-            <span className="hidden shrink-0 sm:inline-flex"><Pill tone={r.source.startsWith("Claude") ? "accent" : "neutral"}>{r.source}</Pill></span>
+            {r.source ? <span className="hidden shrink-0 sm:inline-flex"><Pill tone={r.source.startsWith("Claude") ? "accent" : "neutral"}>{r.source}</Pill></span> : null}
           </li>
         ))}
       </ul>

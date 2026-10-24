@@ -172,7 +172,7 @@ recording, so it works on the hosted site with no Convex, and a re-export update
   On a phone each card puts its picture beside the figure instead of under it.
 * **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
   `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
-  (Claude, Code, scripted). Counts are computed from the rooms, rules and months, never typed.
+  (Claude or Code). The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
 * **Waiting on you** is the one amber card: a `hold-tint` header with the 𝄐, open questions grouped by the person
   asked, the largest first, each with a `Review` link. A person with nothing open says so and shows their last answer.
 * **Honest by construction:** a figure the recording does not hold is left out rather than invented (there is no
@@ -264,7 +264,8 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
   those colours for anything else.
 * **Refusals are visible.** A denied transition or a refusal by the meeting manager is shown in red
   with the reason, never hidden.
-* **Real, scripted or staged is always labelled** on agent output.
+* **Real, scripted or staged is always labelled** on every message in a case room. The dashboard's agent summary
+  names only Claude or Code.
 * **No chat box.** Case rooms look like a conversation, but people only answer question cards.
 * **Accessible by default:** visible focus rings (`outline-accent`), `aria-current` on the active
   tab, radiogroups for switches, 44px touch targets on mobile, `role="status"` on loading.
