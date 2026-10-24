@@ -49,7 +49,10 @@ export async function speechToken(): Promise<{ token: string } | { error: string
 // One player for the whole page, so a new answer stops the one before it.
 let player: HTMLAudioElement | null = null;
 let playingUrl: string | null = null;
+// Bumped by every stop, so speech that finishes generating after a newer answer never plays over it.
+let generation = 0;
 export function stopSpeaking() {
+  generation++;
   player?.pause();
   if (playingUrl?.startsWith("blob:")) URL.revokeObjectURL(playingUrl);
   playingUrl = null;
@@ -66,6 +69,8 @@ export async function playUrl(src: string, onEnd?: () => void): Promise<boolean>
 
 // Speak a sentence with the Fermata voice. Resolves once playback starts (true) or fails (false).
 export async function speak(text: string, onEnd?: () => void): Promise<boolean> {
+  stopSpeaking();
+  const mine = generation;
   const t = await speechToken();
   if ("error" in t) { onEnd?.(); return false; }
   try {
@@ -76,6 +81,7 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
       generation_config: { speed: 1 },
     });
     const blob = await res.blob();
+    if (mine !== generation) { onEnd?.(); return false; }
     return await playUrl(URL.createObjectURL(blob), onEnd);
   } catch {
     onEnd?.();

@@ -5,7 +5,7 @@
 // no Claude call; anything else goes to the live, rate limited path when this build has a Convex URL.
 //
 // Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books").
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Play } from "lucide-react";
 import recording from "@/demo/ask.json";
@@ -38,6 +38,9 @@ export function AskPanel({ className = "" }: { className?: string }) {
   // False on the server and on the hosted site without a Convex URL; true where this browser can record.
   const voiceIn = useVoiceInput();
 
+  // Each question gets a number; a live answer that comes back after a newer question is dropped.
+  const turn = useRef(0);
+
   const show = useCallback((s: Shown, play: boolean) => {
     setShown(s);
     setHistory((h) => [s, ...h.filter((x) => x.question !== s.question)].slice(0, 4));
@@ -56,6 +59,7 @@ export function AskPanel({ className = "" }: { className?: string }) {
   const ask = useCallback(async (question: string, play = true) => {
     const q = question.trim();
     if (!q) return;
+    const mine = ++turn.current;
     stopSpeaking();
     setNotice(null);
     const preset = matchPreset(q);
@@ -66,11 +70,13 @@ export function AskPanel({ className = "" }: { className?: string }) {
     setPhase("thinking");
     try {
       const reply = await c.action(api.ask.ask, { question: q, visitor: visitorId() });
+      if (mine !== turn.current) return;
       if (reply.kind === "answer") return show({ question: q, answer: reply.answer, from: "live", audio: null }, play);
       if (reply.kind === "preset") { const r = fromRecording(reply.id); if (r) return show({ ...r, question: q }, play); }
       setPhase("idle");
       setNotice(reply.kind === "limited" || reply.kind === "error" ? reply.message : LIMITED);
     } catch {
+      if (mine !== turn.current) return;
       setPhase("idle");
       setNotice("The books could not be read just now. Try a suggested question.");
     }
