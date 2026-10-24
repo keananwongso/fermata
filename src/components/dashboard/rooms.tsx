@@ -74,7 +74,7 @@ function RoomView({ room }: { room: Room }) {
         <div className="px-1">
           <div className="flex flex-wrap items-center gap-2">
             <RoomMark room={room} />
-            <span className="eyebrow">{room.narrated ? `Story ${room.narrated} · ` : ""}{MONTH_LABELS[room.month - 1]} {R.year} · {num(room.count)} lines · {rpShort(room.amount)}</span>
+            <span className="eyebrow">{room.live && room.narrated ? `Story ${room.narrated} · ` : ""}{MONTH_LABELS[room.month - 1]} {R.year} · {num(room.count)} lines · {rpShort(room.amount)}</span>
           </div>
           <h2 className="title mt-1.5 text-[20px] leading-tight lg:text-[24px]">{room.title}</h2>
         </div>
