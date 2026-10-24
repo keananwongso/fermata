@@ -133,6 +133,12 @@ function holdKey(gap: Gap, store: StoreCode | null, channel: Channel, counterpar
   return `${gap}|${store ?? "none"}|${channel}`;
 }
 
+// What a card batch should pay: the day's sales minus the rule's fees (a store's newest fee change, if any).
+export function cardNet(rule: RuleProgram, rec: CardSales): number {
+  const f = (rule.params.cardFees ?? []).filter((x) => x.stores.includes(rec.store) && (!x.from || rec.date >= x.from)).pop();
+  return Math.round(rec.debitGross * (1 - (f?.debitFee ?? rule.params.debitFee ?? 0.01))) + Math.round(rec.creditGross * (1 - (f?.creditFee ?? rule.params.creditFee ?? 0.018)));
+}
+
 export interface PassInfo { asOf: string; firstPass: boolean }
 
 export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPort, pass: PassInfo): Promise<Decision> {
@@ -165,7 +171,7 @@ export async function evaluate(t: EngineTxn, rules: RuleProgram[], port: DataPor
       if (!rec) return waitOrMissing(place(t, p, null, false), "Card sales record");
       const pl = place(t, p, rec.store, false);
       if ((await port.applied(rec.key)) > 0) return hold("duplicate_credit", pl, "card acquirer", "This batch was already paid", { batchAmount: t.amount });
-      const expected = Math.round(rec.debitGross * (1 - (rule.params.debitFee ?? 0.01))) + Math.round(rec.creditGross * (1 - (rule.params.creditFee ?? 0.018)));
+      const expected = cardNet(rule, rec);
       if (t.amount === expected) return settle([rule.id], pl, [{ table: "erp_invoices", key: rec.key, amount: t.amount }], "Card batch matches the day's card sales minus the contract fee");
       const gross = rec.debitGross + rec.creditGross;
       const facts = { expected, gross, impliedFee: Math.round((1 - t.amount / gross) * 10000) / 10000 };

@@ -15,6 +15,8 @@ export interface RuleProgram {
     debitFee?: number; creditFee?: number; toleranceIdr?: number; feeIdr?: number; fee?: number;
     commission?: Record<string, number>; lenders?: Record<string, number>; windowDays?: number;
     lookbackDays?: number; maxInvoices?: number; receiptWeight?: number; subAccountWeight?: number;
+    // Card fee changes by store, newest last; `from` is the first sale date it applies to (absent: always).
+    cardFees?: { stores: string[]; from?: string; debitFee: number; creditFee: number }[];
   };
   limitIdr: number;
 }
