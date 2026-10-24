@@ -179,7 +179,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   const lag = useTransform(springy, (v) => Math.max(-26, Math.min(26, -v * 0.8)));
   const give = useTransform(springy, (v) => 1 - Math.min(Math.abs(v), 40) * 0.0016);
   const { scrollYProgress: through } = useScroll({ target: track, offset: [`start ${HEAD}px`, "end end"] });
-  useMotionValueEvent(through, "change", (p) => setActive(Math.min(n - 1, Math.max(0, Math.floor(p * n + 0.001)))));
+  useMotionValueEvent(through, "change", (p) => setActive(Math.min(n - 1, Math.max(0, Math.floor((p * ((n - 1) * STEP + TAIL)) / STEP + 0.001)))));
   const { scrollYProgress: arriving } = useScroll({ target: track, offset: ["start end", `start ${HEAD}px`] });
   const open = useSpring(arriving, { stiffness: 140, damping: 30, mass: 0.6 });
   const clip = useTransform(open, [0.3, 1], ["inset(42% 2% 42% 2% round 16px)", "inset(0% 0% 0% 0% round 16px)"]);
@@ -216,7 +216,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
         gliding = false;
       }
       const at = l.targetScroll - g.start;
-      if (at > -g.step * 0.3 && at < g.last + g.step * 0.3) data.deltaY *= RESIST;
+      if (at > -g.step * 0.3 && at < g.last) data.deltaY *= RESIST;
       return true;
     });
 
@@ -233,7 +233,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
     };
     const onScroll = () => {
       const g = where();
-      const inside = !!g && window.scrollY - g.start > -g.step * 0.3 && window.scrollY - g.start < g.last + g.step * 0.3;
+      const inside = !!g && window.scrollY - g.start > -g.step * 0.3 && window.scrollY - g.start < g.last;
       push.set(inside && !gliding ? l.velocity : 0);
       if (gliding) return;
       if (l.direction) dir = l.direction;
@@ -258,7 +258,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
         ))}
       </div>
 
-      <div ref={track} className="relative hidden lg:block" style={{ height: `calc(${n * STEP * 100}vh + 100vh - ${HEAD}px)` }}>
+      <div ref={track} className="relative hidden lg:block" style={{ height: `calc(${((n - 1) * STEP + TAIL) * 100}vh + 100vh - ${HEAD}px)` }}>
         {beats.map((b, i) => (
           <div key={b.tag} ref={(el) => { marks.current[i] = el; }} aria-hidden className="pointer-events-none absolute inset-x-0 h-px" style={{ top: `calc(${i * STEP * 100}vh - ${HEAD}px)` }} />
         ))}
@@ -298,8 +298,9 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
     </>
   );
 }
-const STEP = 0.8; // screen heights of scrolling per beat
-const RESIST = 0.45; // how far a scroll carries inside the section, against 1 outside
+const STEP = 0.65; // screen heights of scrolling per beat
+const TAIL = 0.25; // screen heights the last beat holds before the page lets go
+const RESIST = 0.65; // how far a scroll carries inside the section, against 1 outside
 
 function BeatText({ beat, head, body }: { beat: Beat; head?: boolean; body?: boolean }) {
   const all = !head && !body;

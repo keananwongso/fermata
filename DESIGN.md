@@ -131,8 +131,10 @@ The transcript of the agents' meeting on one held story.
   description) is pinned while the page scrolls through a tall track, and how far through the track you are picks the
   beat. All three swap together, so only one beat is ever on screen. The card opens out of a strip as the section
   arrives (a scroll-linked `clip-path`, smoothed with a spring), its rows cascade in (`.cascade`), and dots track and
-  jump between beats. The section resists: inside it every scroll carries the page less than half as far (`RESIST`), and
-  the card gives under the push (it lags against the scroll and dips, then springs back). When a scroll slows between
+  jump between beats. The section resists lightly: inside it every scroll carries the page about two thirds as far (`RESIST`),
+  each beat takes `STEP` screen heights, and the last beat holds only a short `TAIL` before the page lets go, so the
+  whole section takes about three screens of scrolling. `RESIST` 0.45 with a full last step felt stuck. The
+  card gives under the push (it lags against the scroll and dips, then springs back). When a scroll slows between
   beats it glides on to the next one, with leftover momentum swallowed so the glide lands; a really fast fling still
   carries all the way through. On narrow screens the beats stack.
 * **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased, slightly weighted scrolling that gives
