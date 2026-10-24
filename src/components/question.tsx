@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useRole } from "./providers";
 import { CONSOLE_KEY } from "./consoleKey";
+import { VoiceAnswer } from "./voiceAnswer";
 import { ROLE_LABEL } from "./header";
 import { Button, Pill } from "./ui";
 import { Check, CornerDownRight } from "lucide-react";
@@ -47,6 +48,7 @@ export function QuestionCard({ q }: { q: Doc<"questions"> }) {
             <Button variant="primary" disabled={!mine || !picked || busy} onClick={() => run(() => answer({ questionId: q._id, optionId: picked!, actor: role, consoleKey: CONSOLE_KEY }))}>Answer as {ROLE_LABEL[role]}</Button>
             {!mine ? <span className="text-[12px] text-faint">Switch to {askedOf} in the header to answer.</span> : null}
           </div>
+          {mine && q.askOf === "cfo" ? <VoiceAnswer q={q} /> : null}
         </div>
       ) : null}
 
@@ -55,7 +57,7 @@ export function QuestionCard({ q }: { q: Doc<"questions"> }) {
           <div className="flex items-start gap-2 text-[14px]">
             <CornerDownRight size={16} strokeWidth={1.75} className="mt-0.5 text-faint" />
             <div>
-              <div>The {askedOf} answered <span className="font-medium">{chosen.label}</span>. Fermata understood this as:</div>
+              <div>The {askedOf} answered <span className="font-medium">{chosen.label}</span>{q.voice ? <> <Pill tone="accent">By voice</Pill></> : null}. Fermata understood this as:</div>
               <div className="mt-1 text-secondary">{chosen.impact}</div>
             </div>
           </div>
@@ -66,7 +68,7 @@ export function QuestionCard({ q }: { q: Doc<"questions"> }) {
         </div>
       ) : null}
 
-      {q.state === "APPROVED" && chosen ? <div className="mt-4 text-[13px] text-secondary">{chosen.label}. {chosen.impact}</div> : null}
+      {q.state === "APPROVED" && chosen ? <div className="mt-4 text-[13px] text-secondary">{chosen.label}{q.voice ? " (answered by voice)" : ""}. {chosen.impact}</div> : null}
       {q.options.length === 0 ? <div className="mt-4 text-[13px] text-faint">The Investigator is still writing this question.</div> : null}
       {error ? <div className="mt-3 rounded-[6px] bg-danger-tint px-3 py-2 text-[13px] text-danger">{error}</div> : null}
     </div>
