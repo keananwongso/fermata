@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode, ButtonHTMLAttributes } from "react";
+import { motion } from "motion/react";
 
 export type Tone = "neutral" | "accent" | "hold" | "success" | "danger" | "info";
 const TONE: Record<Tone, string> = {
@@ -119,5 +120,9 @@ export function Trace({ lines, empty = "Nothing yet." }: { lines: TraceLine[]; e
 export function Bar({ value, max, tone = "accent" }: { value: number; max: number; tone?: "accent" | "hold" | "success" | "neutral" }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   const c = { accent: "bg-accent", hold: "bg-hold", success: "bg-success", neutral: "bg-mute" }[tone];
-  return <div className="h-1.5 w-full overflow-hidden rounded-full bg-inset"><div className={`bar h-full rounded-full ${c}`} style={{ width: `${pct}%` }} /></div>;
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-inset">
+      <motion.div className={`h-full rounded-full ${c}`} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: [0.645, 0.045, 0.355, 1] }} />
+    </div>
+  );
 }

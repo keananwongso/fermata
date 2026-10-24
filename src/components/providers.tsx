@@ -1,5 +1,6 @@
 "use client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { MotionConfig } from "motion/react";
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 const url = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -19,7 +20,7 @@ export function Providers({ children }: { children: ReactNode }) {
   if (!convex) return <div className="p-10 text-secondary">Set NEXT_PUBLIC_CONVEX_URL to connect to Convex.</div>;
   return (
     <ConvexProvider client={convex}>
-      <RoleContext.Provider value={{ role, setRole }}>{children}</RoleContext.Provider>
+      <RoleContext.Provider value={{ role, setRole }}><MotionConfig reducedMotion="user">{children}</MotionConfig></RoleContext.Provider>
     </ConvexProvider>
   );
 }
