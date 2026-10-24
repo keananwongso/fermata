@@ -139,6 +139,26 @@ function Bubble({ m, grouped, animate }: { m: Msg; grouped: boolean; animate: bo
   );
 }
 
+// The transcript itself, from any list of messages: the live room below, or the public demo's recording.
+export type ChatMessage = Pick<Msg, "speaker" | "to" | "kind" | "source" | "think" | "tools" | "text"> & {
+  _id?: string; status?: Msg["status"]; staged?: boolean; code?: string | null; question?: Msg["question"] | null;
+};
+
+export function ChatList({ msgs, animate }: { msgs: ChatMessage[]; animate: boolean }) {
+  return (
+    <>
+      {msgs.map((m, i) => {
+        const key = m._id ?? `${i}-${m.speaker}`;
+        const msg = { ...m, status: m.status ?? "done", staged: m.staged ?? false, code: m.code ?? undefined, question: m.question ?? undefined } as Msg;
+        if (m.kind !== "message") return <SystemLine key={key} m={msg} animate={animate} />;
+        const prev = msgs[i - 1];
+        const grouped = !!prev && prev.kind === "message" && prev.speaker === m.speaker;
+        return <Bubble key={key} m={msg} grouped={grouped} animate={animate} />;
+      })}
+    </>
+  );
+}
+
 export function RoomChat({ story }: { story: Doc<"stories"> }) {
   const msgs = useQuery(api.queries.room, { key: story.key });
   const live = useLive();
@@ -150,12 +170,7 @@ export function RoomChat({ story }: { story: Doc<"stories"> }) {
     <div className="px-4 pb-4 pt-2 lg:px-5" role="log" aria-label="Meeting transcript" aria-live="polite">
       {!msgs ? <div className="py-6 text-[13px] text-faint">Opening the room…</div> : null}
       {msgs?.length === 0 ? <div className="py-6 text-[13px] text-faint">The room has not met yet.</div> : null}
-      {msgs?.map((m, i) => {
-        if (m.kind !== "message") return <SystemLine key={m._id} m={m} animate={live} />;
-        const prev = msgs[i - 1];
-        const grouped = !!prev && prev.kind === "message" && prev.speaker === m.speaker;
-        return <Bubble key={m._id} m={m} grouped={grouped} animate={live} />;
-      })}
+      {msgs ? <ChatList msgs={msgs} animate={live} /> : null}
       <div ref={end} />
     </div>
   );
