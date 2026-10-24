@@ -88,6 +88,22 @@ inside rule code and the record.
 * **`Loading`**: a breathing amber 𝄐 with a short line of text. No spinners.
 * `AGENT_LABEL` gives every role its display name; use it rather than writing names by hand.
 
+## Case rooms (`src/components/caseRoom.tsx`)
+
+The transcript of the agents' meeting on one held story.
+
+* **One row per message:** a 36px initials tile (`IN`, `AU`, `LE`, `EN`, `MG`), then the name, a source pill
+  (`Claude` accent, `Code` neutral, `Scripted` neutral) and `→ addressee` in `faint`.
+* **Findings** sit in a `.panel` as mono lines starting `›`. **Queries** an agent ran are a `<details>` row
+  ("ran name(input) · n rows"), closed by default. **Draft rules** are a `bg-night` code block.
+  A **proposed question** is a light amber box.
+* **Manager lines** are short rows with the `MG` tile and `secondary` text; the manager only appears when it
+  enforces something.
+* **Refusals** are a `danger-tint` block, indented to the text column, titled "Blocked by the gateway".
+* **Working** agents show a breathing amber dot and "working", and their queries appear as they run.
+* The room header shows the turn count ("Turn n of 6") and the room state: In meeting (accent, breathing),
+  Asked (hold, 𝄐), Closed (success).
+
 ## Motion (`globals.css`, `src/components/motion.tsx`)
 
 | Name | Use |
