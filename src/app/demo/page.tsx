@@ -350,23 +350,31 @@ function Curve({ curve, answered, phase }: { curve: Rec["months"]; answered: str
 function Ask({ room, onAnswer }: { room: Room; onAnswer: () => void }) {
   const q = room.question!;
   const who = q.askOf === "cfo" ? "CFO" : "Accountant";
+  // A white card like the others; only the band at the top is amber, because amber means waiting on a person.
   return (
-    <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto bg-warm p-4 lg:p-5">
-      <div className="flex items-center gap-2"><Avatar who={q.askOf} size={24} /><span className="eyebrow">You are the {who} · one question</span></div>
-      <p className="title mt-2 text-[17px] leading-snug">{q.text}</p>
-      <div className="mt-3 grid gap-2">
-        {q.options.map((o) => {
-          const rec = o.id === q.answer;
-          return (
-            <button key={o.id} disabled={!rec} onClick={onAnswer}
-              className={`calm rounded-[6px] border px-3.5 py-2.5 text-left ${rec ? "border-accent bg-ground hover:bg-accent-tint" : "cursor-not-allowed border-hairline bg-well opacity-60"}`}>
-              <div className="text-[13.5px] font-medium">{o.label}</div>
-              <div className="mt-0.5 text-[12px] text-secondary">{o.impact}</div>
-            </button>
-          );
-        })}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-hold-tint-strong bg-hold-tint px-4 py-2.5 lg:px-5">
+        <span className="breathe text-[16px] leading-none" style={{ fontFamily: "var(--font-music)" }} aria-hidden>𝄐</span>
+        <span className="text-[12.5px] font-medium text-hold-ink">Waiting on you</span>
+        <span className="ml-auto text-[12px] text-hold-ink/80">One question</span>
       </div>
-      <p className="mt-2 text-[11.5px] text-faint">This replay follows the answer given in the recorded run. The live system handles every answer.</p>
+      <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto p-4 lg:p-5">
+        <div className="flex items-center gap-2"><Avatar who={q.askOf} size={24} /><span className="eyebrow">You are the {who}</span></div>
+        <p className="title mt-3 text-[18px] leading-snug">{q.text}</p>
+        <div className="mt-4 grid gap-2">
+          {q.options.map((o) => {
+            const rec = o.id === q.answer;
+            return (
+              <button key={o.id} disabled={!rec} onClick={onAnswer}
+                className={`calm rounded-[6px] border px-3.5 py-2.5 text-left ${rec ? "border-accent bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.06)] hover:bg-accent-tint" : "cursor-not-allowed border-hairline bg-ground opacity-55"}`}>
+                <div className="text-[13.5px] font-medium">{o.label}</div>
+                <div className="mt-0.5 text-[12px] text-secondary">{o.impact}</div>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-[11.5px] text-faint">This replay follows the answer given in the recorded run. The live system handles every answer.</p>
+      </div>
     </div>
   );
 }
