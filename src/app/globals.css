@@ -116,6 +116,10 @@
   .scroll-quiet::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
   .scroll-quiet:hover::-webkit-scrollbar-thumb { background: var(--color-mute); }
 
+  /* The smooth-scrolled landing page hides its scrollbar (SmoothScroll also sets scrollbar-width inline). */
+  html.no-scrollbar { scrollbar-width: none; }
+  html.no-scrollbar::-webkit-scrollbar { display: none; }
+
   /* The rows of a picture arriving one after another (the pinned how-it-works card). */
   .cascade li, .cascade .card > * { animation: enter 450ms var(--ease-out) both; }
   .cascade :is(li, .card > *):nth-child(2) { animation-delay: 60ms; }

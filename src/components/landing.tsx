@@ -1,7 +1,7 @@
 "use client";
 // Illustrations for the landing page, built from the recorded run so every number on the page is real.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { LinkArrow, Tag } from "./ui";
 import { BrandGrid, addScrollGate, scrollToY, withLenis } from "./motion";
 import recording from "@/demo/recording.json";
@@ -164,9 +164,8 @@ type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
 
 // How it works. On wide screens the whole stage (title, card, description) is pinned while the page scrolls through a
 // tall track; how far through the track you are picks the beat, and all three swap together, so only one beat is ever
-// on screen. Each gesture inside the section turns exactly one beat like a page, however hard the scroll, and a fling
-// from outside stops on the section instead of flying past it. Scrolling on past the last beat or back above the
-// first is let through, so nobody gets trapped. The card opens out of a strip as the section arrives. On narrow screens
+// on screen. The section resists: scrolling through it is damped and the card visibly gives under the push, a gentle
+// scroll glides on to the next beat, and a really fast fling still carries all the way through. The card opens out of a strip as the section arrives. On narrow screens
 // the beats simply stack.
 const HEAD = 104; // the sticky notice bar and header
 export function HowItWorks({ beats }: { beats: Beat[] }) {
@@ -174,6 +173,11 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   const [active, setActive] = useState(0);
   const track = useRef<HTMLDivElement>(null);
   const still = useReducedMotion();
+  // The card gives under the push: it lags against the scroll and dips a little, then springs back when it stops.
+  const push = useMotionValue(0);
+  const springy = useSpring(push, { stiffness: 260, damping: 24 });
+  const lag = useTransform(springy, (v) => Math.max(-26, Math.min(26, -v * 0.8)));
+  const give = useTransform(springy, (v) => 1 - Math.min(Math.abs(v), 40) * 0.0016);
   const { scrollYProgress: through } = useScroll({ target: track, offset: [`start ${HEAD}px`, "end end"] });
   useMotionValueEvent(through, "change", (p) => setActive(Math.min(n - 1, Math.max(0, Math.floor(p * n + 0.001)))));
   const { scrollYProgress: arriving } = useScroll({ target: track, offset: ["start end", `start ${HEAD}px`] });
@@ -184,7 +188,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   const jump = (i: number) => { const m = marks.current[i]; if (m) scrollToY(m.getBoundingClientRect().top + window.scrollY); };
   useEffect(() => withLenis((l) => {
     const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-    let held = false, gliding = false, lastInput = 0, lastSize = 0, timer = 0, dir = 0;
+    let gliding = false, timer = 0, rest = 0, dir = 0, lastInput = 0, lastSize = 0;
     const where = () => {
       const el = track.current;
       if (!el || !el.offsetParent) return null;
@@ -192,39 +196,33 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
       return { step, start: el.getBoundingClientRect().top + window.scrollY - HEAD, last: (n - 1) * step };
     };
     const glide = (y: number) => {
-      held = true; gliding = true;
+      gliding = true;
       l.scrollTo(y, { duration: 0.6, easing: ease, force: true, onComplete: () => { gliding = false; } });
     };
 
-    // Wheel and touch input: inside the section each gesture turns exactly one beat, however hard it is. The rest of
-    // that gesture is swallowed: trackpad momentum only ever slows down, so input that grows again, or arrives after a
-    // pause, is a new gesture and turns the next beat straight away, even mid-glide. A fling that would cross the
-    // section from either side is caught on its first or last beat. Moving on past the last beat, or back above the
-    // first, is let through.
-    const removeGate = addScrollGate(({ deltaY }) => {
+    // Resistance: inside the section every wheel or touch movement carries the page only part as far, so the section
+    // is heavy to push through. A gentle scroll comes to rest between beats and glides on to the next one; a really
+    // fast fling still carries all the way through, just visibly slowed.
+    const removeGate = addScrollGate((data) => {
       const g = where();
       if (!g) return true;
-      const now = performance.now(), size = Math.abs(deltaY);
+      // While gliding onto a beat, leftover momentum is swallowed so the glide lands; a new swipe (input that grows
+      // again, or comes after a pause) takes over instead.
+      const now = performance.now(), size = Math.abs(data.deltaY);
       const fresh = now - lastInput > 140 || size > lastSize * 1.4 + 6;
       lastInput = now; lastSize = size;
-      if (held) {
+      if (gliding) {
         if (!fresh) return false;
-        held = false;
+        gliding = false;
       }
-      if (size < 2) return true;
-      const at = l.targetScroll - g.start, d = Math.sign(deltaY), ahead = at + deltaY;
-      if (d > 0 && at < -1 && ahead >= -1) { glide(g.start); return false; }
-      if (d < 0 && at > g.last + 1 && ahead <= g.last + 1) { glide(g.start + g.last); return false; }
-      if (at >= -1 && at <= g.last + 1) {
-        const next = Math.round(at / g.step) + d;
-        if (next >= 0 && next < n) { glide(g.start + next * g.step); return false; }
-      }
+      const at = l.targetScroll - g.start;
+      if (at > -g.step * 0.3 && at < g.last + g.step * 0.3) data.deltaY *= RESIST;
       return true;
     });
 
-    // Anything else that leaves the page between beats (keys, the scrollbar) glides on to the next beat once it slows.
+    // When a scroll slows between beats, glide on to the next beat in the direction it was going.
     const settle = () => {
-      timer = 0;
+      timer = 0; window.clearTimeout(rest);
       const g = where();
       if (!g || gliding) return;
       const pos = window.scrollY - g.start;
@@ -234,14 +232,19 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
       glide(window.scrollY + target - pos);
     };
     const onScroll = () => {
+      const g = where();
+      const inside = !!g && window.scrollY - g.start > -g.step * 0.3 && window.scrollY - g.start < g.last + g.step * 0.3;
+      push.set(inside && !gliding ? l.velocity : 0);
       if (gliding) return;
       if (l.direction) dir = l.direction;
+      // Glide early once it slows to a crawl, and in any case once the scroll stops (the last event can still be fast).
+      window.clearTimeout(rest); rest = window.setTimeout(settle, 160);
       if (Math.abs(l.velocity) > 3) { window.clearTimeout(timer); timer = 0; }
       else if (!timer) timer = window.setTimeout(settle, 90);
     };
     l.on("scroll", onScroll);
-    return () => { removeGate(); window.clearTimeout(timer); l.off("scroll", onScroll); };
-  }), [n]);
+    return () => { removeGate(); window.clearTimeout(timer); window.clearTimeout(rest); l.off("scroll", onScroll); push.set(0); };
+  }), [n, push]);
   const swap = { initial: { opacity: 0, y: 18, filter: "blur(6px)" }, animate: { opacity: 1, y: 0, filter: "blur(0px)" }, exit: { opacity: 0, y: -14, filter: "blur(4px)" } };
 
   return (
@@ -266,6 +269,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
             </AnimatePresence>
           </div>
           <div>
+            <motion.div style={still ? undefined : { y: lag, scale: give }}>
             <motion.div style={still ? undefined : { clipPath: clip }} className="relative aspect-square max-h-[calc(100vh-240px)] w-full overflow-hidden rounded-[16px] border border-hairline bg-warm">
               <BrandGrid cols={12} rows={12} className="absolute inset-0 h-full w-full opacity-50 [mask-image:radial-gradient(ellipse_at_center,transparent_45%,#000_100%)]" />
               <motion.div style={still ? undefined : { opacity: inner }} className="absolute inset-0 flex items-center justify-center p-8">
@@ -275,6 +279,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
                   </motion.div>
                 </AnimatePresence>
               </motion.div>
+            </motion.div>
             </motion.div>
             <div className="mt-4 flex justify-center gap-2" role="tablist" aria-label="How it works">
               {beats.map((b, i) => (
@@ -294,6 +299,7 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
   );
 }
 const STEP = 0.8; // screen heights of scrolling per beat
+const RESIST = 0.45; // how far a scroll carries inside the section, against 1 outside
 
 function BeatText({ beat, head, body }: { beat: Beat; head?: boolean; body?: boolean }) {
   const all = !head && !body;

@@ -182,11 +182,17 @@ export function SmoothScroll() {
       },
     });
     lenis = l;
+    // No scrollbar on a smooth-scrolled page; the wheel, trackpad and keys still scroll it.
+    const html = document.documentElement;
+    html.classList.add("no-scrollbar");
+    html.style.scrollbarWidth = "none";
     lenisUsers.forEach((_, attach) => lenisUsers.set(attach, attach(l)));
     return () => {
       lenisUsers.forEach((stop, attach) => { stop?.(); lenisUsers.set(attach, undefined); });
       l.destroy();
       lenis = null;
+      html.classList.remove("no-scrollbar");
+      html.style.scrollbarWidth = "";
     };
   }, []);
   return null;
