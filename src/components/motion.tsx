@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import NumberFlow, { type Format } from "@number-flow/react";
+import { motion, useInView, type Variants } from "motion/react";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -65,5 +67,51 @@ export function BrandGrid({ cols = 18, rows = 6, className = "" }: { cols?: numb
       {cells.map((c) => <rect key={`${c.x}-${c.y}`} x={c.x} y={c.y} width="1" height="1" fill="var(--color-accent)" fillOpacity={c.o} className="rise" style={{ animationDelay: `${Math.round((1 - c.o) * 400)}ms` }} />)}
       <rect width={cols} height={rows} fill="url(#og-lines)" />
     </svg>
+  );
+}
+
+// Digits roll to their value instead of counting through every number between. Starts from zero once on screen,
+// so a headline figure arrives rather than appearing. Respects reduced motion on its own.
+export function Roll({ value, format, prefix, suffix }: { value: number; format?: Format; prefix?: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const seen = useInView(ref, { once: true, margin: "-40px" });
+  return (
+    <span ref={ref} className="inline-block">
+      <NumberFlow value={seen ? value : 0} locales="en-US" format={format} prefix={prefix} suffix={suffix} willChange
+        transformTiming={{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }} spinTiming={{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }} />
+    </span>
+  );
+}
+
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+const riseIn: Variants = {
+  hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
+  shown: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.6, ease: EASE_OUT } },
+};
+
+// A group whose children rise in one after another the first time it scrolls into view.
+export function Reveal({ children, className = "", stagger = 0.07, delay = 0 }: { children: ReactNode; className?: string; stagger?: number; delay?: number }) {
+  return (
+    <motion.div className={className} initial="hidden" whileInView="shown" viewport={{ once: true, margin: "-60px" }}
+      variants={{ shown: { transition: { staggerChildren: stagger, delayChildren: delay } } }}>
+      {children}
+    </motion.div>
+  );
+}
+
+export function RevealItem({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <motion.div className={className} variants={riseIn}>{children}</motion.div>;
+}
+
+// The brand mark alone on the canvas while the first data loads, then the whole screen fades into the page.
+export function Splash() {
+  return (
+    <motion.div role="status" aria-label="Opening the books" className="fixed inset-0 z-[100] grid place-items-center bg-canvas"
+      exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE_OUT }}>
+      <motion.div className="card grid size-24 place-items-center rounded-[22px]"
+        initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.06 }} transition={{ duration: 0.5, ease: EASE_OUT }}>
+        <span className="breathe text-[60px] leading-none" style={{ fontFamily: "var(--font-music)", transform: "translateY(0.28em)" }} aria-hidden>𝄐</span>
+      </motion.div>
+    </motion.div>
   );
 }
