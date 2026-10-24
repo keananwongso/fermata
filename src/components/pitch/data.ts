@@ -1,7 +1,8 @@
-// Every figure the pitch shows, read from the recorded run (src/demo/recording.json) or the demo company's
-// definition, never typed by hand. Re-export the recording and the deck follows.
+// Every figure the pitch shows, read from the recorded run (src/demo/recording.json), the learning year
+// (src/demo/learning.json) or the demo company's definition, never typed by hand. Re-export and the deck follows.
 import recording from "@/demo/recording.json";
 import { BANK_ACCOUNTS, STORES } from "../../../convex/lib/domain";
+import { LY } from "../learningYear";
 
 type Msg = { speaker: string; to: string; kind: string; source: string; staged: boolean; think: string[]; tools: { name: string; input: string; rows: string[][] }[]; text: string; code: string | null; question: { askOf: string; text: string } | null };
 type Room = { key: string; month: number; title: string; count: number; amount: number; live: boolean; narrated: string | null; askOf: string | null; messages: Msg[] };
@@ -29,6 +30,9 @@ export const D = {
   channels: ["14 stores", "Shopee", "Tokopedia", "Website", "Dealers", "Music school"],
   headOffice: R.headOffice,
   headOfficeBank: R.headOfficeBank,
+  // The learning claim is never the recorded curve: it is the learning year, simulated on the same engine with and
+  // without learning.
+  learning: LY,
   shares: R.months.map(share),
   first: share(R.months[0]),
   last: share(R.months[R.months.length - 1]),

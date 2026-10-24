@@ -2,9 +2,18 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
+import { HowItWorks, LearnedRules, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
+import { LearningChart } from "@/components/learningChart";
+import { LY } from "@/components/learningYear";
+import { usdApprox } from "@/components/money";
+import recording from "@/demo/recording.json";
+import { num, pct, rpShort } from "../../convex/lib/format";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll, SmoothScroll } from "@/components/motion";
 import { Dashboard } from "@/components/dashboard";
+
+// What the books claimed for the head office account on 31 December, read from the recording.
+const HEAD_OFFICE = (recording as unknown as { headOffice: number }).headOffice;
+const signedRp = (n: number) => (n < 0 ? `−${rpShort(-n)}` : rpShort(n));
 
 export default function Page() {
   return <Arrival><SmoothScroll /><Landing /></Arrival>;
@@ -22,7 +31,7 @@ function Landing() {
           <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">Every bank line, matched on its own.</h1></RevealItem>
           <RevealItem><p className="mx-auto mt-5 max-w-[600px] text-[16px] leading-relaxed text-body">
             Fermata closes the books for a business that sells everywhere. It matches every bank line to the store and the sales it pays for,
-            holds only what nobody wrote down, and asks the right person one question. Then it gets better every month.
+            holds only what nobody wrote down, and asks the right person one question. Then it turns the answers into tested rules, so fewer lines need a person.
           </p></RevealItem>
           <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
@@ -40,11 +49,14 @@ function Landing() {
         </div>
       </section>
 
-      {/* Banner */}
+      {/* Banner: the learning claim, from the same year closed twice on the same engine (src/demo/learning.json). */}
       <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
-        <Reveal className="relative"><RevealItem>
-          <p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={0.98} format={{ style: "percent", maximumFractionDigits: 0 }} /> of bank lines settle on their own, so the team only answers what nobody wrote down.</p>
-        </RevealItem></Reveal>
+        <Reveal className="relative" stagger={0.1}>
+          <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={LY.fewer} suffix="×" /> fewer lines left for people, once Fermata learns from their answers.</p></RevealItem>
+          <RevealItem><p className="mx-auto mt-6 max-w-[600px] text-[15px] leading-relaxed text-secondary">
+            The same year, simulated on the same engine: <span className="num text-ink">{num(LY.heldBaseline)}</span> lines still held at year end with the rules frozen, <span className="num text-ink">{num(LY.heldLearned)}</span> with learning.
+          </p></RevealItem>
+        </Reveal>
       </section>
 
       {/* How it works */}
@@ -55,7 +67,7 @@ function Landing() {
         </Reveal>
         <HowItWorks beats={[
           { tag: "Runs on the books you have", title: "Connects every place money comes from.",
-            body: <>Fourteen stores, Shopee, Tokopedia, a website, dealers and a music school, all landing in five shared bank accounts. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">−Rp 48.6bn</span>.</>,
+            body: <>Fourteen stores, Shopee and Tokopedia (Southeast Asia&apos;s Amazon and eBay), a website, dealers and a music school, all landing in five shared bank accounts. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">{signedRp(HEAD_OFFICE)}</span> <span className="text-faint">({usdApprox(HEAD_OFFICE)})</span>.</>,
             visual: <Sources /> },
           { tag: "Learns your business", title: "Learns how the money really moves, then keeps learning.",
             body: <>It starts by learning last year&apos;s books: card fees, marketplace commissions, lender cuts. Every rule is a small program, tested on last year before anyone sees it. When an accountant corrects something, it becomes a rule too.</>,
@@ -69,20 +81,39 @@ function Landing() {
         ]} />
       </section>
 
-      {/* Proof */}
-      <Reveal className="grid gap-8 rounded-[16px] border border-hairline bg-ground p-6 lg:grid-cols-[1fr_1.1fr] lg:p-10" stagger={0.12}>
-        <RevealItem className="grid grid-cols-2 gap-6">
-          <Proof figure={<Roll value={104820} format={{ maximumFractionDigits: 0 }} />} label="bank lines in a year" />
-          <Proof figure={<Roll value={40} prefix="~" />} label="decisions left for people" />
-          <Proof figure={<><Roll value={0.81} format={{ style: "percent" }} /> → <Roll value={0.98} format={{ style: "percent" }} /></>} label="settled on first pass, Jan to Dec" />
-          <Proof figure={<Roll value={0} />} label="lines placed at the wrong store" />
-        </RevealItem>
-        <RevealItem>
-          <div className="eyebrow">Meetings per month, and the share settled automatically</div>
-          <div className="mt-4"><CurveAndMeetings /></div>
-          <p className="mt-3 text-[12px] text-faint">Early in the year the agents meet every month. As answers become rules, the meetings stop.</p>
-        </RevealItem>
+      {/* Proof: the learning claim is one year closed twice on the same engine, learning and with the rules frozen. Every
+          figure here is read from src/demo/learning.json, never from the recorded year the demo plays. */}
+      <Reveal className="rounded-[16px] border border-hairline bg-ground p-6 lg:p-10" stagger={0.12}>
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12">
+          <div>
+            <RevealItem><Tag tone="neutral">Proof</Tag></RevealItem>
+            <RevealItem><h2 className="title mt-4 text-[clamp(26px,2.6vw,36px)]">Learning is what keeps the work small.</h2></RevealItem>
+            <RevealItem><p className="mt-4 max-w-[460px] text-[15px] leading-relaxed text-body">
+              A simulated year of the mess that keeps coming back, closed twice on the same engine: once learning from people&apos;s answers, once with the rules frozen at onboarding.
+            </p></RevealItem>
+          </div>
+          <RevealItem className="grid grid-cols-2 gap-6 self-end">
+            <Proof figure={<><Roll value={LY.first} format={{ style: "percent" }} /> → <Roll value={LY.last} format={{ style: "percent" }} /></>} className="col-span-2 sm:col-span-1" label="settled on first pass with learning, Jan to Dec" sub={`${pct(LY.baselineLast, 0)} in Dec without learning`} />
+            <Proof figure={<Roll value={LY.heldLearned} />} label="lines left for people at year end" sub={`${num(LY.heldBaseline)} without learning`} />
+            <Proof figure={<Roll value={LY.rules.length} />} label="rules learned from answers, each backtested first" />
+            <Proof figure={<Roll value={LY.total} />} className="col-span-2 sm:col-span-1" label="bank lines in the year" />
+          </RevealItem>
+        </div>
+        <RevealItem className="mt-10"><LearningChart learned={LY.learned} baseline={LY.baseline} /></RevealItem>
       </Reveal>
+
+      {/* Trust: what keeps a mistake small. */}
+      <section className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+        <Reveal className="min-w-0 max-w-[560px]" stagger={0.1}>
+          <RevealItem><Tag tone="neutral">Trust</Tag></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">What if it gets one wrong?</h2></RevealItem>
+          <RevealItem><p className="mt-5 text-[15px] leading-relaxed text-body">
+            People approve rules, not lines. Every rule is fitted from the data and backtested against the books before anyone sees it, and it settles nothing above its per-payment limit. What no rule explains is held, never guessed. Every step is on the record, with its evidence and who approved it.
+          </p></RevealItem>
+          <RevealItem className="mt-5"><LinkArrow href="/dashboard?view=rules">See every rule and its backtest</LinkArrow></RevealItem>
+        </Reveal>
+        <Reveal className="min-w-0"><RevealItem><LearnedRules /></RevealItem></Reveal>
+      </section>
 
       {/* Closing */}
       <Reveal className="pb-6 text-center" stagger={0.1}>
@@ -97,11 +128,12 @@ function Landing() {
   );
 }
 
-function Proof({ figure, label }: { figure: ReactNode; label: string }) {
+function Proof({ figure, label, sub, className = "" }: { figure: ReactNode; label: string; sub?: string; className?: string }) {
   return (
-    <div>
-      <div className="figure text-[clamp(30px,3.4vw,42px)] text-heading">{figure}</div>
+    <div className={`min-w-0 ${className}`}>
+      <div className="figure whitespace-nowrap text-[clamp(30px,3.4vw,42px)] text-heading">{figure}</div>
       <div className="mt-1.5 text-[13px] text-secondary">{label}</div>
+      {sub ? <div className="mt-0.5 text-[12px] text-faint">{sub}</div> : null}
     </div>
   );
 }

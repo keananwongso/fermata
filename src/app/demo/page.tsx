@@ -195,7 +195,7 @@ function DemoPage() {
         <div inert={!!room} className={`min-w-0 xl:flex xl:min-h-0 xl:overflow-hidden xl:transition-[opacity,padding] xl:duration-500 xl:ease-brand ${room ? "xl:pointer-events-none xl:pr-0 xl:opacity-0" : "xl:pr-4"}`}>
           <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} hint={tip("stream")} onLinger={() => show("stream")} onLeave={() => hide("stream")} />
         </div>
-        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Learning curve"}>
+        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Settled on its own, by month"}>
           {room ? (
             <motion.div key={room.key} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
               <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-hairline px-4 py-3">
@@ -418,7 +418,7 @@ function Curve({ curve, answered, phase }: { curve: Rec["months"]; answered: str
   const path = pts.map((q, i) => `${i ? "L" : "M"}${x(q.m).toFixed(1)},${y(q.r).toFixed(1)}`).join(" ");
   return (
     <div className="p-4 lg:p-5">
-      <div className="flex items-baseline justify-between"><h2 className="title text-[20px]">Learning curve</h2><span className="text-[11.5px] text-faint">settled automatically on first pass</span></div>
+      <div className="flex items-baseline justify-between"><h2 className="title text-[20px]">Settled on its own</h2><span className="text-[11.5px] text-faint">first pass, by month</span></div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" role="img" aria-label="Share settled automatically on first pass by month">
         {[0.75, 0.8, 0.85, 0.9, 0.95, 1].map((g) => <g key={g}><line x1={L} x2={W - Rr} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" strokeWidth={0.6} strokeDasharray={g === 0.75 ? "" : "2 4"} /><text x={L - 6} y={y(g) + 4} textAnchor="end" fontSize="10" fill="var(--color-faint)">{Math.round(g * 100)}%</text></g>)}
         {MONTH_LABELS.map((mo, i) => <text key={mo} x={x(i + 1)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--color-faint)">{mo[0]}</text>)}
@@ -426,7 +426,7 @@ function Curve({ curve, answered, phase }: { curve: Rec["months"]; answered: str
         {pts.map((q) => <g key={q.m}><circle cx={x(q.m)} cy={y(q.r)} r={3.5} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth={1.75} /><text x={x(q.m)} y={y(q.r) + 16} textAnchor="middle" fontSize="10" fill="var(--color-secondary)">{(q.r * 100).toFixed(0)}</text></g>)}
         {LIVE.filter((r) => answered.includes(r.key)).map((r) => { const q = pts.find((z) => z.m === r.month); return q ? <text key={r.key} x={x(r.month)} y={y(q.r) - 10} textAnchor="middle" fontSize="15" fill="var(--color-hold)" style={{ fontFamily: "var(--font-music)" }}>𝄐</text> : null; })}
       </svg>
-      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year. The curve climbs as answers become rules." : "Each 𝄐 is an answer you gave that became a rule."}</p>
+      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year to watch each month settle." : "Each 𝄐 is an answer you gave that became a rule."}</p>
     </div>
   );
 }

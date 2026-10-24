@@ -144,7 +144,18 @@ The transcript of the agents' meeting on one held story.
   `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off under reduced
   motion, where the page scrolls natively. Do not add CSS scroll snap on top of it.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
-  `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
+  `scripts/export_demo.ts`), or for learning from the learning year (`src/demo/learning.json`, through
+  `src/components/learningYear.ts`). Never type a figure into the page by hand; read it from the data.
+* **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
+  people with learning, rounded down, then both year-end counts in a quieter line); **Proof** is a white card with a
+  `Tag`, a `.title`, one paragraph, four figures (a figure can carry a `faint` sub line, the without-learning number) and
+  the `LearningChart` across the full width; **Trust** ("What if it gets one wrong?") follows the page rhythm with the
+  learned rules in a `.frame` beside it, each with its backtest and per-payment limit.
+* **US dollars beside headline rupiah** (`usdApprox` in `src/components/money.ts`): one fixed, approximate rate of
+  Rp 16,000 per dollar, rounded to two significant figures, in `faint` after the figure: "−Rp 48.6bn (about $3M)". Headline
+  figures only, never table rows, and never inside the product window (the dashboard stays in rupiah, as the
+  business would see it). Where Shopee and Tokopedia first appear on the page, say once what they are (Southeast
+  Asia's Amazon and eBay).
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
@@ -171,7 +182,9 @@ recording, so it works on the hosted site with no Convex, and a re-export update
 * **Three metric cards** (`.card`, eyebrow, `.figure` that `Roll`s, one sub line, then a small picture pinned to the
   bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through),
   the first pass share by month as a sparkline that draws in with `pathLength`, and the close as twelve month bars.
-  On a phone each card puts its picture beside the figure instead of under it.
+  On a phone each card puts its picture beside the figure instead of under it. The first pass card ("Settled on its
+  own") states the recorded year as it happened and says nothing about why it rose; the learning claim lives in the
+  comparison (see Honest claims about learning).
 * **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
   `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
   (Claude or Code). The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
@@ -219,12 +232,31 @@ site redirects it to the demo like the rest of the console.
 * **Knobs in one card inside a `.frame`**, grouped under eyebrows (World, the off-by-default card fee knobs, New lender,
   Learning). Number fields are the record page's field (hairline border, `focus-within:border-accent`), months are a
   plain select, the world is a segmented radiogroup, stores are pressed toggles (`aria-pressed`, accent when on).
-* **One chart, two lines:** learning in `accent` (solid, with points), the baseline in `mute`, dashed. Learned rules are
-  accent pills under it and their months turn accent on the axis. Below it four `Metric`s; year-end held is the hold tone.
+* **One chart, two lines:** the shared `LearningChart` (see Learning comparison chart). Learned rules are also accent pills
+  under it. Below it four `Metric`s; year-end held is the hold tone.
 * **The month table and what it learned** sit side by side on wide screens. Each learned rule shows who answered and
   that the answer came from the answer key, a `Code` pill (never Claude: the simulator's Learner is code), and its fit
   and backtest as `›` lines in a `.panel`. Rules that failed to fit or failed their backtest are listed in red.
 * Every number on the screen comes from the run; the source line repeats that the Learner here is code.
+
+## Learning comparison chart (`src/components/learningChart.tsx`)
+
+`LearningChart` draws the learning claim: one year run twice on the same engine, once learning from people's answers and
+once with the rules frozen at onboarding, as the share settled on first pass by month. One component for the landing
+page's proof, the pitch's Self improving slide and the What if screen, so the comparison reads the same everywhere.
+
+* **Learning** is `accent`, solid, with white points. **Without learning** is `mute`, dashed. Each line ends in its
+  December share (accent and `faint`).
+* **Learned rules:** a `hold` 𝄐 (Noto Music) sits over the learning point of each month in which an answer became a
+  rule, and that month turns `accent` on the axis. This is the demo curve's mark, "an answer became a rule".
+* **A small legend** above (With learning, Without learning, 𝄐 An answer became a rule) and **the caption** under it,
+  always: "Simulated on the same engine: the same year, with and without learning." (`SIM_CAPTION`).
+* Three widths keep its labels near 11px: a phone chart below `sm` (single letter months), a mid one, and a wide one
+  from `lg`. `stage` draws only the mid one, for the pitch, which scales it with CSS `zoom`.
+* Both lines draw in left to right behind a growing clip the first time it scrolls into view (not `pathLength`, which
+  would overwrite the baseline's dashes).
+* Feed it `{ months, learned }` per run: a run from `/api/simulate`, or `src/demo/learning.json` through
+  `src/components/learningYear.ts`.
 
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
@@ -238,9 +270,12 @@ uses the same tokens, type classes, components and motion as the screens it intr
 * **One idea per slide.** A slide is a `Frame` (chapter eyebrow top left, the mark and page number below), a
   `.title` heading in sentence case, then one visual. Chapters use the judges' words (Why, How it works,
   Case rooms, How it's built, Self improving, Proves every step, The result).
-* **Every figure comes from the recording** through `pitch/data.ts`; assumptions (minutes per match, per
-  decision) are printed on the slide that uses them. Something not yet measured shows a `.hatch` placeholder,
-  never a typed number.
+* **Every figure comes from the recording or the learning year** through `pitch/data.ts` (`D.learning` is
+  `learningYear.ts`); assumptions (minutes per match, per decision) are printed on the slide that uses them. Something
+  not yet measured shows a `.hatch` placeholder, never a typed number. Spoken notes that quote a figure interpolate it
+  from `D` too.
+* **Self improving** is the `LearningChart` (stage size, `zoom`) under the first pass and the lines left for people,
+  with and without learning. It never draws the recorded year's curve.
 * **Builds** use `In` (rise with a short blur, optional delay, or shown from a build step). Charts draw in with
   `pathLength`; numbers `Roll`.
 * App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
@@ -295,6 +330,16 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 * **Every number is synthetic, and the UI says so** (notice bar, footer). Never put real company
   names, people or figures on screen, in the code or in comments.
+* **Honest claims about learning.** Never present the recorded year's curve as learning: its first pass rates are an
+  input to the generator, and a no-learning baseline of the same year climbs too. The learning claim is the with and
+  without comparison from the learning year (`LearningChart`, `learningYear.ts`), always labelled "Simulated on the
+  same engine". The recorded curve may still show what happened (the demo, the dashboard), with a 𝄐 where an answer
+  became a rule, but no copy says it climbs because of them. Claims round toward the cautious side (the "times fewer"
+  figure rounds down), and a figure the data does not hold is left out, not typed (the wrong store count is not in
+  `learning.json`, so the site does not show it).
+* **The website carries what the pitch carries.** A visitor who never sees the deck meets the same claims and figures
+  on the site: the side by side comparison, what keeps a mistake small, the headline figures with dollars beside the
+  rupiah. When a slide gains a claim or a figure, the landing page gets it too, read from the same data module.
 * **Held is amber, everywhere.** Settled is green, blocked is red, actions are blue. Never reuse
   those colours for anything else.
 * **Refusals are visible.** A denied transition or a refusal by the meeting manager is shown in red
