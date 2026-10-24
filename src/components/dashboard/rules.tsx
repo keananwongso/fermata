@@ -16,7 +16,7 @@ function source(r: Rule) {
   return `From ${who ? `the ${AGENT_LABEL[who]}'s` : "a person's"} ${kind} in ${MONTH_LABELS[r.learnedInMonth - 1]}`;
 }
 
-const AUDIT: Record<string, ["success" | "hold" | "danger", string]> = { pass: ["success", "Passed"], flag: ["hold", "Flagged"], block: ["danger", "Blocked"] };
+const AUDIT: Record<string, ["neutral" | "hold" | "danger", string]> = { pass: ["neutral", "Passed"], flag: ["hold", "Flagged"], block: ["danger", "Blocked"] };
 
 export function Rules() {
   const [openId, setOpenId] = useState<string | null>(learned[0]?.id ?? null);
@@ -39,7 +39,7 @@ export function Rules() {
                   <span className={`block text-[13px] leading-snug ${open ? "font-medium text-heading" : "text-ink"}`}>{r.title}</span>
                   <span className="mt-0.5 block text-[11.5px] text-faint">{source(r)}</span>
                 </span>
-                <span className="shrink-0"><StateBadge state={r.state} /></span>
+                <span className="shrink-0"><StateBadge state={r.state} quiet /></span>
                 <span aria-hidden className={`calm shrink-0 text-faint ${open ? "rotate-90" : ""}`}>›</span>
               </button>
               {open ? <RuleDetail r={r} /> : null}
@@ -65,7 +65,7 @@ function RuleDetail({ r }: { r: Rule }) {
                 <span className="text-body"><span className="num text-ink">{num(bt.correct)}</span> correct of <span className="num text-ink">{num(bt.covered)}</span> covered</span>
                 <span className="num text-ink">{pctOf(bt.precision)}</span>
               </div>
-              <Bar value={bt.precision} max={1} tone="success" />
+              <Bar value={bt.precision} max={1} />
               <p className="text-[12px] leading-snug text-secondary">Precision on {bt.scope}{bt.errors ? <>; <span className="num">{num(bt.errors)}</span> wrong</> : null}.</p>
               {bt.examples.length ? (
                 <ul className="panel space-y-0.5 px-3 py-2 font-mono text-[11px] leading-relaxed text-secondary">

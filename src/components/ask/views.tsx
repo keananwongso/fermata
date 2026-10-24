@@ -47,7 +47,7 @@ export function Figure({ v }: { v: FigureView }) {
       <div className="mt-5 grid gap-6 sm:grid-cols-[1.4fr_1fr] sm:items-end">
         <div className="min-w-0">
           <div className="eyebrow">{v.label}</div>
-          <div className="display mt-2 text-[clamp(44px,7vw,76px)] tabular-nums"><RollValue value={v.value} unit={v.unit} /></div>
+          <div className="display mt-2 text-[clamp(40px,11cqi,76px)] tabular-nums"><RollValue value={v.value} unit={v.unit} /></div>
         </div>
         {v.compare ? (
           <div className="min-w-0 border-hairline sm:border-l sm:pl-6">
@@ -177,7 +177,7 @@ export function Breakdown({ v }: { v: BreakdownView }) {
 
 // ---------------- Lines ----------------
 
-const OUTCOME: Record<string, [string, "success" | "hold" | "neutral"]> = { settled: ["Settled", "success"], held: ["Held", "hold"], waiting: ["Waiting", "neutral"], open: ["Open", "neutral"] };
+const OUTCOME: Record<string, [string, "hold" | "neutral"]> = { settled: ["Settled", "neutral"], held: ["Held", "hold"], waiting: ["Waiting", "neutral"], open: ["Open", "neutral"] };
 
 function Outcome({ o }: { o: string }) {
   const [label, tone] = OUTCOME[o] ?? [o, "neutral"];
@@ -250,9 +250,9 @@ export function Story({ v }: { v: StoryView }) {
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="space-y-3 text-[13px]">
             <div><span className="eyebrow">Where it came from</span><p className="mt-1 text-body">{v.rule.origin}</p></div>
-            {v.rule.audit ? <div><span className="eyebrow">Auditor</span><p className="mt-1 text-body"><Pill tone={v.rule.audit.result === "pass" ? "success" : v.rule.audit.result === "block" ? "danger" : "neutral"}>{v.rule.audit.result}</Pill> {v.rule.audit.note}</p></div> : null}
+            {v.rule.audit ? <div><span className="eyebrow">Auditor</span><p className="mt-1 text-body"><Pill tone={v.rule.audit.result === "block" ? "danger" : "neutral"}>{v.rule.audit.result}</Pill> {v.rule.audit.note}</p></div> : null}
             {v.rule.backtest ? <p className="text-[12px] text-faint">Backtest scope: {v.rule.backtest.scope}</p> : null}
-            <Pill tone={v.rule.real ? "info" : "neutral"}>{v.rule.real ? "Written by Claude" : "Scripted"}</Pill>
+            <Pill>{v.rule.real ? "Written by Claude" : "Scripted"}</Pill>
           </div>
           <pre className="scroll-quiet max-h-56 overflow-auto rounded-[8px] bg-night px-3 py-2 text-[11.5px] leading-relaxed text-white/85">{v.rule.program}</pre>
         </div>
@@ -260,7 +260,7 @@ export function Story({ v }: { v: StoryView }) {
 
       {v.question ? (
         <div className="mt-5 rounded-[8px] border border-hold-tint-strong bg-hold-tint/50 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2"><span className="eyebrow">Question for the {askedOf}</span>{v.question.real ? <Pill tone="info">Written by Claude</Pill> : <Pill>Scripted</Pill>}</div>
+          <div className="flex flex-wrap items-center gap-2"><span className="eyebrow">Question for the {askedOf}</span><Pill>{v.question.real ? "Written by Claude" : "Scripted"}</Pill></div>
           <p className="mt-1.5 text-[14px] text-ink">{v.question.text}</p>
           {v.question.answer ? <p className="mt-2 text-[13px] text-secondary"><span className="font-medium text-ink">Answered: {v.question.answer}.</span> {v.question.impact}</p> : <p className="mt-2 text-[13px] text-hold-ink"><span aria-hidden>𝄐</span> Waiting for the {askedOf}</p>}
         </div>

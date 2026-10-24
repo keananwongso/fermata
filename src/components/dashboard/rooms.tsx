@@ -99,7 +99,7 @@ function QuestionCard({ room }: { room: Room }) {
     <section className="card min-w-0 self-start overflow-hidden xl:sticky xl:top-16">
       <div className={`flex items-center justify-between gap-2 border-b px-4 py-2.5 ${open ? "border-hold-tint-strong bg-hold-tint/50" : "border-hairline bg-well"}`}>
         <h3 className="title flex items-center gap-2 text-[15px]">{open ? <span className="text-hold" style={MUSIC} aria-hidden>𝄐</span> : null}Question for the {who}</h3>
-        {open ? null : <Pill tone="success"><span aria-hidden>✓</span>Answered</Pill>}
+        {open ? null : <Pill>Answered</Pill>}
       </div>
       <div className="space-y-3 p-4">
         <p className="text-[13.5px] leading-snug text-ink">{q.text}</p>
@@ -107,8 +107,8 @@ function QuestionCard({ room }: { room: Room }) {
           {q.options.map((o) => {
             const taken = q.answer === o.id;
             return (
-              <li key={o.id} className={`rounded-[8px] border px-3 py-2 ${taken ? "border-success/30 bg-success-tint" : "border-hairline bg-well"} ${q.answer && !taken ? "opacity-50" : ""}`}>
-                {taken ? <div className="eyebrow text-success">Recorded answer</div> : null}
+              <li key={o.id} className={`rounded-[8px] border px-3 py-2 ${taken ? "border-mute bg-ground" : "border-hairline bg-well"} ${q.answer && !taken ? "opacity-50" : ""}`}>
+                {taken ? <div className="eyebrow">Recorded answer</div> : null}
                 <div className="text-[12.5px] font-medium leading-snug text-ink">{o.label}</div>
                 <div className="mt-0.5 text-[11.5px] leading-snug text-secondary">{o.impact}</div>
               </li>

@@ -107,7 +107,7 @@ export function Record({ console }: Props) {
           return (
             <li key={i} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 px-3 py-2 sm:grid-cols-[32px_212px_minmax(0,1fr)_56px]">
               <span className="text-faint">{MONTH_LABELS[month - 1]}</span>
-              <span className={`truncate ${no ? "text-danger" : "text-accent"}`}>{no ? "blocked" : `${AGENT_LABEL[m.speaker] ?? m.speaker}${m.to && m.to !== "room" ? ` → ${AGENT_LABEL[m.to] ?? m.to}` : ""}`}</span>
+              <span className={`truncate ${no ? "text-danger" : "text-secondary"}`}>{no ? "blocked" : `${AGENT_LABEL[m.speaker] ?? m.speaker}${m.to && m.to !== "room" ? ` → ${AGENT_LABEL[m.to] ?? m.to}` : ""}`}</span>
               <span className={`col-span-2 line-clamp-2 sm:col-span-1 ${no ? "text-danger" : "text-ink"}`}>{m.text}</span>
               <span className="hidden text-right text-faint sm:block">{m.staged ? "staged" : m.source === "scripted" ? "scripted" : "real"}</span>
             </li>

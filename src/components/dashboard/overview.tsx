@@ -19,7 +19,7 @@ export function Overview() {
           <div className="eyebrow">Books for {R.year}</div>
           <h2 className="title mt-1 text-[24px] lg:text-[28px]">Dashboard</h2>
         </div>
-        <Pill tone="success"><span aria-hidden>✓</span>Closed through {MONTH_LABELS[lastMonth - 1]}</Pill>
+        <Pill>Closed through {MONTH_LABELS[lastMonth - 1]}</Pill>
       </div>
       <Reveal className="grid gap-3 sm:grid-cols-3 lg:gap-4" stagger={0.08}>
         <RevealItem className="min-w-0"><CashCard /></RevealItem>
@@ -109,7 +109,7 @@ function CashCard() {
   return (
     <Metric label="Cash position · head office"
       figure={<Roll value={bn(R.headOfficeBank)} prefix="Rp " suffix="bn" format={{ maximumFractionDigits: 2 }} />}
-      sub={<>The books said <span className="num whitespace-nowrap text-ink line-through decoration-danger/60">{signedRp(R.headOffice)}</span></>}>
+      sub={<>The books said <span className="num whitespace-nowrap text-ink line-through decoration-faint">{signedRp(R.headOffice)}</span></>}>
       <div className="space-y-2" role="img" aria-label={`The bank holds ${rpShort(R.headOfficeBank)}; the books said ${signedRp(R.headOffice)}`}>
         {bar("Bank", R.headOfficeBank, "bg-accent", 0.3)}
         {bar("Books", R.headOffice, "bg-mute", 0.45)}
@@ -151,14 +151,14 @@ function CloseCard() {
       <div className="flex gap-[3px]" role="img" aria-label={`${R.months.length} months closed; ${openMonths.size} still hold a question for a person`}>
         {R.months.map((m, i) => (
           <div key={m.month} className="flex flex-1 flex-col items-center gap-1" title={`${MONTH_LABELS[m.month - 1]}: closed${openMonths.has(m.month) ? ", holds a question" : ""}`}>
-            <motion.span className="h-6 w-full origin-bottom rounded-[2px] bg-success"
+            <motion.span className="h-6 w-full origin-bottom rounded-[2px] bg-mute"
               initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.3 + i * 0.04, ease: EASE_OUT }} />
             <span className={`h-1.5 w-1.5 rounded-full ${openMonths.has(m.month) ? "bg-hold" : "bg-transparent"}`} />
           </div>
         ))}
       </div>
       <div className="mt-1.5 hidden items-center gap-3 text-[10.5px] text-faint sm:flex">
-        <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-[1px] bg-success" />closed</span>
+        <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-[1px] bg-mute" />closed</span>
         <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-hold" />still holds a question</span>
       </div>
     </Metric>
@@ -178,13 +178,14 @@ function ActivityCard() {
       <ul className="divide-y divide-hairline">
         {rows.map((r) => (
           <li key={r.who} className="flex items-center gap-3 px-4 py-3 lg:px-5">
-            <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] text-white ${r.blocked ? "bg-danger" : "bg-success"}`} aria-label={r.blocked ? "blocked" : "done"}>{r.blocked ? "✕" : "✓"}</span>
+            {/* Every row is done, so only a refusal gets a mark (red, with the reason in the row). */}
+            {r.blocked ? <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-danger text-[11px] text-white" aria-label="blocked">✕</span> : null}
             <span className="hidden sm:block"><Avatar who={r.who} size={28} /></span>
             <div className="min-w-0 flex-1">
               <div className="text-[13px] leading-snug text-body"><span className="font-medium text-ink">{AGENT_LABEL[r.who]}</span> {r.did}</div>
               <div className="eyebrow mt-0.5 sm:truncate" title={r.sub}>{r.sub}</div>
             </div>
-            {r.source ? <span className="hidden shrink-0 sm:inline-flex"><Pill tone={r.source.startsWith("Claude") ? "accent" : "neutral"}>{r.source}</Pill></span> : null}
+            {r.source ? <span className="hidden shrink-0 sm:inline-flex"><Pill>{r.source}</Pill></span> : null}
           </li>
         ))}
       </ul>
@@ -220,7 +221,7 @@ function WaitingCard() {
                         <div className="line-clamp-2 text-[12.5px] leading-snug text-body" title={r.title}>{r.title}</div>
                         <div className="eyebrow mt-0.5">{num(r.count)} lines · {rpShort(r.amount)} · {MONTH_LABELS[r.month - 1]}</div>
                       </div>
-                      <button type="button" onClick={() => go({ view: "case-rooms", room: r.key })} aria-label={`Review: ${r.title}`} className="calm inline-flex min-h-11 shrink-0 items-center rounded-[4.5px] bg-hold-tint px-2.5 font-mono text-[11px] uppercase tracking-[0.04em] text-hold-ink hover:bg-hold-tint-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-7">Review</button>
+                      <button type="button" onClick={() => go({ view: "case-rooms", room: r.key })} aria-label={`Review: ${r.title}`} className="calm inline-flex min-h-11 shrink-0 items-center rounded-[4.5px] px-1 text-[12.5px] font-medium text-link hover:text-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-7">Review</button>
                     </li>
                   ))}
                   {list.length > (p === mostAsked ? 3 : 1) ? <li className="px-1 text-[11.5px] text-faint">and {list.length - (p === mostAsked ? 3 : 1)} more</li> : null}

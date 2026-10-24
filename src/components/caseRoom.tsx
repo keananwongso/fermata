@@ -1,7 +1,7 @@
 "use client";
 // The case room as a group chat: the agents' meeting on one held story. Nobody types here; the only thing a
 // person does is answer the question card that sits where a chat's input box would be.
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
@@ -28,11 +28,16 @@ const MENTION: Record<string, string> = {
   investigator: "bg-accent-tint text-accent", auditor: "bg-inset text-heading", learner: "bg-info-tint text-info",
   cfo: "bg-hold-tint text-hold-ink", accountant: "bg-hold-tint text-hold-ink", room: "bg-inset text-secondary", engine: "bg-inset text-secondary",
 };
+// Inside the dashboard window every participant is one neutral tile with ink initials: the names are written beside them,
+// so colour would only compete with blue (data, links) and amber (waiting on a person). See DESIGN.md, Colour.
+export const PlainAvatars = createContext(false);
+const PLAIN = "bg-inset text-ink";
 const name = (r: string) => (r === "room" ? "everyone" : AGENT_LABEL[r] ?? r);
 
 export function Avatar({ who, size = 32 }: { who: string; size?: number }) {
+  const plain = useContext(PlainAvatars);
   return (
-    <div className={`num flex shrink-0 items-center justify-center rounded-full text-[10.5px] font-medium ${AVATAR[who] ?? "bg-inset text-secondary"}`} style={{ width: size, height: size }} aria-hidden>
+    <div className={`num flex shrink-0 items-center justify-center rounded-full text-[10.5px] font-medium ${plain ? PLAIN : AVATAR[who] ?? "bg-inset text-secondary"}`} style={{ width: size, height: size }} aria-hidden>
       {INITIALS[who] ?? "··"}
     </div>
   );
@@ -42,7 +47,8 @@ export function Avatar({ who, size = 32 }: { who: string; size?: number }) {
 // the mention is added in front.
 function WithMention({ text, to }: { text: string; to: string }) {
   const label = name(to);
-  const chip = <span className={`rounded-[4px] px-1 py-px font-medium ${MENTION[to] ?? "bg-inset"}`}>@{label}</span>;
+  const plain = useContext(PlainAvatars);
+  const chip = <span className={`rounded-[4px] px-1 py-px font-medium ${plain ? PLAIN : MENTION[to] ?? "bg-inset"}`}>@{label}</span>;
   const i = to === "room" ? -1 : text.indexOf(label);
   if (i < 0) return <>{to === "room" ? null : <>{chip} </>}{text}</>;
   return <>{text.slice(0, i)}{chip}{text.slice(i + label.length)}</>;

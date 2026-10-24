@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { STORES } from "../../convex/lib/domain";
-import { Avatar } from "./caseRoom";
+import { Avatar, PlainAvatars } from "./caseRoom";
 import { scrollToY } from "./motion";
 import { TABS } from "./nav";
 import { AGENT_LABEL } from "./ui";
@@ -71,6 +71,7 @@ export function Dashboard({ className = "", initial, onNavigate }: { className?:
   const panel = { id: ids.panel, role: "tabpanel", "aria-labelledby": ids.tab(view.id), tabIndex: -1 } as const;
   return (
     <DashboardNav.Provider value={go}>
+      <PlainAvatars.Provider value>
       <div ref={win} className={`frame ${className}`} role="group" aria-label={`Fermata dashboard for ${R.year}, read from a recorded run`}>
         <div className="card grid overflow-hidden lg:grid-cols-[212px_minmax(0,1fr)]">
           <Sidebar nav={nav} go={go} ids={ids} />
@@ -90,6 +91,7 @@ export function Dashboard({ className = "", initial, onNavigate }: { className?:
           </div>
         </div>
       </div>
+      </PlainAvatars.Provider>
     </DashboardNav.Provider>
   );
 }

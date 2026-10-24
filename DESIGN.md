@@ -11,6 +11,7 @@ quiet by default and loud only where something needs a person:
 
 * **Cream, not white.** Pages sit on a warm cream canvas; cards are white on top of it.
 * **Navy for what you read, blue for what you do, amber for what waits.** No other colours carry meaning.
+* **Two colours with jobs, everything else neutral.** See the rule under Colour.
 * **Numbers are the heroes.** Big figures in the display face, tabular, counting up when they change.
 * **Everything that moves has a reason.** Motion shows arrival, progress or a hold, never decoration.
 * **The fermata mark 𝄐 means held.** Use it only for held or waiting-on-a-person states, and for the brand.
@@ -32,11 +33,26 @@ All colours are tokens in `@theme` in `globals.css`. Use the Tailwind names (`bg
 | Action and data | `accent` #1f5fc0 · `accent-hover` #17499a · `accent-tint` #eaf1fb · `link` | Buttons, links, active tabs, charts, selected states |
 | Brand second colour | `cyan` #17bebb | Only the brand button's tab. Never for meaning |
 | Hold | `hold` #b27d10 · `hold-tint` #fbf0d6 · `hold-tint-strong` | Held, needs an answer, waiting on a person |
-| Success | `success` #2e9e5b · `success-tint` | Settled, passed |
+| Success | `success` #2e9e5b · `success-tint` | Settled, passed, on the console's working screens. Not in the dashboard window or Ask |
 | Danger | `danger` #d23b30 · `danger-tint` | Blocked, denied, wrong |
-| Info | `info` #00a3a0 · `info-tint` | Approved but not yet posted |
+| Info | `info` #00a3a0 · `info-tint` | Approved but not yet posted (console); the orb's working states |
 
 Shadows are warm (`rgb(85 40 20 / …)`), never grey-black.
+
+**Two colours with jobs, everything else neutral.** A screen gets two colours that mean something, and nothing else
+competes with them:
+
+* **Accent (blue)** is what you can act on and what the data draws: the active tab or nav item, links, buttons, and data
+  lines and marks (a bar for the bank, a trend line, a learned rule's pill on a chart).
+* **Hold (amber)** is only what needs a person: the 𝄐, the one amber card (Waiting on you), a held count, a dot on a
+  month that still holds a question, a question waiting for an answer.
+* **Everything else is neutral:** `ink`, `secondary`, `faint`, `inset`, `mute`, `hairline`. A row that is simply done gets
+  no mark (when every row is done, a ✓ carries no information). Source pills (Claude, Code, Scripted, Story) are the same
+  quiet neutral `Pill`. Avatars are one tile (`inset`, ink initials), not a colour each. Settled, closed, approved, answered
+  and passed are neutral pills or plain text, never green. Calls to action inside a card are text links, not tinted pills.
+* **Red is the one exception**, kept for a real refusal or denial (a blocked step, a denied transition), always with its reason.
+* Success green and info teal stay in the palette for the console's working screens, the demo's case rooms and the orb's
+  states; the dashboard window and Ask the books do not use them. New screens start from this rule.
 
 ## Type
 
@@ -71,6 +87,11 @@ inside rule code and the record.
   is hovered. Lists that stream in (the demo's engine) do not scroll at all: they clip with a fade at the bottom.
 * `.field`: a text input or select. White, hairline border, radius 6px, blue border when focused, 44px tall on
   mobile and 36px on desktop. Its label is an `.eyebrow` above it.
+* `.coach`: the one dark card on the site pages, warm graphite (`ink`) with a faint grain, white text, radius 16px. Only
+  for teaching the Ask the books shortcut (the popup while it listens, and the landing page's lesson). Opaque: the
+  page's dark headings show through any translucency.
+* `.kbd`: a key or a shortcut ("⌃ + ⌥") in mono, light on the page and frosted inside `.coach`. `TalkKeys` renders the
+  Ask the books shortcut named for the platform.
 * Radii: card 10px, panel 6px, button 4.5px, pill fully round. Nothing else.
 
 ## Components (`src/components/ui.tsx`)
@@ -126,7 +147,8 @@ The transcript of the agents' meeting on one held story.
   button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
   there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
   the explore path is the dashboard (Ask the books lives inside it), and the demo hands off to the dashboard when the
-  year closes. `/ask` still works as a direct address; the footer lists every way in.
+  year closes. Ask the books is also everywhere on the site pages as a shortcut (hold ⌃ + ⌥; see Ask the books,
+  anywhere), which adds no header link. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
 * **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens the whole stage (title, card,
@@ -146,6 +168,11 @@ The transcript of the agents' meeting on one held story.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
   `scripts/export_demo.ts`), or for learning from the learning year (`src/demo/learning.json`, through
   `src/components/learningYear.ts`). Never type a figure into the page by hand; read it from the data.
+* **Ask the books on the landing page** sits between How it works and Proof and teaches the shortcut rather than
+  embedding the panel: the page rhythm on the left (`Tag`, "Ask the books. Out loud.", one paragraph, then four
+  suggested questions as chips that open the popup and ask), and on the right, in a `warm` tray, the idle orb over a
+  still `.coach` card ("Hold ⌃ + ⌥ to ask the books anything", one question to say aloud, Type instead). The hero carries
+  one quiet line under its buttons, "or hold ⌃ + ⌥ to ask the books", which opens the popup ("or ask the books" on a phone).
 * **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
   people with learning, rounded down, then both year-end counts in a quieter line); **Proof** is a white card with a
   `Tag`, a `.title`, one paragraph, four figures (a figure can carry a `faint` sub line, the without-learning number) and
@@ -159,7 +186,8 @@ The transcript of the agents' meeting on one held story.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
-  button **Explore the closed books** (`/dashboard`), **Ask the books** (`/dashboard?view=ask`), and Run it yourself as
+  button **Explore the closed books** (`/dashboard`), **Ask the books** (opens the popup over the closed year), a faint
+  line teaching the shortcut ("Anywhere on the site, hold ⌃ + ⌥ to ask the books", keyboards only), and Run it yourself as
   a quiet text link. Play again steps down to a secondary button so the hand-off is the one primary. The demo never
   embeds the dashboard; it sends the visitor there.
 * **Hints only for a visitor who hesitates** (`useHints`, `Hint` in `demo/page.tsx`, drawn as `.tip`). Each waits for
@@ -176,20 +204,26 @@ The transcript of the agents' meeting on one held story.
 The product as an app window: the landing page's hero and the calm overview page at `/dashboard`. It reads only the
 recording, so it works on the hosted site with no Convex, and a re-export updates every figure.
 
+* **Two colours with jobs** (see Colour): blue for the active tab, links and data; amber for what waits on a person;
+  everything else neutral. The window provides `PlainAvatars`, so every `Avatar` and @mention inside it (the case room
+  transcripts too) is the one neutral tile; room states, rule states (`StateBadge quiet`), audit results and the
+  recorded answer are neutral, except held (amber) and blocked (red).
 * **A window, not a page.** A `.frame` around one `.card` split into a `well` sidebar (the 𝄐 Fermata wordmark, the
   fictional company, the console tabs with counts, and who is acting) and a `canvas` main area. On a phone the sidebar
   folds into one bar across the top of the window.
 * **Three metric cards** (`.card`, eyebrow, `.figure` that `Roll`s, one sub line, then a small picture pinned to the
-  bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through),
-  the first pass share by month as a sparkline that draws in with `pathLength`, and the close as twelve month bars.
+  bottom so the three line up): the head office cash the bank holds against what the books claimed (struck through in
+  `faint`; the bank bar is accent, the books bar `mute`), the first pass share by month as a sparkline that draws in with
+  `pathLength`, and the close as twelve `mute` month bars with an amber dot under each month that still holds a question.
+  "Closed through Dec" in the head is a neutral pill.
   On a phone each card puts its picture beside the figure instead of under it. The first pass card ("Settled on its
   own") states the recorded year as it happened and says nothing about why it rose; the learning claim lives in the
   comparison (see Honest claims about learning).
-* **Agent activity:** one row per role, a green ✓ (red ✕ only when the recording has a refusal), the `Avatar`, the
-  `AGENT_LABEL` name and what it did, a mono uppercase sub line, and a pill saying where the work came from
-  (Claude or Code). The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
+* **Agent activity:** one row per role: the `Avatar` (neutral), the `AGENT_LABEL` name and what it did, a mono uppercase
+  sub line, and a neutral pill saying where the work came from (Claude or Code). No ✓: every row is done. A red ✕ leads
+  the row only when the recording has a refusal. The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
 * **Waiting on you** is the one amber card: a `hold-tint` header with the 𝄐, open questions grouped by the person
-  asked, the largest first, each with a `Review` link. A person with nothing open says so and shows their last answer.
+  asked, the largest first, each with a quiet `Review` text link (blue, not a tinted pill). A person with nothing open says so and shows their last answer.
 * **Honest by construction:** a figure the recording does not hold is left out rather than invented (there is no
   monthly cash series, so cash is a bank against books comparison, not a sparkline).
 * **Views switch inside the window** (`src/components/dashboard/*`). The sidebar is a `tablist`: choosing an item swaps
@@ -340,8 +374,8 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 * **The website carries what the pitch carries.** A visitor who never sees the deck meets the same claims and figures
   on the site: the side by side comparison, what keeps a mistake small, the headline figures with dollars beside the
   rupiah. When a slide gains a claim or a figure, the landing page gets it too, read from the same data module.
-* **Held is amber, everywhere.** Settled is green, blocked is red, actions are blue. Never reuse
-  those colours for anything else.
+* **Held is amber, everywhere.** Blocked is red, actions and data are blue, and everything else is neutral (Two colours
+  with jobs, under Colour). Never reuse those colours for anything else.
 * **Refusals are visible.** A denied transition or a refusal by the meeting manager is shown in red
   with the reason, never hidden.
 * **Real, scripted or staged is always labelled** on every message in a case room. The dashboard's agent summary
@@ -391,7 +425,8 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   duration. The template rises in shortly after the caption starts. Screen readers get the question and the whole
   answer once, from an `aria-live` region; the word by word caption is hidden from them.
 * **Labels stay on every answer:** "Recorded answer" or "Live: Claude chose the query", and "Every number checked against
-  the data" or "Sentence written by code", as pills beside Play and Ask again. The typed field is secondary, a quiet
+  the data" or "Sentence written by code", as neutral pills beside Play and Ask again. Inside the templates, settled lines,
+  a passed audit and "Written by Claude" are neutral too; held stays amber and a refusal red. The typed field is secondary, a quiet
   rounded field under the suggestions. Under it, once and quietly: "Read only: it can explain the books, never change them."
 * **Five templates** (`ask/views.tsx`), each inside a `.frame` around a `.card`, each ending with its source:
   * **Figure**: one number in `.display` that `Roll`s in, a comparison beside it in `.figure`, an optional note.
@@ -411,9 +446,15 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   matching) are answered from `src/demo/ask.json` with the recorded audio in `public/ask/`, with no Claude call. Re-record
   with `npx tsx --env-file=.env scripts/export_ask.ts`. Only unmatched questions go live, rate limited per visitor and
   capped per day; past the cap the answer is "I can only answer the suggested questions right now".
-* **Without a Convex URL** (the hosted site today) the orb cannot be pressed, its badge is a crossed mic, and the line under
-  it says why ("Voice questions need the live service"). Typed questions only match presets, and recorded answers still
-  play out loud and still drive the orb. A rate limit or a failed answer shows as a short note under the orb.
+* **One voice pipeline** (`listen` in `ask/voice.ts`) for the orb, the popup's shortcut and the case room's round button:
+  the microphone recorder (Cartesia's transcript when the live service is there, and the orb's level) together with the
+  browser's own speech recognition (`ask/speech.ts`: the words while the person speaks, and the transcript when there is
+  no live service). Either is enough, so a spoken suggested question is answered from the recording on the hosted site too.
+  Rising and falling earcons (`blipIn`, `blipOut`) mark press and release on the orb and the shortcut; the case room stays quiet.
+* **Without a Convex URL** (the hosted site today) spoken and typed questions only match presets (anything else gets
+  "I can only answer the suggested questions right now"), and recorded answers still play out loud and still drive the
+  orb. Only where the browser can neither record for Cartesia nor recognise speech is the orb unpressable, with a crossed
+  mic badge and a line saying why. A rate limit or a failed answer shows as a short note under the orb.
 * **Screenshots in development:** `/ask?orb=listening` (or `transcribing`, `thinking`, `speaking`) holds the orb in that
   state; the check is compiled out of production builds. `/ask?q=<preset id>` opens a recorded answer without playing it.
 * **Voice answers in a case room** (`voiceAnswer.tsx`): a question for the CFO can be answered by voice under its options,
@@ -421,3 +462,32 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   The answer is read back ("You said …. That means …") and only a spoken yes sends it, marked "By voice". Confirming the
   restated answer and approving a rule stay clicks.
 * **Speech** is Cartesia: one voice, `sonic-3.6`, mp3. The browser gets a one minute access token from Convex, never the key.
+
+## Ask the books, anywhere (`src/components/ask/overlay.tsx`)
+
+On every site page (`/`, `/demo`, `/dashboard`, `/ask`; not the console, not the pitch, whose keys step the deck), hold
+**Control + Option** (Ctrl + Alt on Windows, never Command) and ask out loud; let go to ask. Modelled on Loci's hold to talk.
+`AskOverlay` is mounted once by `Providers` and keyed by page, so moving on closes it and stops its voice. It shares
+everything with the panel: the question and answer (`useAsk`), the answer (`AnswerHead`, `AnswerBody` in `ask/answer.tsx`),
+the orb (`OrbButton`) and the voice pipeline. Anything opens it with `openAsk()` (with `{ question }` it asks straight
+away, with `{ type: true }` it opens on the type box).
+
+* **Hold and release.** Keys down: a rising blip, the popup opens and says Listening at once (before the microphone has
+  opened), the words appear as they are heard. Keys up: a falling blip and "Got it · writing down your question", then
+  Reading the books, then the answer. Holding again while it speaks interrupts it. A tap under 280ms only opens the popup.
+* **The shortcut is the call to action**, labelled per platform: "Hold ⌃ + ⌥ to talk" with a Control + Option tooltip on a
+  Mac, "Hold Ctrl + Alt to talk" elsewhere (`useTalkKeys`, `TalkKeys`). On a phone or tablet (no fine pointer) it reads
+  "Hold the orb to talk" and a small floating **Ask the books** button (white pill, blue mic, bottom right) opens the
+  popup. The fallbacks are the orb itself, held by pointer or touch, and Space or Enter while it has focus.
+* **The popup:** the orb on a canvas puck, then a card under it. Before an answer the card is the `.coach` card: "Hold
+  ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the status line
+  with the live words, the read only promise and Esc, and a quiet Type instead (a type box prefilled with the
+  suggestion). With an answer it is a white `.card` in a `.frame`: You asked, the captioned answer with its labels, the
+  template, then **Ask next** (two suggested questions), the shortcut reminder and Type instead.
+* **Calm, never in the way.** A soft `night` dim over the page on wider screens, a full canvas sheet on a phone (the
+  header would crowd it). Escape, the close button or a click outside closes it. The shortcut is ignored while another
+  text field has focus (the popup's own type box excepted), the popup is `data-lenis-prevent` so its own scrolling never
+  moves the smooth-scrolled page, and it is a non-modal `dialog` that takes focus only when opened by a click.
+* Two colours with jobs here too: blue for the orb's listening badge, links and the send button; amber only inside an
+  answer that is about held lines; everything else ink, white and neutral. Reduced motion keeps the orb's still frames
+  and the popup's fades.

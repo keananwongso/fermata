@@ -9,105 +9,34 @@
 // voice) → done (the answer's template, with ask again). The orb is one element the whole way, so a press that
 // starts on it always ends on it.
 //
-// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books").
-import { useCallback, useEffect, useRef, useState } from "react";
+// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books"). The site wide overlay (overlay.tsx) shares its
+// question and answer (useAsk), its answer (answer.tsx) and its orb.
+import { useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowUp, Mic, MicOff, Play, RefreshCw, RotateCcw, Square } from "lucide-react";
-import recording from "@/demo/ask.json";
-import { api } from "../../../convex/_generated/api";
-import { LIMITED, type AskAnswer } from "../../../convex/lib/ask";
-import { PRESETS, matchPreset } from "../../../convex/lib/askPresets";
-import { Pill } from "../ui";
-import { RefusalNote, View } from "./views";
-import { LIVE, liveClient, playUrl, speak, stopSpeaking, visitorId } from "./voice";
+import { ArrowRight, ArrowUp, RefreshCw } from "lucide-react";
+import { AnswerBody, AnswerHead } from "./answer";
+import { RECORDED, PER_SET, SETS, fromRecording, useAsk, type Shown } from "./useAsk";
 import { usePushToTalk, useVoiceInput } from "./pushToTalk";
-import { ThinkingOrb, type OrbState } from "./orb";
-import { SpokenCaption } from "./caption";
+import { OrbButton } from "./orbButton";
+import type { OrbState } from "./orb";
 
-type Recorded = { question: string; answer: AskAnswer; audio: string | null };
-const REC = recording as unknown as { recordedAt: string | null; presets: Record<string, Recorded> };
-
-// Suggestions four at a time, each set mixing the templates. Presets not listed here go at the end.
-const ORDER = ["real-cash", "held-now", "auto-settling", "finz-why", "held-by-store", "finz-june", "school-fees", "approve-r9", "r8-learned", "held-channels", "rooms-by-month", "january-card"];
-const RECORDED = PRESETS.filter((p) => REC.presets[p.id]).sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));
-const PER_SET = 4;
-const SETS = Math.max(1, Math.ceil(RECORDED.length / PER_SET));
-
-type Shown = { question: string; answer: AskAnswer; from: "recorded" | "live"; audio: string | null };
 type Phase = OrbState;
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function AskPanel({ className = "" }: { className?: string }) {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [shown, setShown] = useState<Shown | null>(null);
-  const [history, setHistory] = useState<Shown[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [heard, setHeard] = useState<string | null>(null);
+  const a = useAsk();
+  const { phase, setPhase, shown, setShown, notice, setNotice, heard, setHeard, ask } = a;
   const [typed, setTyped] = useState("");
   const [set, setSet] = useState(0);
-  // False on the server and on the hosted site without a Convex URL; true where this browser can record.
+  // False on the server and where this browser cannot take a spoken question.
   const voiceIn = useVoiceInput();
-
-  // Each question gets a number; a live answer that comes back after a newer question is dropped.
-  const turn = useRef(0);
-  // Each playback gets a number, so a voice that ends after a newer one started leaves the phase alone.
-  const voice = useRef(0);
-
-  const play = useCallback((s: Shown) => {
-    const mine = ++voice.current;
-    setPhase("thinking");
-    const done = () => { if (voice.current === mine) setPhase("idle"); };
-    const started = s.audio ? playUrl(s.audio, done) : LIVE ? speak(s.answer.spoken, done) : Promise.resolve(false);
-    void started.then((ok) => { if (voice.current === mine) setPhase(ok ? "speaking" : "idle"); });
-  }, []);
-
-  const stop = useCallback(() => { voice.current++; stopSpeaking(); setPhase("idle"); }, []);
-
-  const show = useCallback((s: Shown, speakIt: boolean) => {
-    setShown(s);
-    setHistory((h) => [s, ...h.filter((x) => x.question !== s.question)].slice(0, 4));
-    if (speakIt) play(s); else setPhase("idle");
-  }, [play]);
-
-  const fromRecording = useCallback((id: string): Shown | null => {
-    const r = REC.presets[id];
-    return r ? { question: r.question, answer: r.answer, from: "recorded", audio: r.audio } : null;
-  }, []);
-
-  const ask = useCallback(async (question: string, speakIt = true) => {
-    const q = question.trim();
-    if (!q) return;
-    const mine = ++turn.current;
-    voice.current++;
-    stopSpeaking();
-    setNotice(null);
-    const preset = matchPreset(q);
-    const recorded = preset ? fromRecording(preset.id) : null;
-    if (recorded) return show({ ...recorded, question: q === preset!.question ? recorded.question : q }, speakIt);
-    setShown(null);
-    const c = liveClient();
-    if (!c) { setPhase("idle"); setNotice(LIMITED); return; }
-    setPhase("thinking");
-    try {
-      const reply = await c.action(api.ask.ask, { question: q, visitor: visitorId() });
-      if (mine !== turn.current) return;
-      if (reply.kind === "answer") return show({ question: q, answer: reply.answer, from: "live", audio: null }, speakIt);
-      if (reply.kind === "preset") { const r = fromRecording(reply.id); if (r) return show({ ...r, question: q }, speakIt); }
-      setPhase("idle");
-      setNotice(reply.kind === "limited" || reply.kind === "error" ? reply.message : LIMITED);
-    } catch {
-      if (mine !== turn.current) return;
-      setPhase("idle");
-      setNotice("The books could not be read just now. Try a suggested question.");
-    }
-  }, [fromRecording, show]);
 
   const busy = phase === "thinking" || phase === "transcribing";
   const talk = usePushToTalk({
-    disabled: !voiceIn || busy,
+    disabled: !voiceIn || busy, blips: true,
     onPhase: (p) => {
-      if (p === "listening") { turn.current++; voice.current++; stopSpeaking(); setNotice(null); setHeard(null); setShown(null); setPhase("listening"); }
+      if (p === "listening") a.listening();
       else if (p === "transcribing") setPhase("transcribing");
       else setPhase((cur) => (cur === "listening" || cur === "transcribing" ? "idle" : cur));
     },
@@ -122,7 +51,7 @@ export function AskPanel({ className = "" }: { className?: string }) {
     if (!r) return;
     const t = requestAnimationFrame(() => setShown(r));
     return () => cancelAnimationFrame(t);
-  }, [fromRecording]);
+  }, [setShown]);
 
   // Development only: ?orb=listening|transcribing|thinking|speaking holds the orb in that state, for screenshots.
   // Next removes this block from production builds.
@@ -135,8 +64,6 @@ export function AskPanel({ className = "" }: { className?: string }) {
     return () => cancelAnimationFrame(t);
   }, []);
 
-  useEffect(() => () => stopSpeaking(), []);
-
   const state: Phase = forced ?? (talk.phase === "listening" ? "listening" : talk.phase === "transcribing" ? "transcribing" : phase);
   const answer = shown?.answer ?? null;
   const answering = !!(shown && answer);
@@ -145,7 +72,6 @@ export function AskPanel({ className = "" }: { className?: string }) {
 
   const submitTyped = () => { const q = typed; setTyped(""); setHeard(null); void ask(q); };
   const pick = (q: string) => { setHeard(null); void ask(q); };
-  const reset = () => { stop(); setShown(null); setNotice(null); setHeard(null); };
 
   return (
     <section className={`card overflow-hidden p-5 lg:p-7 ${className}`} aria-label="Ask the books">
@@ -156,16 +82,7 @@ export function AskPanel({ className = "" }: { className?: string }) {
           Wider: the orb in its own column beside all of it. */}
       <div className={answering ? "grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-3.5 gap-y-3 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-start sm:gap-x-6 sm:gap-y-0" : "flex flex-col items-center pt-2 text-center lg:pt-4"}>
         <motion.div layout transition={{ duration: 0.5, ease: EASE }} className={`relative shrink-0 ${answering ? "sm:row-span-2" : ""}`}>
-          <button {...talk.props} disabled={!voiceIn || busy || talk.phase === "transcribing"}
-            aria-label={voiceIn ? (state === "listening" ? "Listening. Let go to ask" : "Hold to ask a question out loud") : "Voice questions need the live service"}
-            className={`calm group relative grid touch-none select-none place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent enabled:cursor-pointer disabled:cursor-default ${answering ? "size-14 sm:size-[88px]" : "size-[156px] sm:size-[188px]"}`}>
-            <ThinkingOrb state={state} className={`absolute inset-0 transition-transform duration-500 ${state === "listening" ? "scale-[1.04]" : ""} ${voiceIn && state === "idle" ? "group-hover:scale-[1.03]" : ""}`} />
-            {voiceIn || !answering ? (
-              <span aria-hidden className={`calm absolute bottom-0 grid translate-y-1/3 place-items-center rounded-full border shadow-[0_2px_6px_rgb(85_40_20/0.12)] ${answering ? "size-6" : "size-8"} ${!voiceIn ? "border-hairline bg-well text-faint" : state === "listening" ? "border-accent bg-accent text-white" : "border-hairline bg-ground text-accent group-hover:border-accent"}`}>
-                {!voiceIn ? <MicOff size={answering ? 12 : 14} strokeWidth={1.75} /> : state === "listening" ? <Square size={answering ? 9 : 11} strokeWidth={2} fill="currentColor" /> : <Mic size={answering ? 12 : 15} strokeWidth={1.75} />}
-              </span>
-            ) : null}
-          </button>
+          <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={busy} small={answering} className={answering ? "size-14 sm:size-[88px]" : "size-[156px] sm:size-[188px]"} />
         </motion.div>
 
         {answering ? (
@@ -176,25 +93,7 @@ export function AskPanel({ className = "" }: { className?: string }) {
         <motion.div layout="position" transition={{ duration: 0.5, ease: EASE }} className={`min-w-0 ${answering ? "col-span-2 sm:col-span-1 sm:col-start-2" : "mt-5 max-w-[520px]"}`}>
           {answering ? (
             <div key={shown!.question + shown!.from}>
-              <SpokenCaption text={answer!.spoken} live={state === "speaking"} className="title text-[clamp(19px,2.1vw,24px)] leading-[1.3] sm:mt-2" />
-              <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                {state === "speaking" || state === "thinking" ? (
-                  <button type="button" onClick={stop} className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline bg-ground px-3 text-[12.5px] font-medium text-ink hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8">
-                    <Square size={10} strokeWidth={2} fill="currentColor" className="text-accent" />Stop
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => play(shown!)} disabled={!shown!.audio && !LIVE}
-                    className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline bg-ground px-3 text-[12.5px] font-medium text-ink hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:min-h-8">
-                    <Play size={11} strokeWidth={2} fill="currentColor" className="text-accent" />Play
-                  </button>
-                )}
-                <button type="button" onClick={reset} className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium text-secondary hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8">
-                  <RotateCcw size={12} strokeWidth={1.75} />Ask again
-                </button>
-                <span className="mx-0.5 hidden h-4 w-px bg-hairline sm:block" aria-hidden />
-                {shown!.from === "recorded" ? <Pill>Recorded answer</Pill> : <Pill tone="info">Live: Claude chose the query</Pill>}
-                {answer!.checked ? <Pill tone="success">Every number checked against the data</Pill> : <Pill>Sentence written by code</Pill>}
-              </div>
+              <AnswerHead shown={shown!} state={state} onPlay={() => a.play(shown!)} onStop={a.stop} onReset={a.reset} captionClass="text-[clamp(19px,2.1vw,24px)] sm:mt-2" />
             </div>
           ) : (
             <div>
@@ -210,18 +109,12 @@ export function AskPanel({ className = "" }: { className?: string }) {
       ) : null}
 
       <AnimatePresence mode="wait" initial={false}>
-        {answering ? (
-          <motion.div key={shown!.question + shown!.from} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.45, ease: EASE, delay: state === "speaking" || state === "thinking" ? 0.7 : 0.05 }}>
-            {answer!.refusal ? <div className="mt-5"><RefusalNote r={answer!.refusal} /></div> : null}
-            {answer!.view ? <div className="frame mt-5"><div className="card p-4 sm:p-5 lg:p-6"><View v={answer!.view} /></div></div> : null}
-          </motion.div>
-        ) : null}
+        {answering ? <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} /> : null}
       </AnimatePresence>
 
       <Dock center={!answering} disabled={!ready} current={shown?.question ?? null} set={set} onMore={() => setSet((s) => (s + 1) % SETS)} onPick={pick}
         typed={typed} onTyped={setTyped} onSubmit={submitTyped}
-        recent={history.filter((h) => h.question !== shown?.question).slice(0, 3)} onRecent={(h) => { stop(); setNotice(null); setShown(h); }} />
+        recent={a.history.filter((h) => h.question !== shown?.question).slice(0, 3)} onRecent={a.recall} />
     </section>
   );
 }
@@ -231,7 +124,7 @@ function statusText(state: Phase, voiceIn: boolean, heard: string | null): { tit
   if (state === "transcribing") return { title: "Writing down your question", sub: "One moment." };
   if (state === "thinking") return { title: "Reading the books", sub: heard ? `You asked: "${heard}"` : "Every number comes from the data, not from the model." };
   if (state === "speaking") return { title: "Speaking", sub: "" };
-  if (!voiceIn) return { title: "What do you want to know?", sub: "Voice questions need the live service. Pick one below to hear its answer." };
+  if (!voiceIn) return { title: "What do you want to know?", sub: "Voice questions need a browser that can listen. Pick one below to hear its answer." };
   return { title: "Hold to ask", sub: "Press and hold the orb, ask out loud, then let go. Space works too." };
 }
 
@@ -243,6 +136,7 @@ function Dock({ center, disabled, current, set, onMore, onPick, typed, onTyped, 
   typed: string; onTyped: (v: string) => void; onSubmit: () => void; recent: Shown[]; onRecent: (s: Shown) => void;
 }) {
   const shownSet = RECORDED.slice(set * PER_SET, set * PER_SET + PER_SET);
+  const field = useId();
   return (
     <div className={`mt-7 ${center ? "mx-auto flex max-w-[600px] flex-col items-center text-center" : "border-t border-hairline pt-5"}`}>
       <div className={`flex w-full items-center gap-3 ${center ? "justify-center" : "justify-between"}`}>
@@ -269,9 +163,9 @@ function Dock({ center, disabled, current, set, onMore, onPick, typed, onTyped, 
       </AnimatePresence>
 
       <form className={`mt-3 flex w-full items-center gap-2 ${center ? "" : "max-w-[640px]"}`} onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
-        <label htmlFor="ask-typed" className="sr-only">Or type a question</label>
+        <label htmlFor={field} className="sr-only">Or type a question</label>
         <div className="calm flex min-w-0 flex-1 items-center rounded-full border border-hairline bg-well pl-4 pr-1 focus-within:border-accent focus-within:bg-ground hover:border-strong">
-          <input id="ask-typed" value={typed} onChange={(e) => onTyped(e.target.value)} maxLength={240} placeholder="Or type a question" autoComplete="off"
+          <input id={field} value={typed} onChange={(e) => onTyped(e.target.value)} maxLength={240} placeholder="Or type a question" autoComplete="off"
             className="min-h-11 min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-faint focus:outline-none lg:min-h-10" />
           <button type="submit" disabled={!typed.trim() || disabled} aria-label="Ask"
             className="calm grid size-10 shrink-0 place-items-center rounded-full bg-accent text-white hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:bg-inset disabled:text-faint">
