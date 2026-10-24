@@ -1,6 +1,7 @@
 "use client";
 import { useQuery } from "convex/react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { MONTH_LABELS, STORE_BY_CODE } from "../../../convex/lib/domain";
 import { num, pct, rp, rpShort, shortDate } from "../../../convex/lib/format";
@@ -9,11 +10,17 @@ import { QuestionCard } from "@/components/question";
 import { RoomPermissions, RoomTranscript } from "@/components/caseRoom";
 
 export default function StoriesPage() {
+  return <Suspense fallback={<Loading>Loading case rooms…</Loading>}><Rooms /></Suspense>;
+}
+
+// ?room=<story key> opens that room; otherwise the first.
+function Rooms() {
   const list = useQuery(api.queries.stories);
+  const asked = useSearchParams().get("room");
   const [sel, setSel] = useState<string | null>(null);
-  if (!list) return <Loading>Loading stories…</Loading>;
+  if (!list) return <Loading>Loading case rooms…</Loading>;
   if (!list.length) return <Empty />;
-  const key = sel ?? list[0].key;
+  const key = sel ?? (asked && list.some((s) => s.key === asked) ? asked : list[0].key);
   return (
     <div className="space-y-8 lg:space-y-10">
       <PageHead tag={`${list.length} rooms`} title="Case rooms">Every held story gets a meeting. The agents work it out, then ask one person one question.</PageHead>

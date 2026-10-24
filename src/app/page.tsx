@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
@@ -247,7 +248,7 @@ function Meetings({ o }: { o: Overview }) {
           <Eyebrow>Open now</Eyebrow>
           {open.map((r) => (
             <div key={r.key} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="min-w-0 truncate">{r.title}</span>
+              <Link href={`/stories?room=${encodeURIComponent(r.key)}`} className="calm min-w-0 truncate hover:text-accent">{r.title}</Link>
               {r.state === "meeting" ? <Pill tone="accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full" />In meeting</Pill> : <Pill tone="hold"><span aria-hidden className="text-hold">𝄐</span>Asked</Pill>}
             </div>
           ))}

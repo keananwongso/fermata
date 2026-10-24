@@ -26,15 +26,17 @@ function SourcePill({ m }: { m: Msg }) {
   return <Pill>Scripted</Pill>;
 }
 
+// Collapsed to one line; the findings above already say what each query showed.
 function Tool({ t }: { t: Msg["tools"][number] }) {
   return (
-    <div className="mt-2 overflow-hidden rounded-[6px] border border-hairline bg-ground">
-      <div className="flex min-w-0 items-baseline gap-2 border-b border-hairline bg-well px-3 py-1.5 font-mono text-[11.5px] text-secondary">
+    <details className="group mt-2 overflow-hidden rounded-[6px] border border-hairline bg-ground">
+      <summary className="calm flex min-w-0 cursor-pointer list-none items-baseline gap-2 bg-well px-3 py-1.5 font-mono text-[11.5px] text-secondary hover:bg-hover">
         <span className="shrink-0 text-[10px] uppercase tracking-[0.06em] text-accent">ran</span>
         <span className="truncate" title={`${t.name}(${t.input})`}>{t.name}({t.input})</span>
-      </div>
+        <span className="ml-auto shrink-0 text-faint">{t.rows.length} {t.rows.length === 1 ? "row" : "rows"} <span className="inline-block transition-transform group-open:rotate-90">›</span></span>
+      </summary>
       {t.rows.length ? (
-        <table className="w-full text-[12px]">
+        <table className="w-full border-t border-hairline text-[12px]">
           <tbody>
             {t.rows.map((r, i) => (
               <tr key={i} className="border-t border-hairline first:border-0">
@@ -45,7 +47,7 @@ function Tool({ t }: { t: Msg["tools"][number] }) {
           </tbody>
         </table>
       ) : null}
-    </div>
+    </details>
   );
 }
 
@@ -133,11 +135,11 @@ export function RoomPermissions() {
       <p className="mt-1 text-[12px] text-faint">From the roles table in code, checked on every call.</p>
       <dl className="mt-3 space-y-2.5 text-[12.5px]">
         {[...ROOM_SPEAKERS, ...people].map((r) => {
-          const acts = Object.entries(ROLES[r].actions).map(([a, t]) => `${a} ${(t ?? []).map((x) => x.replace("work_items", "lines").replace("_", " ")).join(", ")}`);
+          const acts = Object.keys(ROLES[r].actions).map((a) => (a === "approve" && r === "engine" ? "approve under a rule" : a));
           return (
             <div key={r} className="grid grid-cols-[104px_1fr] gap-2">
               <dt className="font-medium text-ink">{ROLES[r].label}</dt>
-              <dd className="text-secondary">{acts.join(" · ")}{ROOM_SPEAKERS.includes(r) ? <span className="text-faint"> · speaks in rooms</span> : null}</dd>
+              <dd className="text-secondary">{acts.join(" · ")}{ROOM_SPEAKERS.includes(r) ? <span className="text-faint"> · speaks in rooms</span> : null}{!Object.keys(ROLES[r].actions).includes("approve") && r !== "gateway" ? <span className="text-danger"> · never approves</span> : null}</dd>
             </div>
           );
         })}
