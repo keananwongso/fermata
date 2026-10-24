@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { LinkArrow, Tag } from "./ui";
-import { BrandGrid, addScrollGate, scrollToY, withLenis } from "./motion";
+import { addScrollGate, scrollToY, withLenis } from "./motion";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
@@ -271,7 +271,6 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
           <div>
             <motion.div style={still ? undefined : { y: lag, scale: give }}>
             <motion.div style={still ? undefined : { clipPath: clip }} className="relative aspect-square max-h-[calc(100vh-240px)] w-full overflow-hidden rounded-[16px] border border-hairline bg-warm">
-              <BrandGrid cols={12} rows={12} className="absolute inset-0 h-full w-full opacity-50 [mask-image:radial-gradient(ellipse_at_center,transparent_45%,#000_100%)]" />
               <motion.div style={still ? undefined : { opacity: inner }} className="absolute inset-0 flex items-center justify-center p-8">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={active} className="cascade w-full" {...swap} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
