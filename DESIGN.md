@@ -118,11 +118,16 @@ The transcript of the agents' meeting on one held story.
   `/evaluation`, `/record`. The header switches: site links and a **Watch the live demo** button on `/` and
   `/demo`, console tabs and the Acting as switch everywhere else.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
-  `LinkArrow`. Illustrations sit in a `.frame` around a `.card`, and alternate sides beat to beat.
+  `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
+* **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens one card stays in the middle of the
+  screen while the beats scroll past, title on the left and description on the right. The card opens out of a strip
+  as the section arrives (a scroll-linked `clip-path`, smoothed with a spring, off under reduced motion), its picture
+  crossfades to the beat at the middle of the screen with its rows cascading in (`.cascade`), the other beats dim,
+  and dots under the card track and jump between beats. On narrow screens the beats stack.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
   `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
-* The demo is honest about being a replay: it says so under its title, labels every agent message Claude,
-  code or scripted, and greys out answers the recording did not take.
+* The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
+  inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
 
 ## Motion (`globals.css`, `src/components/motion.tsx`)
@@ -135,6 +140,7 @@ The transcript of the agents' meeting on one held story.
 | `.breathe` / `.breathe-dot` | Something is waiting on a person (amber pulse) |
 | `.draw` | Lines and charts drawing in |
 | `.rise` | Fade in, used by `BrandGrid` cells |
+| `.cascade` | The rows of a picture arriving one after another (the pinned how-it-works card) |
 | `Count` / `useTween` | Live Convex numbers count toward their new value instead of jumping |
 | `Roll` | Headline figures: digits roll to the new value (NumberFlow), starting from zero the first time they are on screen |
 | `Reveal` / `RevealItem` | A group whose children rise in with a short blur, one after another, the first time it scrolls into view |

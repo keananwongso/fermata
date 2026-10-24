@@ -116,6 +116,15 @@
   .scroll-quiet::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
   .scroll-quiet:hover::-webkit-scrollbar-thumb { background: var(--color-mute); }
 
+  /* The rows of a picture arriving one after another (the pinned how-it-works card). */
+  .cascade li, .cascade .card > * { animation: enter 450ms var(--ease-out) both; }
+  .cascade :is(li, .card > *):nth-child(2) { animation-delay: 60ms; }
+  .cascade :is(li, .card > *):nth-child(3) { animation-delay: 120ms; }
+  .cascade :is(li, .card > *):nth-child(4) { animation-delay: 180ms; }
+  .cascade :is(li, .card > *):nth-child(5) { animation-delay: 240ms; }
+  .cascade :is(li, .card > *):nth-child(6) { animation-delay: 300ms; }
+  .cascade :is(li, .card > *):nth-child(n+7) { animation-delay: 360ms; }
+
   .enter { animation: enter 400ms var(--ease-out) both; }
   .arrive { animation: arrive 1200ms var(--ease-out) both; }
   .breathe { animation: breathe 1200ms ease-in-out infinite; }

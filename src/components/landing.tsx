@@ -1,7 +1,9 @@
 "use client";
 // Illustrations for the landing page, built from the recorded run so every number on the page is real.
-import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { LinkArrow, Tag } from "./ui";
+import { BrandGrid } from "./motion";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
@@ -62,7 +64,7 @@ export function Sources() {
         <div><div className="eyebrow mb-2">5 bank accounts</div><ul className="space-y-1.5">{banks.map(chip)}</ul></div>
         <div className="flex flex-col items-center gap-2">
           <div className="h-10 w-px bg-strong" aria-hidden />
-          <div className="flex h-16 w-16 items-center justify-center rounded-[14px] bg-heading text-[30px] text-hold shadow-[0_8px_24px_-12px_rgb(10_45_102/0.6)]" style={{ fontFamily: "var(--font-music)" }} aria-label="Fermata">𝄐</div>
+          <div className="flex h-16 w-16 items-center justify-center rounded-[14px] bg-heading text-[30px] text-hold shadow-[0_8px_24px_-12px_rgb(10_45_102/0.6)]" style={{ fontFamily: "var(--font-music)" }} aria-label="Fermata"><span style={{ transform: "translateY(0.28em)" }}>𝄐</span></div>
           <div className="h-10 w-px bg-strong" aria-hidden />
         </div>
         <div><div className="eyebrow mb-2">6 sources of sales</div><ul className="space-y-1.5">{records.map(chip)}</ul></div>
@@ -157,3 +159,94 @@ export function CurveAndMeetings() {
 
 export const FAN = (recording as unknown as { fan: { amount: number; fanout: number } }).fan;
 export const fanText = FAN ? `one payout of ${rpShort(FAN.amount)} settled against ${num(FAN.fanout)} orders` : "";
+
+type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
+
+// How it works. On wide screens one card stays pinned in the middle while the beats scroll past it: it opens out of
+// a strip as the section arrives, and its picture changes to whichever beat is at the middle of the screen. On
+// narrow screens the beats simply stack.
+export function HowItWorks({ beats }: { beats: Beat[] }) {
+  const [active, setActive] = useState(0);
+  const section = useRef<HTMLDivElement>(null);
+  const rows = useRef<(HTMLDivElement | null)[]>([]);
+  const { scrollYProgress } = useScroll({ target: section, offset: ["start end", "start 25%"] });
+  const open = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.6 });
+  const clip = useTransform(open, [0.3, 1], ["inset(42% 2% 42% 2% round 16px)", "inset(0% 0% 0% 0% round 16px)"]);
+  const inner = useTransform(open, [0.75, 1], [0, 1]);
+  const still = useReducedMotion();
+  const jump = (i: number) => rows.current[i]?.scrollIntoView({ block: "center", behavior: "smooth" });
+
+  return (
+    <>
+      <div className="space-y-16 lg:hidden">
+        {beats.map((b) => (
+          <div key={b.tag} className="space-y-6">
+            <BeatText beat={b} />
+            {b.visual}
+          </div>
+        ))}
+      </div>
+
+      <div ref={section} className="relative hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)_minmax(0,1fr)] lg:gap-x-12">
+        <div className="col-start-2 row-start-1" style={{ gridRowEnd: `span ${beats.length}` }}>
+          <div className="sticky" style={{ top: "calc((100vh - min(540px, 100vh - 240px)) / 2 + 48px)" }}>
+            <motion.div style={still ? undefined : { clipPath: clip }} className="relative aspect-square max-h-[calc(100vh-240px)] w-full overflow-hidden rounded-[16px] border border-hairline bg-warm">
+              <BrandGrid cols={12} rows={12} className="absolute inset-0 h-full w-full opacity-50 [mask-image:radial-gradient(ellipse_at_center,transparent_45%,#000_100%)]" />
+              <motion.div style={still ? undefined : { opacity: inner }} className="absolute inset-0 flex items-center justify-center p-8">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div key={active} className="cascade w-full"
+                    initial={{ opacity: 0, y: 14, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                    {beats[active].visual}
+                  </motion.div>
+                </AnimatePresence>
+              </motion.div>
+            </motion.div>
+            <div className="mt-4 flex justify-center gap-2" role="tablist" aria-label="How it works">
+              {beats.map((b, i) => (
+                <button key={b.tag} role="tab" aria-selected={i === active} aria-label={b.tag} onClick={() => jump(i)}
+                  className={`calm h-1.5 rounded-full ${i === active ? "w-6 bg-accent" : "w-1.5 bg-mute hover:bg-secondary"}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+        {beats.map((b, i) => (
+          <BeatRow key={b.tag} i={i} on={i === active} onActive={setActive} refFor={(el) => { rows.current[i] = el; }}>
+            {(part) => part === "left" ? <BeatText beat={b} head /> : <BeatText beat={b} body />}
+          </BeatRow>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// One beat's row on wide screens: the title on the left of the card, the description on the right. The row that
+// crosses the middle of the screen is the active one; the others dim.
+function BeatRow({ i, on, onActive, refFor, children }: { i: number; on: boolean; onActive: (i: number) => void; refFor: (el: HTMLDivElement | null) => void; children: (part: "left" | "right") => ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const centred = useInView(ref, { margin: "-45% 0px -45% 0px" });
+  useEffect(() => { if (centred) onActive(i); }, [centred, i, onActive]);
+  const cell = `flex min-h-[85vh] items-center transition-opacity duration-500 ${on ? "opacity-100" : "opacity-30"}`;
+  return (
+    <>
+      <div ref={(el) => { ref.current = el; refFor(el); }} className={`col-start-1 ${cell}`} style={{ gridRowStart: i + 1 }}>{children("left")}</div>
+      <div className={`col-start-3 ${cell}`} style={{ gridRowStart: i + 1 }}>{children("right")}</div>
+    </>
+  );
+}
+
+function BeatText({ beat, head, body }: { beat: Beat; head?: boolean; body?: boolean }) {
+  const all = !head && !body;
+  return (
+    <div className="min-w-0">
+      {all || head ? <>
+        <Tag tone="neutral">{beat.tag}</Tag>
+        <h3 className="title mt-4 text-[clamp(26px,2.6vw,36px)]">{beat.title}</h3>
+      </> : null}
+      {all || body ? <>
+        <p className={`${all ? "mt-4" : ""} max-w-[440px] text-[15px] leading-relaxed text-body`}>{beat.body}</p>
+        <div className="mt-5"><LinkArrow href="/demo">See it in the demo</LinkArrow></div>
+      </> : null}
+    </div>
+  );
+}

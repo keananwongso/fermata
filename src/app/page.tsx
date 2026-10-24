@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { AgentWorking, CurveAndMeetings, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
+import { AgentWorking, CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll } from "@/components/motion";
 
 export default function Page() {
@@ -38,23 +38,25 @@ function Landing() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="scroll-mt-36 space-y-20 lg:space-y-28">
+      <section id="how" className="scroll-mt-36 space-y-16 lg:space-y-10">
         <Reveal className="max-w-[640px]">
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">From messy books to a closed year.</h2></RevealItem>
         </Reveal>
-        <Beat tag="Runs on the books you have" title="Connects every place money comes from."
-          body={<>Fourteen stores, Shopee, Tokopedia, a website, dealers and a music school, all landing in five shared bank accounts. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">−Rp 48.6bn</span>.</>}
-          visual={<Sources />} />
-        <Beat flip tag="Learns your business" title="Learns how the money really moves, then keeps learning."
-          body={<>It starts by learning last year&apos;s books: card fees, marketplace commissions, lender cuts. Every rule is a small program, tested on last year before anyone sees it. When an accountant corrects something, it becomes a rule too.</>}
-          visual={<Rules />} />
-        <Beat tag="Agents do the work" title="Does the work, and asks for input only when it must."
-          body={<>The engine settles what it can explain, such as {fanText}. What it can&apos;t, the agents meet on: one investigates, one tries to break the case, one drafts the rule. A meeting manager written in code keeps them honest, and brings one question to one person.</>}
-          visual={<MiniRoom />} />
-        <Beat flip tag="Audit-ready by default" title="Every step on record, including what was refused."
-          body={<>Every change is written in the same step as the change itself: the evidence, the rule that allowed it, who approved it. No agent can approve or post anything, and when one tries, the refusal is on record too.</>}
-          visual={<RecordSample />} />
+        <HowItWorks beats={[
+          { tag: "Runs on the books you have", title: "Connects every place money comes from.",
+            body: <>Fourteen stores, Shopee, Tokopedia, a website, dealers and a music school, all landing in five shared bank accounts. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">−Rp 48.6bn</span>.</>,
+            visual: <Sources /> },
+          { tag: "Learns your business", title: "Learns how the money really moves, then keeps learning.",
+            body: <>It starts by learning last year&apos;s books: card fees, marketplace commissions, lender cuts. Every rule is a small program, tested on last year before anyone sees it. When an accountant corrects something, it becomes a rule too.</>,
+            visual: <Rules /> },
+          { tag: "Agents do the work", title: "Does the work, and asks for input only when it must.",
+            body: <>The engine settles what it can explain, such as {fanText}. What it can&apos;t, the agents meet on: one investigates, one tries to break the case, one drafts the rule. A meeting manager written in code keeps them honest, and brings one question to one person.</>,
+            visual: <MiniRoom /> },
+          { tag: "Audit-ready by default", title: "Every step on record, including what was refused.",
+            body: <>Every change is written in the same step as the change itself: the evidence, the rule that allowed it, who approved it. No agent can approve or post anything, and when one tries, the refusal is on record too.</>,
+            visual: <RecordSample /> },
+        ]} />
       </section>
 
       {/* Proof */}
@@ -82,20 +84,6 @@ function Landing() {
         </RevealItem>
       </Reveal>
     </div>
-  );
-}
-
-function Beat({ tag, title, body, visual, flip }: { tag: string; title: string; body: ReactNode; visual: ReactNode; flip?: boolean }) {
-  return (
-    <Reveal className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14" stagger={0.12}>
-      <RevealItem className={`min-w-0 ${flip ? "lg:order-2" : ""}`}>
-        <Tag tone="neutral">{tag}</Tag>
-        <h3 className="title mt-4 text-[clamp(26px,3vw,36px)]">{title}</h3>
-        <p className="mt-4 max-w-[520px] text-[15px] leading-relaxed text-body">{body}</p>
-        <div className="mt-5"><LinkArrow href="/demo">See it in the demo</LinkArrow></div>
-      </RevealItem>
-      <RevealItem className={`min-w-0 ${flip ? "lg:order-1" : ""}`}>{visual}</RevealItem>
-    </Reveal>
   );
 }
 
