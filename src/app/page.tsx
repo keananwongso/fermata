@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { AgentWorking, CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
+import { CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll, SmoothScroll } from "@/components/motion";
+import { Dashboard } from "@/components/dashboard";
 
 export default function Page() {
   return <Arrival><SmoothScroll /><Landing /></Arrival>;
@@ -11,22 +12,26 @@ export default function Page() {
 function Landing() {
   return (
     <div className="space-y-24 lg:space-y-32">
-      {/* Hero */}
-      <section className="grid items-center gap-10 pt-2 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
-        <Reveal className="min-w-0" stagger={0.1}>
+      {/* Hero: the headline centred on top, the product window under it. */}
+      <section className="pt-2">
+        <Reveal className="mx-auto max-w-[880px] text-center" stagger={0.1}>
           <RevealItem><Tag tone="neutral">Autonomous cash reconciliation</Tag></RevealItem>
-          <RevealItem><h1 className="display mt-5 text-[clamp(40px,6vw,72px)]">Every bank line, matched on its own.</h1></RevealItem>
-          <RevealItem><p className="mt-5 max-w-[540px] text-[16px] leading-relaxed text-body">
+          <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">Every bank line, matched on its own.</h1></RevealItem>
+          <RevealItem><p className="mx-auto mt-5 max-w-[600px] text-[16px] leading-relaxed text-body">
             Fermata closes the books for a business that sells everywhere. It matches every bank line to the store and the sales it pays for,
             holds only what nobody wrote down, and asks the right person one question. Then it gets better every month.
           </p></RevealItem>
-          <RevealItem className="mt-7 flex flex-wrap items-center gap-4">
+          <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href="#how">See how it works</LinkArrow>
           </RevealItem>
           <RevealItem><p className="mt-6 text-[12px] text-faint">Shown on a fictional 14-store music retailer. Every number here comes from a real run on synthetic books.</p></RevealItem>
         </Reveal>
-        <Reveal className="min-w-0" delay={0.25}><RevealItem><AgentWorking /></RevealItem></Reveal>
+        <div className="relative mt-12 lg:mt-16">
+          <BrandGrid cols={24} rows={8} className="absolute -inset-x-4 -top-10 h-[70%] w-[calc(100%+2rem)] opacity-50 [mask-image:linear-gradient(to_bottom,transparent,#000_30%,transparent)] lg:-inset-x-10 lg:w-[calc(100%+5rem)]" />
+          <Reveal className="relative min-w-0" delay={0.35}><RevealItem><Dashboard /></RevealItem></Reveal>
+          <div className="relative mt-4 text-center"><LinkArrow href="/dashboard">Open the dashboard</LinkArrow></div>
+        </div>
       </section>
 
       {/* Banner */}
