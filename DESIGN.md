@@ -119,11 +119,16 @@ The transcript of the agents' meeting on one held story.
   `/demo`, console tabs and the Acting as switch everywhere else.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
-* **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens one card stays in the middle of the
-  screen while the beats scroll past, title on the left and description on the right. The card opens out of a strip
-  as the section arrives (a scroll-linked `clip-path`, smoothed with a spring, off under reduced motion), its picture
-  crossfades to the beat at the middle of the screen with its rows cascading in (`.cascade`), the other beats dim,
-  and dots under the card track and jump between beats. On narrow screens the beats stack.
+* **How it works is pinned** (`HowItWorks` in `landing.tsx`): on wide screens the whole stage (title, card,
+  description) is pinned while the page scrolls through a tall track, and how far through the track you are picks the
+  beat. All three swap together, so only one beat is ever on screen. The card opens out of a strip as the section
+  arrives (a scroll-linked `clip-path`, smoothed with a spring), its rows cascade in (`.cascade`), and dots track and
+  jump between beats. When a scroll comes to rest inside the section it glides on to the next beat in the direction it
+  was going, so each gesture turns one beat; past the last beat or above the first, scrolling is free. On narrow
+  screens the beats stack.
+* **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased, slightly weighted scrolling that gives
+  the page its friction. Use `withLenis` to hook into it and `scrollToY` to move the page. Both are off under reduced
+  motion, where the page scrolls natively. Do not add CSS scroll snap on top of it.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
   `scripts/export_demo.ts`). Never type a figure into the page by hand; read it from the recording.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message

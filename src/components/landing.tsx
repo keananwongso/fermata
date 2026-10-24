@@ -1,9 +1,9 @@
 "use client";
 // Illustrations for the landing page, built from the recorded run so every number on the page is real.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { LinkArrow, Tag } from "./ui";
-import { BrandGrid } from "./motion";
+import { BrandGrid, scrollToY, withLenis } from "./motion";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { num, rpShort } from "../../convex/lib/format";
@@ -162,19 +162,52 @@ export const fanText = FAN ? `one payout of ${rpShort(FAN.amount)} settled again
 
 type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
 
-// How it works. On wide screens one card stays pinned in the middle while the beats scroll past it: it opens out of
-// a strip as the section arrives, and its picture changes to whichever beat is at the middle of the screen. On
-// narrow screens the beats simply stack.
+// How it works. On wide screens the whole stage (title, card, description) is pinned while the page scrolls through a
+// tall track; how far through the track you are picks the beat, and all three swap together, so only one beat is ever
+// on screen. When a scroll comes to rest inside the section it glides on to the next beat in the direction it was
+// going, so each gesture turns one beat like a page: that is the section's catch. Scrolling past the last beat or
+// back above the first is never pulled, so nobody gets trapped. The card opens out of a strip as the section arrives. On narrow screens
+// the beats simply stack.
+const HEAD = 104; // the sticky notice bar and header
 export function HowItWorks({ beats }: { beats: Beat[] }) {
+  const n = beats.length;
   const [active, setActive] = useState(0);
-  const section = useRef<HTMLDivElement>(null);
-  const rows = useRef<(HTMLDivElement | null)[]>([]);
-  const { scrollYProgress } = useScroll({ target: section, offset: ["start end", "start 25%"] });
-  const open = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.6 });
+  const track = useRef<HTMLDivElement>(null);
+  const still = useReducedMotion();
+  const { scrollYProgress: through } = useScroll({ target: track, offset: [`start ${HEAD}px`, "end end"] });
+  useMotionValueEvent(through, "change", (p) => setActive(Math.min(n - 1, Math.max(0, Math.floor(p * n + 0.001)))));
+  const { scrollYProgress: arriving } = useScroll({ target: track, offset: ["start end", `start ${HEAD}px`] });
+  const open = useSpring(arriving, { stiffness: 140, damping: 30, mass: 0.6 });
   const clip = useTransform(open, [0.3, 1], ["inset(42% 2% 42% 2% round 16px)", "inset(0% 0% 0% 0% round 16px)"]);
   const inner = useTransform(open, [0.75, 1], [0, 1]);
-  const still = useReducedMotion();
-  const jump = (i: number) => rows.current[i]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  const marks = useRef<(HTMLDivElement | null)[]>([]);
+  const jump = (i: number) => { const m = marks.current[i]; if (m) scrollToY(m.getBoundingClientRect().top + window.scrollY); };
+  useEffect(() => withLenis((l) => {
+    let timer = 0, gliding = false, dir = 0;
+    const settle = () => {
+      timer = 0;
+      const el = track.current;
+      if (!el || gliding || !el.offsetParent) return;
+      const step = window.innerHeight * STEP;
+      const pos = window.scrollY - (el.getBoundingClientRect().top + window.scrollY - HEAD);
+      const last = (n - 1) * step;
+      if (pos < -step * 0.4 || pos > last + 1) return;
+      const target = dir >= 0 ? Math.min(last, Math.ceil((pos - 2) / step) * step) : Math.max(0, Math.floor((pos + 2) / step) * step);
+      if (Math.abs(target - pos) < 2 || (dir < 0 && pos < 0)) return;
+      gliding = true;
+      l.scrollTo(window.scrollY + target - pos, { duration: 0.75, easing: (t) => 1 - Math.pow(1 - t, 3), onComplete: () => { gliding = false; } });
+    };
+    // Lenis eases to a stop over a long tail, so glide as soon as it slows to a crawl rather than waiting it out.
+    const onScroll = () => {
+      if (gliding) return;
+      if (l.direction) dir = l.direction;
+      if (Math.abs(l.velocity) > 3) { window.clearTimeout(timer); timer = 0; }
+      else if (!timer) timer = window.setTimeout(settle, 90);
+    };
+    l.on("scroll", onScroll);
+    return () => { window.clearTimeout(timer); l.off("scroll", onScroll); };
+  }), [n]);
+  const swap = { initial: { opacity: 0, y: 18, filter: "blur(6px)" }, animate: { opacity: 1, y: 0, filter: "blur(0px)" }, exit: { opacity: 0, y: -14, filter: "blur(4px)" } };
 
   return (
     <>
@@ -187,16 +220,22 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
         ))}
       </div>
 
-      <div ref={section} className="relative hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)_minmax(0,1fr)] lg:gap-x-12">
-        <div className="col-start-2 row-start-1" style={{ gridRowEnd: `span ${beats.length}` }}>
-          <div className="sticky" style={{ top: "calc((100vh - min(540px, 100vh - 240px)) / 2 + 48px)" }}>
+      <div ref={track} className="relative hidden lg:block" style={{ height: `calc(${n * STEP * 100}vh + 100vh - ${HEAD}px)` }}>
+        {beats.map((b, i) => (
+          <div key={b.tag} ref={(el) => { marks.current[i] = el; }} aria-hidden className="pointer-events-none absolute inset-x-0 h-px" style={{ top: `calc(${i * STEP * 100}vh - ${HEAD}px)` }} />
+        ))}
+        <div className="sticky grid grid-cols-[minmax(0,1fr)_minmax(0,540px)_minmax(0,1fr)] items-center gap-x-12" style={{ top: HEAD, height: `calc(100vh - ${HEAD}px)` }}>
+          <div className="min-w-0">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={active} {...swap} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}><BeatText beat={beats[active]} head /></motion.div>
+            </AnimatePresence>
+          </div>
+          <div>
             <motion.div style={still ? undefined : { clipPath: clip }} className="relative aspect-square max-h-[calc(100vh-240px)] w-full overflow-hidden rounded-[16px] border border-hairline bg-warm">
               <BrandGrid cols={12} rows={12} className="absolute inset-0 h-full w-full opacity-50 [mask-image:radial-gradient(ellipse_at_center,transparent_45%,#000_100%)]" />
               <motion.div style={still ? undefined : { opacity: inner }} className="absolute inset-0 flex items-center justify-center p-8">
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.div key={active} className="cascade w-full"
-                    initial={{ opacity: 0, y: 14, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                  <motion.div key={active} className="cascade w-full" {...swap} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
                     {beats[active].visual}
                   </motion.div>
                 </AnimatePresence>
@@ -209,31 +248,17 @@ export function HowItWorks({ beats }: { beats: Beat[] }) {
               ))}
             </div>
           </div>
+          <div className="min-w-0">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={active} {...swap} transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}><BeatText beat={beats[active]} body /></motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-        {beats.map((b, i) => (
-          <BeatRow key={b.tag} i={i} on={i === active} onActive={setActive} refFor={(el) => { rows.current[i] = el; }}>
-            {(part) => part === "left" ? <BeatText beat={b} head /> : <BeatText beat={b} body />}
-          </BeatRow>
-        ))}
       </div>
     </>
   );
 }
-
-// One beat's row on wide screens: the title on the left of the card, the description on the right. The row that
-// crosses the middle of the screen is the active one; the others dim.
-function BeatRow({ i, on, onActive, refFor, children }: { i: number; on: boolean; onActive: (i: number) => void; refFor: (el: HTMLDivElement | null) => void; children: (part: "left" | "right") => ReactNode }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const centred = useInView(ref, { margin: "-45% 0px -45% 0px" });
-  useEffect(() => { if (centred) onActive(i); }, [centred, i, onActive]);
-  const cell = `flex min-h-[85vh] items-center transition-opacity duration-500 ${on ? "opacity-100" : "opacity-30"}`;
-  return (
-    <>
-      <div ref={(el) => { ref.current = el; refFor(el); }} className={`col-start-1 ${cell}`} style={{ gridRowStart: i + 1 }}>{children("left")}</div>
-      <div className={`col-start-3 ${cell}`} style={{ gridRowStart: i + 1 }}>{children("right")}</div>
-    </>
-  );
-}
+const STEP = 0.8; // screen heights of scrolling per beat
 
 function BeatText({ beat, head, body }: { beat: Beat; head?: boolean; body?: boolean }) {
   const all = !head && !body;

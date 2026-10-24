@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import NumberFlow, { type Format } from "@number-flow/react";
 import { AnimatePresence, motion, useInView, type Variants } from "motion/react";
+import Lenis from "lenis";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -142,4 +143,37 @@ export function Arrival({ children, ms = 900 }: { children: ReactNode; ms?: numb
       <div hidden={splash}>{children}</div>
     </>
   );
+}
+
+let lenis: Lenis | null = null;
+type LenisAttach = (l: Lenis) => (() => void) | void;
+const lenisUsers = new Map<LenisAttach, (() => void) | void>();
+
+// Runs `attach` with the page's smooth scroller whenever one exists (now, if it already does), and its cleanup when that
+// scroller goes away. Returns an unsubscribe. Survives the scroller being recreated, as React does in development.
+export function withLenis(attach: LenisAttach) {
+  lenisUsers.set(attach, lenis ? attach(lenis) : undefined);
+  return () => { lenisUsers.get(attach)?.(); lenisUsers.delete(attach); };
+}
+
+export function scrollToY(y: number) {
+  if (lenis) lenis.scrollTo(y);
+  else window.scrollTo({ top: y, behavior: reduced() ? "auto" : "smooth" });
+}
+
+// Weighted, eased scrolling (Lenis), so the page has a little friction instead of jumping with every wheel notch.
+// Used on the landing page; off under reduced motion.
+export function SmoothScroll() {
+  useEffect(() => {
+    if (reduced()) return;
+    const l = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9, autoRaf: true, anchors: { offset: -144 } });
+    lenis = l;
+    lenisUsers.forEach((_, attach) => lenisUsers.set(attach, attach(l)));
+    return () => {
+      lenisUsers.forEach((stop, attach) => { stop?.(); lenisUsers.set(attach, undefined); });
+      l.destroy();
+      lenis = null;
+    };
+  }, []);
+  return null;
 }

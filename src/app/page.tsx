@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
 import { AgentWorking, CurveAndMeetings, HowItWorks, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
-import { Arrival, BrandGrid, Reveal, RevealItem, Roll } from "@/components/motion";
+import { Arrival, BrandGrid, Reveal, RevealItem, Roll, SmoothScroll } from "@/components/motion";
 
 export default function Page() {
-  return <Arrival><Landing /></Arrival>;
+  return <Arrival><SmoothScroll /><Landing /></Arrival>;
 }
 
 function Landing() {

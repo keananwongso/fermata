@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Manrope, IBM_Plex_Mono, Noto_Music } from "next/font/google";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
