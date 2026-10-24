@@ -34,7 +34,7 @@ const PANELS: Record<string, { id: string; Panel: View["Panel"]; count?: ReactNo
 function Ask() {
   return (
     <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-6">
-      <ViewHead title="Ask the books">Read only. Hold to ask out loud, or type; the answer is shown and spoken, and every number comes from the books.</ViewHead>
+      <ViewHead title="Ask the books">Ask out loud or type. The answer is spoken and shown, and every number comes from the books.</ViewHead>
       <AskPanel className="!p-4 lg:!p-5" />
     </div>
   );

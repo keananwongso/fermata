@@ -8,8 +8,8 @@ export default function Page() {
   return (
     <div className="space-y-8">
       <PageHead title="Ask the books">
-        Hold the button and ask about this year&apos;s books out loud, or type it. The answer is spoken and shown, and every number on
-        screen comes from the books, never from the model.
+        Ask about this year&apos;s books out loud, or type it. The answer is spoken and shown, and every number on screen comes from the
+        books, never from the model.
       </PageHead>
       <AskPanel />
     </div>
