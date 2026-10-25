@@ -3,6 +3,7 @@ import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
 import { HowDiagram } from "@/components/howDiagram";
 import { HowLearns } from "@/components/howLearns";
+import { HowRoom } from "@/components/howRoom";
 import { LearningChart } from "@/components/learningChart";
 import { LY } from "@/components/learningYear";
 import { num, pct } from "../../convex/lib/format";
@@ -67,6 +68,10 @@ function Landing() {
         <div>
           <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it&apos;s built. Pick a path, click a box.</h3>
           <HowDiagram />
+        </div>
+        <div>
+          <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">Inside a case room. The real meeting.</h3>
+          <HowRoom />
         </div>
         <div>
           <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns. Two examples.</h3>

@@ -187,7 +187,8 @@ The transcript of the agents' meeting on one held story.
   once the diagram is on screen it plays every path in turn from Day 0, the playing path's tab filling as it holds;
   pick a path, Day 0, Settles, Holds, Learns or Refused, and only its boxes and lines light up, numbered, in the path's colour,
   with the steps listed under it; click a box for two or three lines of what it is underneath. On a phone the steps
-  list and box chips stand in for the canvas) and **How it learns** (`HowLearns`: two worked examples, one from last
+  list and box chips stand in for the canvas) and **Inside a case room** (`HowRoom`: story B's real meeting, replayed a message at a time once on screen,
+  then its question card and what it settled; Replay starts it over) and **How it learns** (`HowLearns`: two worked examples, one from last
   year's books (r4) and one from an answer (r9), each four numbered cards: the bank line, what it pays for, the number
   it learned and where from, the rule).
 * **The landing page says each thing once:** hero and product window, the banner (the year-end counts), How it works,
