@@ -33,7 +33,7 @@ function fromBooks(): Example | null {
   const f = R.fan, r = rule(f?.rule);
   const cut = rate(r, "commission", "SHOPEE");
   if (!f || !r || !cut) return null;
-  return { key: "books", tab: "From old books", title: `Shopee keeps ${cut}. Fermata worked that out.`, steps: [
+  return { key: "books", tab: "From historic books", title: `Shopee keeps ${cut}. Fermata worked that out.`, steps: [
     { label: "The bank shows", figure: rpShort(f.amount), sub: "one transfer from Shopee" },
     { label: "It's really", figure: `${num(f.fanout)} orders`, sub: `minus Shopee's ${cut} cut` },
     { label: "Fermata learned", figure: `Shopee keeps ${cut}`, sub: `from ${num(seenOf(r)?.count ?? 0)} payouts your team matched by hand last year` },

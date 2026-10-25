@@ -21,10 +21,10 @@ const R8 = LY.rules[0];
 
 // Every box: where it sits, its name, one line under it, and what it is underneath (three short lines).
 const NODES: Record<Id, { c: number; r: number; name: string; sub: string; tag: string; detail: string[]; dark?: boolean }> = {
-  history: { c: 0, r: 0, name: "Last year's books", sub: "matched by hand", tag: "Data", detail: ["Every payment a person matched by hand", "A labelled dataset nobody had to label"] },
-  mining: { c: 1, r: 0, name: "Day 0 mining", sub: "learns from old books", tag: "Code", detail: ["Groups last year's payments by kind", "Fits each shape: fee, commission, cut", `${DAY0} rules before the first month`] },
+  history: { c: 0, r: 0, name: "Historic books", sub: "every year you already have", tag: "Data", detail: ["Every payment a person matched by hand", "A labelled dataset nobody had to label"] },
+  mining: { c: 1, r: 0, name: "Policy mining", sub: "finds the patterns, in code", tag: "Code", detail: ["Groups past payments by kind", "Fits each shape: fee, commission, cut", `${DAY0} rules before the first month`] },
   rules: { c: 2, r: 0, name: "Rules", sub: "approved, with limits", tag: "Data", detail: ["Each rule is a small program", "A per-payment limit it never exceeds", "Versioned; a failing rule drops back"] },
-  backtest: { c: 3, r: 0, name: "Backtest", sub: "on last year's books", tag: "Code", detail: ["Every proposed rule runs on past books first", R8 ? `${R8.id}: ${num(R8.backtest.covered - R8.backtest.wrong)} of ${num(R8.backtest.covered)} right` : "Right and wrong, counted", "A person sees the result, not a guess"] },
+  backtest: { c: 3, r: 0, name: "Backtest", sub: "on historic books", tag: "Code", detail: ["Every proposed rule runs on past books first", R8 ? `${R8.id}: ${num(R8.backtest.covered - R8.backtest.wrong)} of ${num(R8.backtest.covered)} right` : "Right and wrong, counted", "A person sees the result, not a guess"] },
   sources: { c: 0, r: 1, name: "Sources", sub: "bank · ERP · shops", tag: "Sync", detail: ["5 shared bank accounts, every line", "Store sales, Shopee, Tokopedia, dealers, school", "Read in, never edited"] },
   engine: { c: 1, r: 1, name: "Engine", sub: "place · match · decide", tag: "Code, no AI", detail: ["TypeScript, deterministic", "Which store: evidence votes", "Which records: one line to many"] },
   hub: { c: 2, r: 1, name: "System of work", sub: "Convex · transition()", tag: "Convex", dark: true, detail: ["Every change is one transition()", "Roles checked on every step", "Written with its audit row"] },
@@ -37,8 +37,8 @@ const NODES: Record<Id, { c: number; r: number; name: string; sub: string; tag: 
 type Tone = "accent" | "hold" | "danger";
 type Path = { key: string; label: string; tone: Tone; title: string; steps: [Id, Id, string][] };
 export const PATHS: Path[] = [
-  { key: "day0", label: "Day 0", tone: "accent", title: "Last year's books become rules.", steps: [
-    ["history", "mining", "reads last year's matched payments"],
+  { key: "day0", label: "Day 0", tone: "accent", title: "Historic books become rules.", steps: [
+    ["history", "mining", "mines every payment already matched by hand"],
     ["mining", "rules", "turns them into rules the CFO approves once"],
   ] },
   { key: "settle", label: "Matches", tone: "accent", title: "Most payments match on their own.", steps: [
@@ -57,7 +57,7 @@ export const PATHS: Path[] = [
   { key: "learn", label: "Learns", tone: "hold", title: "One answer becomes a tested rule.", steps: [
     ["people", "room", "the answer"],
     ["room", "hub", "the Learner drafts a rule"],
-    ["hub", "backtest", "tested on last year's books"],
+    ["hub", "backtest", "tested on historic books"],
     ["backtest", "rules", "the CFO approves it"],
     ["rules", "engine", "matches payments like it from now on"],
   ] },
