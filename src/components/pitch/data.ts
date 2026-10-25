@@ -5,8 +5,11 @@ import { BANK_ACCOUNTS, STORES } from "../../../convex/lib/domain";
 import { LY } from "../learningYear";
 
 type Msg = { speaker: string; to: string; kind: string; source: string; staged: boolean; think: string[]; tools: { name: string; input: string; rows: string[][] }[]; text: string; code: string | null; question: { askOf: string; text: string } | null };
-type Room = { key: string; month: number; title: string; count: number; amount: number; live: boolean; narrated: string | null; askOf: string | null; messages: Msg[] };
-type Rule = { id: string; title: string; learnedInMonth: number; backtest: { correct: number; covered: number; errors: number; precision: number; scope: string } | null };
+type Room = { key: string; month: number; title: string; count: number; amount: number; live: boolean; narrated: string | null; askOf: string | null; resolution?: string | null; messages: Msg[] };
+type Rule = {
+  id: string; title: string; learnedInMonth: number; backtest: { correct: number; covered: number; errors: number; precision: number; scope: string } | null;
+  program: { match?: string; params?: Record<string, unknown> }; seen?: { count: number; scope: string } | null;
+};
 type Line = { channel: string; outcome: string; fanout: number; amount: number };
 // Written by evaluation.run on Convex and carried into the recording by scripts/export_demo.ts.
 export type Evaluation = Record<string, string | number>;

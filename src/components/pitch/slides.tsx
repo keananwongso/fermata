@@ -1,7 +1,7 @@
 "use client";
 // The pitch, one slide per beat of the video plan. Copy follows the philosophy doc's words; every figure comes
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { BANK_ACCOUNTS, MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
 import { ROLES, type Role } from "../../../convex/lib/transition";
@@ -9,7 +9,9 @@ import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
 import { CLOSE_CAPTION, LearningChart } from "../learningChart";
 import { usdApprox } from "../money";
-import { Pill } from "../ui";
+import { AGENT_LABEL, Pill } from "../ui";
+import { seenOf } from "../dayZero";
+import { LearningDiagram, type LearnedStory } from "../learningDiagram";
 import { SystemDiagram } from "../systemDiagram";
 import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
@@ -192,7 +194,65 @@ function How() {
   );
 }
 
-// 6 · Case rooms: the cast, and the opening of a real meeting from the recording.
+// 6 · How it learns: precedents become policies become rules, as one diagram built in five clicks. Day 0 mines last
+// year (r1 to r7, with how many lines each fit saw); the year runs; one held story (the one with the refused approval)
+// becomes a rule; a no stays held and a rule can fall; then the measured result over it. Figures come from `D`.
+const onboarding = D.rules.filter((r) => !r.learnedInMonth);
+function learnedStory(): { story: LearnedStory; record: string } | null {
+  const room = D.rooms.find((r) => r.messages.some((m) => m.kind === "denied"));
+  const approved = room?.messages.find((m) => m.kind === "manager" && /^r\d+ approved by the CFO/.test(m.text));
+  const rule = D.rules.find((r) => r.id === approved?.text.split(" ")[0]);
+  if (!room || !approved || !rule?.backtest) return null;
+  return {
+    story: { id: rule.id, program: rule.program, held: room.count, covered: rule.backtest.covered, wrong: rule.backtest.errors },
+    // One row of the record as it was written: who, and what, up to the first full stop (no lender is named there).
+    record: `${AGENT_LABEL[approved.speaker] ?? approved.speaker} · ${approved.text.split(". ")[0].replace(/\.$/, "")}`,
+  };
+}
+const notOurs = D.rooms.filter((r) => /^not ours/i.test(r.resolution ?? "")).reduce((s, r) => s + r.count, 0);
+function Learns(step: number) {
+  const L = D.learning;
+  const told = learnedStory();
+  const overlay = [
+    null,
+    `${onboarding.length} policies → ${pct(L.baselineFirst, 0)} on day one`,
+    "settles on its own · held, never guessed",
+    "one answer · one rule · never asked twice",
+    "handles a no · a rule can fall",
+    "measured, not claimed",
+  ][step];
+  const measured = (
+    <div className="card px-8 py-7">
+      <div style={{ zoom: 1.5 }}><LearningChart learned={L.learned} baseline={L.baseline} stage caption={CLOSE_CAPTION} /></div>
+      {told ? (
+        <div className="mt-5">
+          <div className="eyebrow text-[18px]">From the record</div>
+          <div className="panel mt-2 px-5 py-3 font-mono text-[19px] text-secondary">› {told.record}</div>
+        </div>
+      ) : null}
+    </div>
+  );
+  return (
+    <Frame chapter="How it learns" n={6}>
+      <div className="flex items-end justify-between gap-10">
+        <In><h2 className="title whitespace-nowrap text-[52px]">It learns from the books it already has.</h2></In>
+        <AnimatePresence mode="wait">
+          {overlay ? (
+            <motion.div key={step} className="whitespace-nowrap pb-2 text-[26px] font-medium text-heading-2"
+              initial={{ opacity: 0, y: 10, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -8, filter: "blur(6px)" }} transition={{ duration: 0.4, ease: EASE_OUT }}>
+              {overlay}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+      <In delay={0.2} className="mt-5">
+        <LearningDiagram step={step} rules={onboarding.map((r) => ({ id: r.id, program: r.program, seen: seenOf(r) }))} story={told?.story ?? null} notOurs={notOurs} measured={measured} />
+      </In>
+    </Frame>
+  );
+}
+
+// 7 · Case rooms: the cast, and the opening of a real meeting from the recording.
 const CAST: { who: Role; does: string; source: "Claude" | "Code" }[] = [
   { who: "investigator", does: "finds the pattern, drafts the one question", source: "Claude" },
   { who: "auditor", does: "tries to break it; can block, never approves", source: "Claude" },
@@ -209,7 +269,7 @@ function meetingOf(): { title: string; msgs: ChatMessage[] } | null {
 function Rooms() {
   const meeting = meetingOf();
   return (
-    <Frame chapter="Case rooms" n={6}>
+    <Frame chapter="Case rooms" n={7}>
       <div className="grid h-full grid-cols-[1fr_960px] gap-16">
         <div className="min-w-0">
           <In><h2 className="title text-[64px]">{num(D.total - D.heldEver)} lines never need a meeting. {D.rooms.length} stories do.</h2></In>
@@ -243,18 +303,18 @@ function Rooms() {
   );
 }
 
-// 7 · How it's built: the architecture, with the three kinds of traffic as builds (settles, needs a person, refused).
+// 8 · How it's built: the architecture, with the three kinds of traffic as builds (settles, needs a person, refused).
 // The diagram reads who may do what from the roles table in code, so the old table now lives inside its tiles.
 function Built(step: number) {
   return (
-    <Frame chapter="How it's built" n={7}>
+    <Frame chapter="How it's built" n={8}>
       <In><h2 className="title whitespace-nowrap text-[56px]">Agents propose. People approve. Only the gateway writes.</h2></In>
       <In delay={0.2} className="mt-7"><SystemDiagram step={step} /></In>
     </Frame>
   );
 }
 
-// 8 · The stack: what runs where. One engine, used live in Convex and offline for the simulator and the export.
+// 9 · The stack: what runs where. One engine, used live in Convex and offline for the simulator and the export.
 const STACK: { place: string; who: string; items: [string, string][] }[] = [
   { place: "The site", who: "Next.js on Vercel", items: [
     ["Landing, demo, dashboard, pitch", "read the exported year, so they load with no backend"],
@@ -274,7 +334,7 @@ const STACK: { place: string; who: string; items: [string, string][] }[] = [
 ];
 function Stack() {
   return (
-    <Frame chapter="How it's built" n={8}>
+    <Frame chapter="How it's built" n={9}>
       <In><h2 className="title text-[64px]">One engine, running in three places.</h2></In>
       <div className="mt-10 grid grid-cols-3 gap-8">
         {STACK.map((col, i) => (
@@ -306,7 +366,7 @@ function Stack() {
   );
 }
 
-// 9 · How we measure: what each number means and where it comes from, so no figure needs trusting.
+// 10 · How we measure: what each number means and where it comes from, so no figure needs trusting.
 const PENDING = "filled in by the final run";
 function Measure() {
   const L = D.learning;
@@ -320,7 +380,7 @@ function Measure() {
     ["Correctness", "Scored against an answer key the engine never reads: wrong store postings, a week it never saw, and a fuzzer.", e ? `${num(Number(e.wrongStore ?? 0))} wrong store` : PENDING],
   ];
   return (
-    <Frame chapter="Proves every step" n={9}>
+    <Frame chapter="Proves every step" n={10}>
       <In><h2 className="title text-[64px]">How we measure it.</h2></In>
       <div className="mt-12 grid grid-cols-2 gap-x-8 gap-y-6">
         {rows.map(([name, def, now], i) => (
@@ -340,12 +400,12 @@ function Measure() {
   );
 }
 
-// 8 · Self improving: the learning claim. The learning year as Fermata closed it, learning from people's answers,
+// 11 · Self improving: the learning claim. The learning year as Fermata closed it, learning from people's answers,
 // against the same year on the same engine with the rules frozen at onboarding (simulated, and labelled so).
 function Curve() {
   const L = D.learning;
   return (
-    <Frame chapter="Self improving" n={10}>
+    <Frame chapter="Self improving" n={11}>
       <div className="flex items-end justify-between gap-10">
         <In><h2 className="title whitespace-nowrap text-[60px]">It learns in months, then holds.</h2></In>
         <In delay={0.2} className="flex shrink-0 gap-14 whitespace-nowrap text-right">
@@ -360,13 +420,13 @@ function Curve() {
   );
 }
 
-// 9 · Proof: each learned rule's backtest, then the evaluation against the hidden truth when it has been run.
+// 12 · Proof: each learned rule's backtest, then the evaluation against the hidden truth when it has been run.
 function Proof() {
   const e: Evaluation | null = D.evaluation;
   const n = (k: string) => Number(e?.[k] ?? 0);
   const backtests = D.learned.filter((r) => r.backtest);
   return (
-    <Frame chapter="Proves every step" n={11}>
+    <Frame chapter="Proves every step" n={12}>
       <In><h2 className="title text-[72px]">Tested before anyone is asked to trust it.</h2></In>
       {/* Two rules get a wide card each; more share one row of compact cards so the evaluation still fits. */}
       <div className={`mt-10 grid gap-6 ${backtests.length > 2 ? "grid-cols-4" : "grid-cols-2"}`}>
@@ -429,11 +489,11 @@ function ProofCard({ label, figure, sub, delay }: { label: string; figure: strin
   );
 }
 
-// 10 · The result: before and after, with the assumptions on the slide.
+// 13 · The result: before and after, with the assumptions on the slide.
 function Result() {
   const hours = Math.round(D.fermataHours);
   return (
-    <Frame chapter="The result" n={12} tone="warm">
+    <Frame chapter="The result" n={13} tone="warm">
       <div className="flex h-full flex-col justify-center">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-16">
           <In>
@@ -456,7 +516,7 @@ function Result() {
   );
 }
 
-// 11 · The end card: the name, the line, what is next, where to find it.
+// 14 · The end card: the name, the line, what is next, where to find it.
 function End() {
   return (
     <div className="absolute inset-0 overflow-hidden bg-night text-white">
@@ -489,6 +549,15 @@ export const SLIDES: Slide[] = [
 (Keanan's call: "weeks" is the safe wording; "about twenty days after every month ends" is a real figure from the family business.)` },
   { id: "title", chapter: "Fermata", render: Title, notes: `"In music, a fermata is the mark that tells you to hold. Fermata closes the books on its own, and only holds where it should."` },
   { id: "how", chapter: "How it works", render: How, notes: `"It settles every line an approved rule can explain. It holds the rest and groups it by cause. Then its agents meet on each story, ask one person one checked question, and turn the answer into a rule that's tested before anyone approves it."` },
+  { id: "learns", chapter: "How it learns", steps: 5, render: Learns, notes: `(click) "The knowledge of how to do this isn't lost. It's in the old books: every month, for years, someone matched every line by hand. That's a labelled dataset nobody had to label. So before it closes a single month, Fermata mines last year. One pass over every matched line: it groups them by shape, fits each shape's parameters, writes each as a small program, backtests it on the same year, and asks the CFO once. ${words(onboarding.length)} policies on day one, and ${pct(D.learning.baselineFirst, 0)} of this year's lines settle on their own from the first month."
+
+(click) "Then it runs daily. Each new line is parsed, placed at a store from independent evidence, and matched against the records it could pay for. If an approved rule explains it, within that rule's limit, it settles with no meeting and names the rule. If not, it's held, never guessed, and grouped with the other held lines that share its cause into a story."
+
+(click) "Each story opens a case room. Three agents meet, under a manager that is code, not a model. The Investigator gathers evidence with read-only queries and drafts one question. The Auditor tries to break the hypothesis. The Learner drafts the rule a yes would create, as a program, and backtests it. None of them can approve or post; the one that tries is refused, in red, and the refusal is logged. The manager won't let a question out until the Auditor has checked it. One question goes to one person. The answer is a precedent. The fitter pools every held line with the same cause, fits the parameters, and backtests: how many it covers, how many it would get wrong. If it passes, the CFO approves once, every held line the rule explains settles, and the same question is never asked twice."
+
+(click) "When the answer is 'not ours', nothing is booked, ever. When a rule fails on new data, it drops back to a policy and its lines go back to held."
+
+(click) "Same year, same engine, rules frozen at day one: flat at ${pct(D.learning.baselineLast, 0)}. With learning: ${Math.round(D.learning.first * 100)} to ${Math.round(D.learning.last * 100)}. ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. And because the engine is code, the live close matched the simulator in every month. Every step is in the log as a diff, denials included, so 'why' is one query."` },
   { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"Most lines never need a meeting. The ones that do, the agents meet on themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns, and only lets them ask a person once."
 
 Video: cut to the demo here (/demo?tips=off: close the year, the school story's room in ${MONTH_LABELS[(D.storyA?.month ?? 1) - 1]}, the new lender's room in ${MONTH_LABELS[(D.storyB?.month ?? 6) - 1]}, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
