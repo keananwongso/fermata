@@ -64,7 +64,7 @@ function DayZero({ rules }: { rules: Rule[] }) {
         className="calm flex min-h-11 w-full items-start gap-3 px-4 py-3 text-left hover:bg-hover lg:px-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent">
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-medium text-heading">Day 0 · what it learned from last year</span>
-          <span className="mt-0.5 block text-[12.5px] leading-snug text-secondary">One pass over last year&apos;s matched lines. Code, not a model: each shape&apos;s parameters are fitted, written as a program, and backtested before anyone approves it.</span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug text-secondary">One pass over last year&apos;s matched lines. Code, not a model: each shape&apos;s parameters are fitted and written as a program, and the CFO approves each one once.</span>
         </span>
         <span aria-hidden className={`calm mt-0.5 shrink-0 text-faint ${open ? "rotate-90" : ""}`}>›</span>
       </button>
