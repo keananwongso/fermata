@@ -188,7 +188,7 @@ The transcript of the agents' meeting on one held story.
   pick a path, Day 0, Matches, Waits, Learns or Blocked, and only its boxes and lines light up, numbered, in the path's colour,
   with the steps listed under it; click a box for two or three lines of what it is underneath. On a phone the steps
   list and box chips stand in for the canvas) and **Inside a case room** (`HowRoom`: story B's real meeting, played on its own while on screen: a message at a
-  time with the transcript following it, the question to the CFO, the recorded answer picked, the rest of the room, a
+  time with the transcript following it at full width, then the question's column opening from the right and pushing it over, the recorded answer picked, the rest of the room, a
   pause, then again. Nobody has to touch it; it still scrolls by hand, with `data-lenis-prevent` so the page's smooth
   scroller leaves the wheel alone) and **How it learns** (`HowLearns`: two worked examples, one from last
   year's books (r4) and one from an answer (r9), each four numbered cards: the bank line, what it pays for, the number

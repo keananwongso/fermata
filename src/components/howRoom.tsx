@@ -56,17 +56,19 @@ export function HowRoom() {
           <span className="eyebrow">{MONTH_LABELS[ROOM.month - 1]} {R.year} · {num(ROOM.count)} payments · {rpShort(ROOM.amount)}</span>
           <h4 className="title w-full text-[20px] leading-tight lg:text-[22px]">{ROOM.title}</h4>
         </header>
-        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-5">
+        {/* The transcript has the full width while the agents meet; when the question goes out its column opens from the
+            right and pushes the transcript over, the columns resizing rather than jumping. */}
+        <div className={`grid gap-4 p-4 lg:gap-0 lg:p-5 lg:transition-[grid-template-columns] lg:duration-700 lg:ease-brand ${asked ? "lg:grid-cols-[minmax(0,1fr)_356px]" : "lg:grid-cols-[minmax(0,1fr)_0px]"}`}>
           {/* Plays on its own; data-lenis-prevent keeps the page's smooth scroller from taking the wheel, so it still scrolls by hand. */}
           <div data-lenis-prevent className="scroll-quiet h-[480px] overflow-y-auto overscroll-contain rounded-[8px] bg-canvas px-3 pb-3 lg:px-4" role="log" aria-live="polite">
             <ChatList msgs={msgs} animate />
             <div ref={end} />
           </div>
 
-          <div className="min-w-0">
-            <AnimatePresence mode="wait" initial={false}>
+          <div className="min-w-0 overflow-hidden lg:pl-4">
+            <AnimatePresence initial={false}>
               {asked ? (
-                <motion.section key="q" className="card overflow-hidden" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4, ease: EASE }}>
+                <motion.section key="q" className="card overflow-hidden lg:w-[340px]" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.5, delay: 0.25, ease: EASE }}>
                   <div className={`flex items-center justify-between gap-2 border-b px-4 py-2.5 transition-colors duration-500 ${answered ? "border-hairline bg-well" : "border-hold-tint-strong bg-hold-tint"}`}>
                     <span className="flex items-center gap-2"><Avatar who="cfo" size={22} /><span className="title text-[15px]">Question for the CFO</span></span>
                     {answered ? <Pill>Answered</Pill> : <span className="breathe text-[16px] text-hold" style={{ fontFamily: "var(--font-music)" }} aria-label="waiting">𝄐</span>}
@@ -94,12 +96,7 @@ export function HowRoom() {
                     ) : null}
                   </div>
                 </motion.section>
-              ) : (
-                <motion.div key="wait" className="hatch grid min-h-[200px] place-items-center rounded-[8px] border border-hairline px-6 text-center text-[13px] text-faint"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  The agents are meeting. One question comes out.
-                </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
         </div>
