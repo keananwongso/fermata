@@ -16,6 +16,8 @@ export type Backtest = { correct: number; covered: number; coverage: number; err
 export type Rule = {
   id: string; title: string; origin: string; learnedInMonth: number; real: boolean; fittedBy?: "code" | null; state: string;
   program: Record<string, unknown>; backtest: Backtest | null; audit: { result: string; note: string } | null;
+  // Onboarding rules only: how many of last year's lines the fit saw, and over what. Read through seenOf (dayZero.ts).
+  seen?: { count: number; scope: string } | null;
 };
 // Written by evaluation.run on Convex and carried into the recording by scripts/export_demo.ts, when one was run.
 export type Evaluation = Record<string, string | number>;

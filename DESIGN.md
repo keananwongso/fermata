@@ -243,8 +243,9 @@ recording, so it works on the hosted site with no Convex, and a re-export update
 * **Views switch inside the window** (`src/components/dashboard/*`). The sidebar is a `tablist`: choosing an item swaps
   the content area in place, with a sliding highlight (`layoutId`), and nothing in the window navigates away. Dashboard is
   the overview; Case rooms lists every room by month (live rooms marked Claude, other narrated ones by story letter) and
-  opens a room's transcript (`ChatList`) beside its question and recorded answer; Rules shows each rule's source,
-  backtest, audit and code; Run, Evaluation and Record are one card each (what the screen is, a real preview where the
+  opens a room's transcript (`ChatList`) beside its question and recorded answer; Rules opens on a collapsible Day 0
+  panel (open by default: for each onboarding rule, the question asked of last year's books, the fit, how many lines it
+  saw, approved once by the CFO) and then shows each rule's source, backtest, audit and code; Run, Evaluation and Record are one card each (what the screen is, a real preview where the
   recording has one, a link to the demo and, off the hosted site, to the console). A Review link opens its room.
 * **The window keeps its size.** On wide screens the overview sets the height and every other view sits over it and
   scrolls inside (`data-lenis-prevent`, so the landing page's smooth scrolling leaves it alone). On a phone the views
@@ -346,6 +347,25 @@ the landing page. It takes `step` (how many flows show, 0 to 3), `size` (`stage`
 * **The legend** sits top right: the three flows in plain words, the upcoming ones at 35%, and one `faint` line saying
   where the roles come from.
 
+## Learning diagram (`src/components/learningDiagram.tsx`)
+
+`LearningDiagram` is how Fermata learns: the pitch's How it learns slide, on a fixed 1680×720 canvas in stage px. Three
+layers bottom to top in `warm` trays (Precedents, Policies, Rules), labelled at the left; the bank lines stream along the
+bottom at all times; the CFO sits right of the rules, the three agents beside the policies, the Accountant right of the
+precedents. The bottom-right corner is an empty dashed frame labelled Live demo, kept for the recorded demo in the edit.
+
+* `step` builds it up and never resets: Day 0 (grey dots cluster, each cluster's fit settles in `accent`, rises into a
+  policy card with its evidence count, then a rule tile the CFO stamps), the year runs (rules reach down to the stream,
+  most lines settle blue, the rest gather into amber stories with their gap), a story becomes a rule (a case room with
+  one red refusal, one question to the CFO, the rule's backtest), a no and a fall, then the `measured` slot over the
+  dimmed diagram.
+* Rule tiles show a limit without its amount (no rupiah on this slide) and a badge: `fitted` for Day 0 rules, which the
+  recording holds no backtest for, and covered and wrong for a learned rule.
+* What Day 0 asked and fitted is `src/components/dayZero.ts`, shared with the dashboard's Rules view. Evidence counts are
+  each rule's `seen` (from the recording once re-exported, until then a table read from the rules on Convex).
+* Anything shown that the recorded year did not do (a rule falling) says so in one `faint` line under the stream; the
+  room's messages are paraphrased and say so too.
+
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
 `/pitch` is the deck for the Devpost video and any live pitch. It is a page of the app, not a slide file, so it
@@ -357,7 +377,7 @@ uses the same tokens, type classes, components and motion as the screens it intr
   `F` full screen; `H` hides the slide counter for recording. `#n` in the URL opens slide n.
 * **One idea per slide.** A slide is a `Frame` (chapter eyebrow top left, the mark and page number below), a
   `.title` heading in sentence case, then one visual. Chapters use the judges' words (Why, How it works,
-  Case rooms, How it's built, Self improving, Proves every step, The result).
+  How it learns, Case rooms, How it's built, Self improving, Proves every step, The result).
 * **Every figure comes from the recording or the learning year** through `pitch/data.ts` (`D.learning` is
   `learningYear.ts`); assumptions (minutes per match, per decision) are printed on the slide that uses them. Something
   not yet measured shows a `.hatch` placeholder, never a typed number. Spoken notes that quote a figure interpolate it
