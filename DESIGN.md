@@ -408,7 +408,7 @@ uses the same tokens, type classes, components and motion as the screens it intr
 page's own pieces so the deck and the site tell one story: the family hook (`Family`), the title (tagline and the
 name), **How it's built** (`HowDiagram`, one path per press via its `path` prop), **Case rooms** (`HowRoom`, playing
 on its own), **How it learns** (`HowLearns`, the two examples via `example`), the curve, scale, and the end card.
-Backup slides for Q&A sit after the end card (the system diagram, proof, the stack, how we measure). Speaker notes
+The end card is the last slide; Q&A answers live in the Kavi Q&A prep doc, not in the deck. Speaker notes
 (N) are the spoken lines.
 ## Motion (`globals.css`, `src/components/motion.tsx`)
 

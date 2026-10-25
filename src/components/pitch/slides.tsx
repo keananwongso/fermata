@@ -8,11 +8,10 @@ import { num, pct } from "../../../convex/lib/format";
 import { BrandGrid, Roll } from "../motion";
 import { CLOSE_CAPTION, LearningChart } from "../learningChart";
 import { usdApprox } from "../money";
-import { SystemDiagram } from "../systemDiagram";
 import { HowDiagram } from "../howDiagram";
 import { HowRoom, ROOM_STEPS } from "../howRoom";
 import { HowLearns } from "../howLearns";
-import { D, type Evaluation } from "./data";
+import { D } from "./data";
 import { Frame, In, type Slide } from "./deck";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -154,17 +153,6 @@ function Title() {
 }
 
 
-// 7 · How it's built: the architecture, with the three kinds of traffic as builds (settles, needs a person, refused).
-// The diagram reads who may do what from the roles table in code, so the old table now lives inside its tiles.
-function Built(step: number) {
-  return (
-    <Frame chapter="Appendix · how it's built" n={9}>
-      <In><h2 className="title whitespace-nowrap text-[56px]">Agents propose. People approve. Only the gateway writes.</h2></In>
-      <In delay={0.2} className="mt-7"><SystemDiagram step={step} /></In>
-    </Frame>
-  );
-}
-
 // 8 · Self improving: the learning claim. The learning year as Fermata closed it, learning from people's answers,
 // against the same year on the same engine with the rules frozen at onboarding (simulated, and labelled so).
 function Curve() {
@@ -181,161 +169,6 @@ function Curve() {
       <In delay={0.3} className="mt-10">
         <div style={{ zoom: 1.5 }}><LearningChart learned={L.learned} baseline={L.baseline} stage caption={CLOSE_CAPTION} /></div>
       </In>
-    </Frame>
-  );
-}
-
-// 9 · Proof: each learned rule's backtest, then the evaluation against the hidden truth when it has been run.
-function Proof() {
-  const e: Evaluation | null = D.evaluation;
-  const n = (k: string) => Number(e?.[k] ?? 0);
-  const backtests = D.learned.filter((r) => r.backtest);
-  return (
-    <Frame chapter="Appendix · proof" n={10}>
-      <In><h2 className="title text-[72px]">Tested before anyone is asked to trust it.</h2></In>
-      {/* Two rules get a wide card each; more share one row of compact cards so the evaluation still fits. */}
-      <div className={`mt-10 grid gap-6 ${backtests.length > 2 ? "grid-cols-4" : "grid-cols-2"}`}>
-        {backtests.map((r, i) => backtests.length > 2 ? (
-          <In key={r.id} delay={0.2 + i * 0.12} className="h-full">
-            <div className="card flex h-full flex-col p-7">
-              <div className="eyebrow text-[16px]">{r.id} · backtest before approval</div>
-              <div className="mt-3 line-clamp-3 text-[22px] font-medium leading-snug text-ink">{r.title}</div>
-              <div className="figure mt-auto pt-5 text-[64px] text-heading">{num(r.backtest!.correct)}</div>
-              <div className="text-[20px] text-secondary">of {num(r.backtest!.covered)} right ({pct(r.backtest!.precision)})</div>
-              <div className="mt-2 line-clamp-2 min-h-[2.75em] text-[17px] leading-snug text-faint">{r.backtest!.scope}</div>
-            </div>
-          </In>
-        ) : (
-          <In key={r.id} delay={0.2 + i * 0.12}>
-            <div className="card p-9">
-              <div className="eyebrow text-[17px]">{r.id} · backtest before approval</div>
-              <div className="mt-4 text-[28px] font-medium text-ink">{r.title}</div>
-              <div className="mt-6 flex items-baseline gap-5">
-                <span className="figure text-[76px] text-heading">{num(r.backtest!.correct)}</span>
-                <span className="text-[26px] text-secondary">of {num(r.backtest!.covered)} right ({pct(r.backtest!.precision)})</span>
-              </div>
-              <div className="mt-3 text-[21px] text-faint">{r.backtest!.scope}</div>
-            </div>
-          </In>
-        ))}
-      </div>
-      <div className="mt-6 grid grid-cols-3 gap-6">
-        {e ? (
-          <>
-            <ProofCard delay={0.5} label="A week it never saw" figure={pct(n("weekSettled") ? n("weekCorrect") / n("weekSettled") : 1)} sub={`precision on ${num(n("weekSettled"))} lines settled from ${e.weekFrom} to ${e.weekTo}`} />
-            <ProofCard delay={0.62} label="Wrong store" figure={num(n("wrongStore"))} sub={`of ${num(n("withStore"))} lines placed at a store, checked against the hidden truth`} />
-            <ProofCard delay={0.74} label="Fuzzer" figure={num(n("fuzzSettled"))} sub={`of ${num(n("fuzzTried"))} altered lines slipped through; ${num(n("fuzzHeld") + n("fuzzWaiting"))} were held`} />
-          </>
-        ) : (
-          ["A week it never saw", "Wrong store", "Fuzzer"].map((l, i) => (
-            <In key={l} delay={0.5 + i * 0.12}>
-              <div className="hatch rounded-[10px] border border-dashed border-strong p-9">
-                <div className="eyebrow text-[17px]">{l}</div>
-                <div className="mt-4 text-[24px] text-faint">Filled in by the final recording (run the evaluation, then export).</div>
-              </div>
-            </In>
-          ))
-        )}
-      </div>
-      <In delay={0.9}><p className="mt-5 text-[19px] text-faint">All data is synthetic, from a fixed seed, and scored against an answer key the engine never reads. The big meetings ran live on Claude; the rest are scripted, and labelled that way.</p></In>
-    </Frame>
-  );
-}
-
-function ProofCard({ label, figure, sub, delay }: { label: string; figure: string; sub: string; delay: number }) {
-  return (
-    <In delay={delay}>
-      <div className="card p-9">
-        <div className="eyebrow text-[17px]">{label}</div>
-        <div className="figure mt-4 text-[76px] text-heading">{figure}</div>
-        <div className="mt-3 text-[21px] leading-snug text-faint">{sub}</div>
-      </div>
-    </In>
-  );
-}
-
-// 10 · The stack (optional): what runs where. One engine, used live in Convex and offline for the simulator and the export.
-const STACK: { place: string; who: string; items: [string, string][] }[] = [
-  { place: "The site", who: "Next.js on Vercel", items: [
-    ["Landing, demo, dashboard, pitch", "read the exported year, so they load with no backend"],
-    ["Ask the books", "hold to talk: Cartesia hears you, Claude picks the answer, code fills every number, Cartesia speaks it"],
-  ] },
-  { place: "The backend", who: "Convex", items: [
-    ["Sync and the engine", "every bank line placed, matched and settled under approved rules"],
-    ["Case rooms", "Claude agents meet; a manager in code runs the meeting"],
-    ["transition()", "every change and its audit row in one transaction; roles checked in code"],
-    ["Evaluation and scenarios", "scored against the answer key; judges' own cases run live"],
-  ] },
-  { place: "Offline", who: "the same engine, in Node", items: [
-    ["The generator", "a synthetic year from a fixed seed, with a hidden answer key"],
-    ["The simulator", "the year closed twice, with and without learning; what-ifs in seconds"],
-    ["The export", "a closed run becomes the data the site reads"],
-  ] },
-];
-function Stack() {
-  return (
-    <Frame chapter="Appendix · the stack" n={11}>
-      <In><h2 className="title text-[64px]">One engine, running in three places.</h2></In>
-      <div className="mt-10 grid grid-cols-3 gap-8">
-        {STACK.map((col, i) => (
-          <In key={col.place} delay={0.2 + i * 0.15}>
-            <div className={`h-full rounded-[16px] border p-[6px] ${i === 1 ? "border-heading bg-heading" : "border-hairline bg-warm"}`}>
-              <div className="card h-full px-8 py-6">
-                <div className="flex items-baseline justify-between gap-4"><span className="text-[34px] font-medium text-ink">{col.place}</span><span className="eyebrow text-[16px]">{col.who}</span></div>
-                <ul className="mt-4 space-y-3">
-                  {col.items.map(([head, sub]) => (
-                    <li key={head} className="border-t border-hairline pt-3">
-                      <div className="text-[23px] font-medium text-ink">{head}</div>
-                      <div className="mt-1 text-[19px] leading-snug text-secondary">{sub}</div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </In>
-        ))}
-      </div>
-      <In delay={0.8}>
-        <div className="mt-7 flex items-center gap-4 text-[21px] text-secondary">
-          {["Generate the year", "Close it", "Score it", "Export it", "The site reads it"].map((step, i) => (
-            <span key={step} className="flex items-center gap-4">{i ? <span className="text-mute">→</span> : null}<span className="rounded-full border border-hairline bg-ground px-5 py-2">{step}</span></span>
-          ))}
-        </div>
-      </In>
-    </Frame>
-  );
-}
-
-// 11 · How we measure (optional): what each number means and where it comes from, so no figure needs trusting.
-const PENDING = "filled in by the final run";
-function Measure() {
-  const L = D.learning;
-  const e: Evaluation | null = D.evaluation;
-  const rows: [string, string, string][] = [
-    ["Settled on first pass", "Share of bank lines settled on their own the month they arrive. Counted per bank line, not per account.", `${pct(L.first, 0)} → ${pct(L.last, 0)}`],
-    ["Lines left for people", "Lines no rule could settle by year end, so a person had to decide them.", num(L.heldLearned)],
-    ["What learning did", "The same year on the same engine, closed with learning and with the rules frozen at onboarding.", `${num(L.heldLearned)} vs ${num(L.heldBaseline)}`],
-    ["Decisions for people", `One answer per held story plus one approval per rule, at ${D.minutesPerDecision} minutes each (an assumption).`, `~${num(D.decisions)}`],
-    ["Rule quality", "Every learned rule is backtested on past books before approval: what it covers, what it gets wrong, and a per payment limit. Day 0 rules are fitted on last year's rows and approved once.", `${L.rules.filter((r) => r.backtest.pass).length} of ${L.rules.length} passed`],
-    ["Correctness", "Scored against an answer key the engine never reads: wrong store postings, a week it never saw, and a fuzzer.", e ? `${num(Number(e.wrongStore ?? 0))} wrong store` : PENDING],
-  ];
-  return (
-    <Frame chapter="Appendix · how we measure" n={12}>
-      <In><h2 className="title text-[64px]">How we measure it.</h2></In>
-      <div className="mt-12 grid grid-cols-2 gap-x-8 gap-y-6">
-        {rows.map(([name, def, now], i) => (
-          <In key={name} delay={0.15 + i * 0.08}>
-            <div className="card flex h-full items-start justify-between gap-8 px-8 py-6">
-              <div className="min-w-0">
-                <div className="text-[28px] font-medium text-ink">{name}</div>
-                <div className="mt-2 text-[20px] leading-snug text-secondary">{def}</div>
-              </div>
-              <div className={`shrink-0 whitespace-nowrap ${now === PENDING ? "text-[22px] text-faint" : "figure text-[40px] text-heading"}`}>{now}</div>
-            </div>
-          </In>
-        ))}
-      </div>
-      <In delay={0.8}><p className="mt-8 text-[20px] text-faint">The line without learning is simulated on the same engine. For scale: vendors report 84% to 99.6% matched for mature systems, and APQC&apos;s median close is 6.4 days.</p></In>
     </Frame>
   );
 }
@@ -414,7 +247,7 @@ function End() {
         <In delay={0.2}><h1 className="display mt-12 text-[150px]">Fermata</h1></In>
         <In delay={0.4}><p className="mt-6 text-[46px] text-heading-2">A close that runs itself, at any number of stores.</p></In>
         <In delay={0.6}><p className="mt-16 text-[34px] font-medium text-accent">getfermata.tech</p></In>
-        <In delay={0.75}><p className="mt-4 text-[22px] text-faint">github.com/keananwongso/fermata · Built with Claude and Convex</p></In>
+        <In delay={0.75}><p className="mt-4 text-[22px] text-faint">github.com/keananwongso/fermata</p></In>
       </div>
     </div>
   );
@@ -481,11 +314,4 @@ export const SLIDES: Slide[] = [
 (click) "Everything is documented, so everything is audit-ready by default." (click) "It's not a list for the accounting team. It's a close that runs itself."
 (Only the ${words(D.stores).toLowerCase()}-store year is measured; the bigger grids are drawn. Never put a number on them.)` },
   { id: "end", chapter: "Fermata", render: End, notes: `(Nothing spoken. Hold on the card for three seconds.)` },
-  // After the end card: backup slides for Q&A. Skip past the end to reach them.
-  { id: "built", chapter: "Appendix · how it's built", steps: 3, render: Built, notes: `"Here's how it's built. Everything goes through one place in the middle: the system of work, in Convex. Every change, from every agent and every person, is one transition, written together with its audit row." (click) "Blue is a line that settles on its own. It syncs in from the bank, the ERP, the marketplaces and the school. The engine places it and matches it, and if an approved rule explains it, it's settled, and the gateway posts it to the books. That's most of them." (click) "Amber is a line that needs a person. The engine holds it as a story, and the agents meet on it in a case room: the Investigator, the Auditor and the Learner, on Claude, with a meeting manager in code. They ask one person one question. The answer comes back, the Learner turns it into a rule and backtests it, and from then on the engine settles that kind of line on its own." (click) "Red is an agent trying to approve something itself. The gateway refuses, and the refusal is written to the audit log. Agents propose. People approve. Only the gateway writes."`},
-  { id: "proof", chapter: "Appendix · proof", render: Proof, notes: `"Every learned rule is fitted from the data and backtested on past books before a person sees it; the Day 0 rules were fitted on last year's rows and approved once. Then we scored the whole year against an answer key the engine never reads: a week it never saw, lines at the wrong store, and altered lines thrown at it by a fuzzer." (Read the three bottom numbers from the slide; never say a number that is not on it.) "All of this data is synthetic, from a fixed seed. The big meetings ran live on Claude; the rest are scripted, and labelled that way."` },
-  { id: "stack", chapter: "Appendix · the stack", render: Stack, notes: `"It runs in three places. The site is Next.js on Vercel, and it loads the closed year with no backend. Convex is the whole backend: the engine, the case rooms, the rules and every record. And the same engine runs offline, to generate the year, simulate what-ifs, and export what the site shows."
-(Optional: skipped in the three minute video.)` },
-  { id: "measure", chapter: "Appendix · how we measure", render: Measure, notes: `"Here's how we measure it, so you don't have to trust a number. We count per bank line. We count what's left for people. We measure learning by closing the same year with and without it. Every learned rule is backtested before approval, every Day 0 rule is fitted on last year's rows and approved once,, and the whole year is scored against an answer key the engine never reads."
-(Optional: skipped in the three minute video.)` },
 ];
