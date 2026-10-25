@@ -7,6 +7,7 @@ import Cartesia from "@cartesia/cartesia-js";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import { canRecognize, recognize } from "./speech";
+import { forSpeech } from "../../../convex/lib/speech";
 
 export const VOICE_ID = "630ed21c-2c5c-41cf-9d82-10a7fd668370";
 const url = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -138,7 +139,7 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
   try {
     const client = new Cartesia({ token: t.token });
     const res = await client.tts.generate({
-      model_id: "sonic-3.6", transcript: text, voice: VOICE_ID, language: "en",
+      model_id: "sonic-3.6", transcript: forSpeech(text), voice: VOICE_ID, language: "en",
       output_format: { container: "mp3", sample_rate: 24000, bit_rate: 64000 },
       generation_config: { speed: 1 },
     });

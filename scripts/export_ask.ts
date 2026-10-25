@@ -3,11 +3,13 @@
 // and its spoken sentence is generated once with Cartesia. The hosted site serves these with no Claude call.
 //   npx tsx --env-file=.env scripts/export_ask.ts            all presets
 //   npx tsx --env-file=.env scripts/export_ask.ts held-now   only these ids
+//   npx tsx --env-file=.env scripts/export_ask.ts --audio-only   keep the recorded answers, only speak them again
 // Needs CONVEX_DEPLOY_KEY (or a logged-in `npx convex dev`) and CARTESIA_API_KEY. Writes src/demo/ask.json and public/ask/*.mp3.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import Cartesia from "@cartesia/cartesia-js";
 import { PRESETS } from "../convex/lib/askPresets";
+import { forSpeech } from "../convex/lib/speech";
 import type { AskAnswer, Template } from "../convex/lib/ask";
 
 const VOICE_ID = "630ed21c-2c5c-41cf-9d82-10a7fd668370";
@@ -19,7 +21,8 @@ const EXPECT: Record<string, Template> = {
 type Recorded = { question: string; answer: AskAnswer; audio: string | null };
 
 const OUT = "src/demo/ask.json";
-const only = process.argv.slice(2);
+const audioOnly = process.argv.includes("--audio-only");
+const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const prev = existsSync(OUT) ? (JSON.parse(readFileSync(OUT, "utf8")) as { presets: Record<string, Recorded> }).presets : {};
 
 function live(question: string): AskAnswer {
@@ -35,8 +38,9 @@ async function main() {
   const presets: Record<string, Recorded> = { ...prev };
   for (const p of PRESETS) {
     if (only.length && !only.includes(p.id)) continue;
-    let a: AskAnswer | null = null;
-    for (let tries = 0; tries < 3; tries++) {
+    let a: AskAnswer | null = audioOnly ? prev[p.id]?.answer ?? null : null;
+    if (audioOnly && !a) { console.warn(`  ${p.id}: no recorded answer to speak; skipped`); continue; }
+    for (let tries = 0; !audioOnly && tries < 3; tries++) {
       a = live(p.question);
       const ok = a.view?.template === EXPECT[p.id] && a.checked && (p.id !== "approve-r9" || !!a.refusal);
       if (ok) break;
@@ -44,7 +48,7 @@ async function main() {
     }
     // Small files: speech at 32 kbps.
     const res = await cartesia.tts.generate({
-      model_id: "sonic-3.6", transcript: a!.spoken, voice: VOICE_ID, language: "en",
+      model_id: "sonic-3.6", transcript: forSpeech(a!.spoken), voice: VOICE_ID, language: "en",
       output_format: { container: "mp3", sample_rate: 22050, bit_rate: 32000 }, generation_config: { speed: 1 },
     });
     const bytes = Buffer.from(await res.arrayBuffer());
