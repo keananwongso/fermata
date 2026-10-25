@@ -22,14 +22,14 @@ function Landing() {
         <BrandGrid top cols={24} rows={12} className="absolute left-1/2 -top-40 h-[680px] w-screen -translate-x-1/2 opacity-70 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)] lg:-top-44 lg:h-[820px]" />
         <Reveal className="relative mx-auto max-w-[880px] text-center" stagger={0.1}>
           <RevealItem><Tag tone="neutral">Autonomous finance for multi-store retail</Tag></RevealItem>
-          <RevealItem><h1 className="display mx-auto mt-5 max-w-[860px] text-[clamp(40px,6vw,72px)]">A close that runs itself, at any number of stores.</h1></RevealItem>
-          {/* Three beats, one per line: the moat, the job, the one thing it asks. */}
-          <RevealItem><p className="mx-auto mt-6 max-w-[640px] text-[16px] leading-relaxed text-body">
-            <span className="block">Learns from the books you already have.</span>
-            <span className="block">Matches every payment across banks, ERP and marketplaces.</span>
-            <span className="block">Asks only about what nobody wrote down.</span>
-          </p></RevealItem>
-          <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
+          <RevealItem><h1 className="display mx-auto mt-6 max-w-[780px] text-balance text-[clamp(38px,5.4vw,66px)] leading-[1.04]">A close that runs itself, at any number of stores.</h1></RevealItem>
+          {/* Three beats, one per line and evenly spaced: the moat, the job, the one thing it asks. */}
+          <RevealItem><ul className="mx-auto mt-8 max-w-[640px] space-y-2 text-[17px] leading-snug text-body">
+            <li>Learns from the books you already have.</li>
+            <li>Matches every payment across banks, ERP and marketplaces.</li>
+            <li>Asks only about what nobody wrote down.</li>
+          </ul></RevealItem>
+          <RevealItem className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href="#how">See how it works</LinkArrow>
           </RevealItem>
