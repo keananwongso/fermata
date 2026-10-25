@@ -8,6 +8,14 @@ Picture fourteen stores sharing five bank accounts, with money coming in from ma
 
 Fermata does that on its own. It learns the business from the books you already have, settles every bank line it can explain, holds the rest, and asks the right person one question. Each answer becomes a tested rule, so the same question never comes back.
 
+## How we use Convex
+
+Convex runs the whole close: an indexed schema, transactional mutations with an audit row per step, and a scheduler that pages through each month.
+Claude case rooms and the rule learner run as Convex actions, chained through the scheduler.
+The console screens read through `useQuery`, so runs, case rooms and rules update live without a refresh.
+Ask the books is a rate limited Convex action (`@convex-dev/rate-limiter`) over named read only queries.
+Details, file by file, are in [hackathon.md](hackathon.md).
+
 ## What it does
 
 - **Learns from your old books first.** Before month one, it mines last year's matched lines into rules.
