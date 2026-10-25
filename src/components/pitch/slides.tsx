@@ -2,12 +2,12 @@
 // The pitch, one slide per beat of the video plan. Copy follows the philosophy doc's words; every figure comes
 // from `D` (the recording). Notes are the spoken script, shown with N while recording the voice over.
 import { motion } from "motion/react";
-import { BANK_ACCOUNTS } from "../../../convex/lib/domain";
+import { BANK_ACCOUNTS, MONTH_LABELS } from "../../../convex/lib/domain";
 import { num, pct } from "../../../convex/lib/format";
 import { ROLES, type Role } from "../../../convex/lib/transition";
 import { Avatar, ChatList, type ChatMessage } from "../caseRoom";
 import { BrandGrid, Roll } from "../motion";
-import { LearningChart } from "../learningChart";
+import { CLOSE_CAPTION, LearningChart } from "../learningChart";
 import { usdApprox } from "../money";
 import { Pill } from "../ui";
 import { D, type Evaluation } from "./data";
@@ -375,7 +375,7 @@ function Measure() {
   const e: Evaluation | null = D.evaluation;
   const rows: [string, string, string][] = [
     ["Settled on first pass", "Share of bank lines settled on their own the month they arrive. Counted per bank line, not per account.", `${pct(L.first, 0)} → ${pct(L.last, 0)}`],
-    ["Lines left for people", "Lines still held at year end, waiting on a person.", num(L.heldLearned)],
+    ["Lines left for people", "Lines no rule could settle by year end, so a person had to decide them.", num(L.heldLearned)],
     ["What learning did", "The same year on the same engine, closed with learning and with the rules frozen at onboarding.", `${num(L.heldLearned)} vs ${num(L.heldBaseline)}`],
     ["Decisions for people", `One answer per held story plus one approval per rule, at ${D.minutesPerDecision} minutes each (an assumption).`, `~${num(D.decisions)}`],
     ["Rule quality", "Every rule is backtested on past books before approval: what it covers, what it gets wrong, and a per payment limit.", `${L.rules.filter((r) => r.backtest.pass).length} of ${L.rules.length} passed`],
@@ -397,13 +397,13 @@ function Measure() {
           </In>
         ))}
       </div>
-      <In delay={0.8}><p className="mt-8 text-[20px] text-faint">The learning figures are simulated on the same engine. For scale: vendors report 84% to 99.6% matched for mature systems, and APQC&apos;s median close is 6.4 days.</p></In>
+      <In delay={0.8}><p className="mt-8 text-[20px] text-faint">The line without learning is simulated on the same engine. For scale: vendors report 84% to 99.6% matched for mature systems, and APQC&apos;s median close is 6.4 days.</p></In>
     </Frame>
   );
 }
 
-// 8 · Self improving: the learning claim. Not the recorded year's curve (its baseline climbs too), but one year
-// simulated on the same engine twice, learning from people's answers and with the rules frozen at onboarding.
+// 8 · Self improving: the learning claim. The learning year as Fermata closed it, learning from people's answers,
+// against the same year on the same engine with the rules frozen at onboarding (simulated, and labelled so).
 function Curve() {
   const L = D.learning;
   return (
@@ -416,7 +416,7 @@ function Curve() {
         </In>
       </div>
       <In delay={0.3} className="mt-10">
-        <div style={{ zoom: 1.5 }}><LearningChart learned={L.learned} baseline={L.baseline} stage /></div>
+        <div style={{ zoom: 1.5 }}><LearningChart learned={L.learned} baseline={L.baseline} stage caption={CLOSE_CAPTION} /></div>
       </In>
     </Frame>
   );
@@ -430,8 +430,19 @@ function Proof() {
   return (
     <Frame chapter="Proves every step" n={11}>
       <In><h2 className="title text-[72px]">Tested before anyone is asked to trust it.</h2></In>
-      <div className="mt-14 grid grid-cols-2 gap-6">
-        {backtests.map((r, i) => (
+      {/* Two rules get a wide card each; more share one row of compact cards so the evaluation still fits. */}
+      <div className={`mt-10 grid gap-6 ${backtests.length > 2 ? "grid-cols-4" : "grid-cols-2"}`}>
+        {backtests.map((r, i) => backtests.length > 2 ? (
+          <In key={r.id} delay={0.2 + i * 0.12} className="h-full">
+            <div className="card flex h-full flex-col p-7">
+              <div className="eyebrow text-[16px]">{r.id} · backtest before approval</div>
+              <div className="mt-3 line-clamp-3 text-[22px] font-medium leading-snug text-ink">{r.title}</div>
+              <div className="figure mt-auto pt-5 text-[64px] text-heading">{num(r.backtest!.correct)}</div>
+              <div className="text-[20px] text-secondary">of {num(r.backtest!.covered)} right ({pct(r.backtest!.precision)})</div>
+              <div className="mt-2 line-clamp-2 min-h-[2.75em] text-[17px] leading-snug text-faint">{r.backtest!.scope}</div>
+            </div>
+          </In>
+        ) : (
           <In key={r.id} delay={0.2 + i * 0.12}>
             <div className="card p-9">
               <div className="eyebrow text-[17px]">{r.id} · backtest before approval</div>
@@ -463,7 +474,7 @@ function Proof() {
           ))
         )}
       </div>
-      <In delay={0.9}><p className="mt-8 text-[22px] text-faint">All data is synthetic, from a fixed seed, and scored against an answer key the engine never reads. The big meetings ran live on Claude; the rest are scripted, and labelled that way.</p></In>
+      <In delay={0.9}><p className="mt-5 text-[19px] text-faint">All data is synthetic, from a fixed seed, and scored against an answer key the engine never reads. The big meetings ran live on Claude; the rest are scripted, and labelled that way.</p></In>
     </Frame>
   );
 }
@@ -534,7 +545,7 @@ function End() {
 }
 
 export const SLIDES: Slide[] = [
-  { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus forty eight point six billion rupiah. About three million dollars." (click) "It isn't." (click) "The bank holds three point two four billion."` },
+  { id: "hook", chapter: "Why", steps: 2, render: Hook, notes: `"This company's books say one of its bank accounts is at minus ${bn(D.headOffice)} billion rupiah, ${usdApprox(D.headOffice)}." (click) "It isn't." (click) "The bank holds ${bn(D.headOfficeBank)} billion."` },
   { id: "mess", chapter: "Why", render: Mess, notes: `"This is built from what I've seen in my family's music business in Indonesia. Money comes in six ways: fourteen stores, Shopee and Tokopedia, which are Southeast Asia's Amazon and eBay, a website, dealers, and a music school. None of them pays one sale at a time. And it all lands in five bank accounts shared by fourteen stores, so the books keep seventy balances that no bank holds."` },
   { id: "cost", chapter: "Why", render: Cost, notes: `"And the systems disagree with each other. One music lesson fee gets typed into three systems, one of them older than the accountant typing it. How a customer paid lives in a salesperson's chat message, nowhere else. So a twenty person team works for weeks after every month ends before anyone sees the real cash."
 (Keanan's call: "weeks" is the safe wording; "about twenty days after every month ends" is a real figure from the family business.)` },
@@ -542,13 +553,13 @@ export const SLIDES: Slide[] = [
   { id: "how", chapter: "How it works", render: How, notes: `"It settles every line an approved rule can explain. It holds the rest and groups it by cause. Then its agents meet on each story, ask one person one checked question, and turn the answer into a rule that's tested before anyone approves it."` },
   { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"Most lines never need a meeting. The ones that do, the agents meet on themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns, and only lets them ask a person once."
 
-Video: cut to the demo here (/demo?tips=off: close the year, the school story's room, the new lender's room, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
+Video: cut to the demo here (/demo?tips=off: close the year, the school story's room in ${MONTH_LABELS[(D.storyA?.month ?? 1) - 1]}, the new lender's room in ${MONTH_LABELS[(D.storyB?.month ?? 6) - 1]}, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
   { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood, a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. Every change is written together with its record, in Convex."` },
   { id: "stack", chapter: "How it's built", render: Stack, notes: `"It runs in three places. The site is Next.js on Vercel, and it loads the closed year with no backend. Convex is the whole backend: the engine, the case rooms, the rules and every record. And the same engine runs offline, to generate the year, simulate what-ifs, and export what the site shows."` },
   { id: "measure", chapter: "Proves every step", render: Measure, notes: `"Here's how we measure it, so you don't have to trust a number. We count per bank line. We count what's left for people. We measure learning by closing the same year with and without it. Every rule is backtested before approval, and the whole year is scored against an answer key the engine never reads."` },
-  { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is one year, simulated on the same engine twice: once learning from people's answers, once with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
-(Say "simulated": here the answers come from the simulator's answer key and its Learner is code. Never present the demo's recorded curve as learning.)` },
+  { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is the year as Fermata closed it, learning from people's answers, against the same year on the same engine with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
+(Say the line without learning is simulated. With learning is the close itself, run on autopilot: the answers came from the generator's answer key, ${words(D.learning.rules.filter((r) => r.by === "claude").length).toLowerCase()} rules were written by Claude in live case rooms and ${words(D.learning.rules.filter((r) => r.by === "code").length).toLowerCase()} were fitted by code.)` },
   { id: "proof", chapter: "Proves every step", render: Proof, notes: `"Every rule is fitted from the data and tested on past books before a person sees it. Then we scored the whole year against an answer key the engine never reads: a week it never saw, lines at the wrong store, and altered lines thrown at it by a fuzzer." (Read the three bottom numbers from the slide; never say a number that is not on it.) "All of this data is synthetic, from a fixed seed. The big meetings ran live on Claude; the rest are scripted, and labelled that way."` },
-  { id: "result", chapter: "The result", render: Result, notes: `"A hundred and four thousand bank lines became about forty decisions for people. Weeks of work, down to an afternoon." (Read both numbers from the slide.)` },
+  { id: "result", chapter: "The result", render: Result, notes: `"${num(D.total)} bank lines became about ${num(D.decisions)} decisions for people. Weeks of work, down to an afternoon." (Read both numbers from the slide.)` },
   { id: "end", chapter: "Fermata", render: End, notes: `"My family's business is the first design partner. Next is shadow mode at one store: it proposes, people still decide." (Hold on the card for three seconds.)` },
 ];

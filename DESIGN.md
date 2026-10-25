@@ -166,8 +166,9 @@ The transcript of the agents' meeting on one held story.
   `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off under reduced
   motion, where the page scrolls natively. Do not add CSS scroll snap on top of it.
 * **Every number on the site comes from the recording** (`src/demo/recording.json`, written by
-  `scripts/export_demo.ts`), or for learning from the learning year (`src/demo/learning.json`, through
-  `src/components/learningYear.ts`). Never type a figure into the page by hand; read it from the data.
+  `scripts/export_demo.ts --preset learning`): the learning year as Fermata closed it, with the same year's frozen
+  baseline beside it. Learning figures go through `src/components/learningYear.ts`. One file, so the demo, the
+  dashboard, the landing page and the pitch tell the same year. Never type a figure into the page by hand.
 * **Ask the books on the landing page** sits between How it works and Proof and teaches the shortcut rather than
   embedding the panel: the page rhythm on the left (`Tag`, "Ask the books. Out loud.", one paragraph, then four
   suggested questions as chips that open the popup and ask), and on the right, in a `warm` tray, the idle orb over a
@@ -217,8 +218,8 @@ recording, so it works on the hosted site with no Convex, and a re-export update
   `pathLength`, and the close as twelve `mute` month bars with an amber dot under each month that still holds a question.
   "Closed through Dec" in the head is a neutral pill.
   On a phone each card puts its picture beside the figure instead of under it. The first pass card ("Settled on its
-  own") states the recorded year as it happened and says nothing about why it rose; the learning claim lives in the
-  comparison (see Honest claims about learning).
+  own") states the year as it happened; the learning claim, with its simulated baseline, lives in the comparison (see
+  Honest claims about learning).
 * **Agent activity:** one row per role: the `Avatar` (neutral), the `AGENT_LABEL` name and what it did, a mono uppercase
   sub line, and a neutral pill saying where the work came from (Claude or Code). No ✓: every row is done. A red ✕ leads
   the row only when the recording has a refusal. The summary doesn't count scripted work; the case rooms label it. Counts are computed from the rooms, rules and months, never typed.
@@ -284,7 +285,8 @@ page's proof, the pitch's Self improving slide and the What if screen, so the co
 * **Learned rules:** a `hold` 𝄐 (Noto Music) sits over the learning point of each month in which an answer became a
   rule, and that month turns `accent` on the axis. This is the demo curve's mark, "an answer became a rule".
 * **A small legend** above (With learning, Without learning, 𝄐 An answer became a rule) and **the caption** under it,
-  always: "Simulated on the same engine: the same year, with and without learning." (`SIM_CAPTION`).
+  always, saying what each line is: `CLOSE_CAPTION` for the learning year as Fermata closed it against its simulated
+  frozen baseline (landing page, pitch), `SIM_CAPTION` when both lines are simulated (What if).
 * Three widths keep its labels near 11px: a phone chart below `sm` (single letter months), a mid one, and a wide one
   from `lg`. `stage` draws only the mid one, for the pitch, which scales it with CSS `zoom`.
 * **Three notes make the flat stretch read as the point, not a stall.** All three are worked out from the data, never typed:
@@ -297,8 +299,11 @@ page's proof, the pitch's Self improving slide and the What if screen, so the co
   On phones only the shading and its label show.
 * Both lines draw in left to right behind a growing clip the first time it scrolls into view (not `pathLength`, which
   would overwrite the baseline's dashes).
-* Feed it `{ months, learned }` per run: a run from `/api/simulate`, or `src/demo/learning.json` through
+* Feed it `{ months, learned }` per run: a run from `/api/simulate`, or the recording through
   `src/components/learningYear.ts`.
+* **The demo's own curve** (`/demo`) draws the year's first pass as it closes, with the baseline dashed beside it as
+  far as the year has run, a legend naming it "Without learning, simulated", and a 𝄐 over each month whose answer became
+  a rule.
 
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
@@ -317,7 +322,7 @@ uses the same tokens, type classes, components and motion as the screens it intr
   not yet measured shows a `.hatch` placeholder, never a typed number. Spoken notes that quote a figure interpolate it
   from `D` too.
 * **Self improving** is the `LearningChart` (stage size, `zoom`) under the first pass and the lines left for people,
-  with and without learning. It never draws the recorded year's curve.
+  with and without learning: the learning year as closed, against its simulated baseline.
 * **Builds** use `In` (rise with a short blur, optional delay, or shown from a build step). Charts draw in with
   `pathLength`; numbers `Roll`.
 * App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
@@ -372,13 +377,12 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 * **Every number is synthetic, and the UI says so** (notice bar, footer). Never put real company
   names, people or figures on screen, in the code or in comments.
-* **Honest claims about learning.** Never present the recorded year's curve as learning: its first pass rates are an
-  input to the generator, and a no-learning baseline of the same year climbs too. The learning claim is the with and
-  without comparison from the learning year (`LearningChart`, `learningYear.ts`), always labelled "Simulated on the
-  same engine". The recorded curve may still show what happened (the demo, the dashboard), with a 𝄐 where an answer
-  became a rule, but no copy says it climbs because of them. Claims round toward the cautious side (the "times fewer"
-  figure rounds down), and a figure the data does not hold is left out, not typed (the wrong store count is not in
-  `learning.json`, so the site does not show it).
+* **Honest claims about learning.** The recording is the learning year: nothing in its generator plants a first pass
+  rate, so its curve climbs only where an answer became a rule, and the same year with the rules frozen (the baseline,
+  simulated on the same engine) stays flat. The claim is always that with and without comparison, and the baseline is
+  always labelled simulated. Say how the answers came (autopilot reads the generator's answer key) and who wrote each
+  rule (Claude in a live room, or code) wherever it matters. Claims round toward the cautious side (the "times fewer"
+  figure rounds down), and a figure the data does not hold is left out, not typed.
 * **The website carries what the pitch carries.** A visitor who never sees the deck meets the same claims and figures
   on the site: the side by side comparison, what keeps a mistake small, the headline figures with dollars beside the
   rupiah. When a slide gains a claim or a figure, the landing page gets it too, read from the same data module.

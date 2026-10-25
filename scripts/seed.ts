@@ -1,12 +1,17 @@
 // Generates the synthetic world and loads it into Convex. Run: npm run seed
+//   npm run seed                       the default world (the recorded demo's year before the learning year)
+//   npm run seed -- --preset learning  the learning year (scripts/simulate.ts's preset): nothing planted to hit a curve
 // Needs CONVEX_DEPLOY_KEY (or a logged-in `npx convex dev`). All data is synthetic.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { generateWorld } from "../convex/lib/generate";
+import { DEFAULT_MESS, generateWorld, learningMess } from "../convex/lib/generate";
 
 const dir = ".seed";
 mkdirSync(dir, { recursive: true });
-const w = generateWorld();
+const preset = process.argv.includes("--preset") ? process.argv[process.argv.indexOf("--preset") + 1] : "default";
+if (preset !== "default" && preset !== "learning") throw new Error(`unknown preset ${preset}: use default or learning`);
+const w = generateWorld(preset === "learning" ? learningMess() : DEFAULT_MESS);
+console.log(`seeding the ${preset} world`);
 
 const tables: Record<string, object[]> = {
   bank_transactions: w.bank,

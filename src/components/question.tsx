@@ -84,7 +84,7 @@ export function RuleApproval({ rule }: { rule: Doc<"rules"> }) {
     <div className="card p-5 lg:p-6">
       <div className="flex flex-wrap items-center gap-2">
         <span className="eyebrow">New rule for the CFO</span>
-        {rule.real ? <Pill tone="info">Written by Claude</Pill> : <Pill>Scripted</Pill>}
+        {rule.real ? <Pill tone="info">Written by Claude</Pill> : rule.fittedBy === "code" ? <Pill>Fitted by code from the data</Pill> : <Pill>Scripted</Pill>}
         <span className="ml-auto"><Pill tone={rule.state === "APPROVED" ? "success" : "accent"}>{rule.state === "APPROVED" ? "Approved" : "Proposed"}</Pill></span>
       </div>
       <p className="title mt-4 text-[clamp(19px,2vw,22px)]"><span className="num text-[0.8em] text-faint">{rule.ruleId}</span> {rule.title}</p>

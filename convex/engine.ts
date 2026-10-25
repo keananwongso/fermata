@@ -56,11 +56,11 @@ export function convexPort(ctx: MutationCtx, asOf: string, year: number, seen: M
       return remember(rows.filter((r) => r.recordedOn <= asOf)) as never;
     },
     async receiptsByStudent(student, from, to) {
-      const rows = await ctx.db.query("school_receipts").withIndex("by_student_date", (q) => q.eq("studentRef", student).gte("date", from).lte("date", to)).take(50);
+      const rows = await ctx.db.query("school_receipts").withIndex("by_student_date", (q) => q.eq("studentRef", student).gte("date", from).lte("date", to)).take(400); // a student paying ahead has a bill a month, some at zero
       return remember(rows.filter((r) => r.recordedOn <= asOf && r.year === year)) as never;
     },
     async schoolCashReceipts(store, week) {
-      const rows = await ctx.db.query("school_receipts").withIndex("by_store_week", (q) => q.eq("store", store).eq("week", week)).take(200);
+      const rows = await ctx.db.query("school_receipts").withIndex("by_store_week", (q) => q.eq("store", store).eq("week", week)).take(2000); // a store-week also holds the virtual account receipts and monthly bills, often more than 300
       return remember(rows.filter((r) => r.method === "cash" && r.recordedOn <= asOf && r.year === year)) as never;
     },
     async pairLine(account, date, memo) {
@@ -272,6 +272,7 @@ export async function runRecheck(ctx: MutationCtx, opts: { fromMonth: number; st
   let heldBefore = 0;
   for (const item of page.page) {
     if (item.state !== opts.state) continue;
+    if (!opts.storyKey && !opts.scenario && item.scenario) continue; // the year's re-runs leave scenario lines alone
     const b = await ctx.db.query("bank_transactions").withIndex("by_key", (x) => x.eq("key", item.ref)).first();
     if (!b) continue;
     const txn = strip(b);

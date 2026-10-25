@@ -56,7 +56,7 @@ function activity(): Activity[] {
   const inv = spoke("investigator"), aud = spoke("auditor"), lea = spoke("learner");
   const rows: Activity[] = [
     { who: "engine", did: <>settled <b className="num font-medium text-ink">{num(firstPass)}</b> bank lines on first pass</>,
-      sub: `${num(R.final.settled)} of ${num(R.total)} settled by ${MONTH_LABELS[lastMonth - 1]}`, source: "Code" },
+      sub: `${num(R.final.settled)} of ${num(R.total)} settled by rule by ${MONTH_LABELS[lastMonth - 1]}`, source: "Code" },
     { who: "investigator", did: <>worked <b className="num font-medium text-ink">{inv.rooms}</b> held stories</>,
       sub: monthSpan(inv.months), source: sourceLabel(inv) },
     { who: "auditor", did: <>checked <b className="num font-medium text-ink">{checked.length}</b> new rules{flagged.length ? <>, flagged <b className="num font-medium text-hold-ink">{flagged.length}</b></> : null}</>,
@@ -147,7 +147,7 @@ function CloseCard() {
   return (
     <Metric label={`Close · ${R.year}`}
       figure={<><Roll value={R.months.length} /><span className="text-[0.6em] text-faint">/12</span></>}
-      sub={<>months closed · <span className="num text-hold-ink">{num(R.final.held)}</span> lines held</>}>
+      sub={<>months closed · <span className="num text-hold-ink">{num(R.final.held)}</span> lines left for people</>}>
       <div className="flex gap-[3px]" role="img" aria-label={`${R.months.length} months closed; ${openMonths.size} still hold a question for a person`}>
         {R.months.map((m, i) => (
           <div key={m.month} className="flex flex-1 flex-col items-center gap-1" title={`${MONTH_LABELS[m.month - 1]}: closed${openMonths.has(m.month) ? ", holds a question" : ""}`}>

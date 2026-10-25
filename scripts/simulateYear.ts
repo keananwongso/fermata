@@ -3,8 +3,9 @@
 // person's answer is read from the generator's answer key (the "L:" story tags), then the rule's parameters are
 // fitted from the data in code, backtested, and the rule is applied only if the backtest passes. The live console
 // does the same step with Claude in a case room.
-import { LAST_YEAR, MONTH_LABELS, YEAR, addDays, dayDiff, isoDate, monthEnd, weekday, type StoreCode } from "../convex/lib/domain";
+import { LAST_YEAR, MONTH_LABELS, YEAR, addDays, isoDate, monthEnd, type StoreCode } from "../convex/lib/domain";
 import { cardNet, consumption, evaluate, parseMemo, type DataPort, type Decision, type EngineTxn } from "../convex/lib/engineCore";
+import { LEARNABLE, RULE_FOR, fee, fitLender, fitReversedVoucher, fitSchoolBills, pct, type Backtest, type Draft, type FitCtx, type Kind } from "../convex/lib/learn";
 import { SEED_RULES, type RuleProgram } from "../convex/lib/rules";
 import type { BankTxn, CardSales, World } from "../convex/lib/world";
 import { memoryPort } from "./memoryPort";
@@ -16,7 +17,7 @@ export interface SimOptions {
   answersPerMonth?: number; // questions people answer at each close (default: all of them)
   learnAt?: Record<string, number>; // a rule's answer comes no earlier than this month (13: never)
 }
-export interface Backtest { scope: string; covered: number; of: number; wrong: number; pass: boolean; notes: string[] }
+export type { Backtest };
 export interface Learned { id: string; version: number; month: number; title: string; answeredBy: string; answer: string; fit: string; program: RuleProgram; backtest: Backtest; released: number }
 export interface Rejected { id: string; month: number; why: string; backtest: Backtest | null }
 export interface Question { month: number; group: string; lines: number; answeredBy: string; answer: string }
@@ -28,14 +29,6 @@ export interface SimResult {
 
 const strip = (b: BankTxn): EngineTxn => { const { truth: _t, ...rest } = b; void _t; return rest; };
 type Status = { status: "settled" | "waiting" | "held"; d: Decision; month: number };
-type Kind = "school_moved" | "card_fee" | "new_lender" | "school_advance" | "cash_reversal";
-const LEARNABLE: Record<string, Kind> = {
-  "L:school_moved": "school_moved", A: "school_moved", "L:card_fee": "card_fee", "L:new_lender": "new_lender", B: "new_lender",
-  "L:school_advance": "school_advance", "L:cash_reversal": "cash_reversal",
-};
-const RULE_FOR: Record<Kind, string> = { school_moved: "r8", card_fee: "r3", new_lender: "r9", school_advance: "r10", cash_reversal: "r11" };
-const pct = (x: number) => (x * 100).toFixed(1) + "%";
-const fee = (x: number) => (x * 100).toFixed(2).replace(/0$/, "") + "%";
 
 export async function simulateYear(w: World, opts: SimOptions): Promise<SimResult> {
   const t0 = Date.now();
@@ -122,8 +115,9 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
       if (!ans.kind) { for (const k of g.keys) closed.add(k); continue; }
       // A rule that does not fit or fails its backtest is not applied; its stories stay open for the next close.
       const id = RULE_FOR[ans.kind];
+      const fc: FitCtx = { port, rules, asOf }, plain = lines.map(strip);
       const draft = ans.kind === "school_moved" ? await fitFollowReceipt(lines) : ans.kind === "card_fee" ? await fitCardFees(lines, ans.stores)
-        : ans.kind === "school_advance" ? await fitSchoolBills(lines) : ans.kind === "cash_reversal" ? await fitReversedVoucher(lines, ans.stores) : await fitLender(lines);
+        : ans.kind === "school_advance" ? await fitSchoolBills(fc, plain) : ans.kind === "cash_reversal" ? await fitReversedVoucher(fc, plain, ans.stores) : await fitLender(fc, plain);
       if ("why" in draft) { rejected.push({ id, month: m, why: draft.why, backtest: draft.backtest ?? null }); continue; }
       if (!draft.backtest.pass) { rejected.push({ id, month: m, why: "backtest failed", backtest: draft.backtest }); continue; }
       for (const k of g.keys) if (!draft.stores || draft.stores.includes(k.split("|")[1] as StoreCode)) closed.add(k);
@@ -150,7 +144,7 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
   }
 
   // ---------- fitters: a rule's parameters from the data, then its backtest ----------
-  type Draft = { program: RuleProgram; fit: string; backtest: Backtest; stores?: StoreCode[] } | { why: string; backtest?: Backtest };
+  // r10, r11 and r9 are fitted by the shared Learner code (convex/lib/learn.ts), the same code the live close runs.
 
   // How many of these held lines a candidate rule set would settle now.
   async function covers(lines: BankTxn[], candidate: RuleProgram[]) {
@@ -256,102 +250,6 @@ export async function simulateYear(w: World, opts: SimOptions): Promise<SimResul
     };
   }
 
-  // r10: for each held credit, the student's monthly bills (skipping the zero ones the school pre-creates) that run over
-  // consecutive months and add up to the credit. The longest run seen and the widest gap between when the bills were
-  // entered and the cash date become the rule's parameters.
-  async function fitSchoolBills(lines: BankTxn[]): Promise<Draft> {
-    const month = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7));
-    let maxMonths = 0, within = 0, fit = 0, zero = 0;
-    const lengths = new Map<number, number>();
-    for (const t of lines) {
-      const p = parseMemo(strip(t));
-      if (!p.student) continue;
-      const all = (await port.receiptsByStudent(p.student, addDays(t.date, -62), addDays(t.date, 400))).sort((a, b) => a.date.localeCompare(b.date));
-      zero += all.filter((b) => b.amount === 0).length;
-      const open = [];
-      for (const b of all) if (b.amount > 0 && (await port.applied(b.key)) === 0) open.push(b);
-      let run: typeof open | null = null;
-      for (let i = 0; i < open.length && !run; i++) {
-        let sum = 0;
-        for (let j = i; j < open.length; j++) {
-          if (j > i && month(open[j].date) !== month(open[j - 1].date) + 1) break;
-          sum += open[j].amount;
-          if (j > i && sum === t.amount) { run = open.slice(i, j + 1); break; }
-        }
-      }
-      if (!run) continue;
-      fit++; maxMonths = Math.max(maxMonths, run.length); lengths.set(run.length, (lengths.get(run.length) ?? 0) + 1);
-      for (const b of run) within = Math.max(within, Math.abs(dayDiff(b.recordedOn, t.date)));
-    }
-    if (fit < 0.9 * lines.length) return { why: `only ${fit} of ${lines.length} credits add up to consecutive monthly bills` };
-    const program: RuleProgram = { id: "r10", version: 1, title: `School fees paid ahead: one credit, up to ${maxMonths} monthly bills`, channels: ["school_va"], match: "school_bills", params: { maxMonths, recordedWithinDays: within }, limitIdr: 50_000_000 };
-    const now = await covers(lines, [...rules, program]);
-    return {
-      program, fit: `up to ${maxMonths} consecutive months, bills entered within ${within} days of the credit; ${fit} of ${lines.length} credits fit a run (${[...lengths.entries()].sort((a, b) => a[0] - b[0]).map(([n, c]) => `${c} of ${n} months`).join(", ")})`,
-      backtest: { scope: `this year's ${lines.length} held school credits`, covered: now.n, of: lines.length, wrong: 0, pass: now.n >= 0.9 * lines.length, notes: [`${zero} zero bills near these students skipped`, `${lines.length - now.n} stay held (no single run of bills fits)`] },
-    };
-  }
-
-  // r11: held deposits at the named stores whose covered day has a reversed voucher. The round unit is the largest that
-  // divides the deposits and leaves less than one unit in petty cash; the window is the longest gap from voucher to bank.
-  async function fitReversedVoucher(lines: BankTxn[], stores: StoreCode[]): Promise<Draft> {
-    const rows: { t: BankTxn; expected: number; gap: number }[] = [];
-    for (const t of lines) {
-      const p = parseMemo(strip(t));
-      if (!p.subStore || !stores.includes(p.subStore)) continue;
-      const covered = weekday(t.date) === 1 ? [addDays(t.date, -3), addDays(t.date, -2), addDays(t.date, -1)] : [addDays(t.date, -1)];
-      const days = await port.cashDays(p.subStore, covered);
-      const rev = days.find((d) => d.reversed);
-      if (rev) rows.push({ t, expected: days.reduce((a, d) => a + d.cashSales, 0), gap: dayDiff(rev.date, t.date) });
-    }
-    if (rows.length < 5) return { why: `only ${rows.length} held deposits follow a reversed voucher` };
-    const unit = [1_000_000, 500_000, 100_000, 50_000, 10_000].find((u) => rows.filter((r) => r.t.amount % u === 0 && r.expected - r.t.amount > 0 && r.expected - r.t.amount < u).length >= 0.9 * rows.length);
-    if (!unit) return { why: "the deposits are not round" };
-    const withinDays = Math.max(...rows.map((r) => r.gap));
-    const program: RuleProgram = { id: "r11", version: 1, title: `Reversed cash voucher, deposit rounded to Rp ${unit.toLocaleString("en-US")}: the rest stays in petty cash`, channels: ["cash"], match: "reversed_voucher", params: { roundTo: unit, withinDays }, limitIdr: 100_000_000 };
-    const candidate = [...rules, program];
-    const inScope = rows.map((r) => r.t);
-    const now = await covers(inScope, candidate);
-    const others = await covers(lines.filter((t) => !inScope.includes(t)), candidate);
-    const kept = rows.reduce((a, r) => a + r.expected - r.t.amount, 0);
-    const used = [...new Set(inScope.map((t) => parseMemo(strip(t)).subStore!))].sort();
-    return {
-      program, fit: `round to Rp ${unit.toLocaleString("en-US")}, voucher within ${withinDays} day${withinDays === 1 ? "" : "s"} of the deposit, from ${rows.length} deposits at ${used.join(", ")}`,
-      backtest: { scope: `${inScope.length} held deposits after a reversed voucher`, covered: now.n, of: inScope.length, wrong: others.n, pass: now.n >= 0.9 * inScope.length && others.n === 0, notes: [`other held deposits it would settle: ${others.n}`, `Rp ${kept.toLocaleString("en-US")} to petty cash across them`] },
-      stores: used,
-    };
-  }
-
-  // r9: the cut, as the most common 1 - payout / sale over installment sales with this lender at the same store in the
-  // week before (as the case room's lender_sales tool does), then each payout must match exactly one sale.
-  async function fitLender(lines: BankTxn[]): Promise<Draft> {
-    const lender = parseMemo(strip(lines[0])).lender!;
-    const rows: { t: BankTxn; sales: { key: string; amount: number }[] }[] = [];
-    const cuts = new Map<string, number>();
-    for (const t of lines) {
-      const p = parseMemo(strip(t));
-      const sales = p.subStore ? (await port.installmentSales(p.subStore, addDays(t.date, -7), addDays(t.date, -1))).filter((s) => s.lender === lender) : [];
-      rows.push({ t, sales });
-      for (const s of sales) { const c = (1 - t.amount / s.amount).toFixed(4); if (Number(c) > 0 && Number(c) < 0.1) cuts.set(c, (cuts.get(c) ?? 0) + 1); }
-    }
-    const cut = Number([...cuts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0);
-    if (!cut) return { why: `no ${lender} sales near the payouts` };
-    let one = 0, two = 0, none = 0, largest = 0;
-    for (const r of rows) {
-      largest = Math.max(largest, r.t.amount);
-      const hits = r.sales.filter((s) => Math.round(s.amount * (1 - cut)) === r.t.amount).length;
-      if (hits === 1) one++; else if (hits > 1) two++; else none++;
-    }
-    const program: RuleProgram = { id: "r9", version: 1, title: `${lender} payout minus ${(cut * 100).toFixed(2).replace(/0$/, "")}%`, channels: ["lender"], match: "lender_sale", params: { lenders: { [lender]: cut }, windowDays: 7 }, limitIdr: 1_000_000_000 };
-    const now = await covers(lines, [...rules, program]);
-    return {
-      program, fit: `cut ${fee(cut)}, the most common implied cut over ${rows.length} payouts`,
-      backtest: {
-        scope: `this year's ${lines.length} held ${lender} payouts (no history last year)`, covered: now.n, of: lines.length, wrong: two, pass: one >= 0.95 * lines.length && two === 0 && largest <= program.limitIdr,
-        notes: [`${one} match exactly one sale, ${two} match two or more, ${none} match none`, `largest payout under the limit: ${largest <= program.limitIdr ? "yes" : "no"}`],
-      },
-    };
-  }
 }
 
 // One month's line in a table: the share settled on first pass.

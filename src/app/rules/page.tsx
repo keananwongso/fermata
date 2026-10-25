@@ -52,7 +52,7 @@ function RuleDetail({ ruleId }: { ruleId: string }) {
         <Eyebrow>Rule detail</Eyebrow>
         <h2 className="title mt-3 text-[clamp(24px,3vw,34px)]"><span className="num text-[0.6em] tracking-normal text-faint">{r.ruleId} v{r.version}</span> {r.title}</h2>
         <div className="mt-2 flex flex-wrap gap-2">
-          {r.real ? <Pill tone="info">Program written by Claude</Pill> : <Pill>{r.learnedInMonth ? "Scripted program" : "Derived from last year’s rows"}</Pill>}
+          {r.real ? <Pill tone="info">Program written by Claude</Pill> : <Pill>{r.fittedBy === "code" ? "Fitted by code from the data" : r.learnedInMonth ? "Scripted program" : "Derived from last year’s rows"}</Pill>}
           {r.learnedInMonth ? <Pill tone="hold"><span className="text-hold">𝄐</span> learned in {MONTH_LABELS[r.learnedInMonth - 1]}</Pill> : null}
           {r.seen ? <Pill>Seen {num(r.seen.count)} times · {r.seen.scope}</Pill> : null}
         </div>

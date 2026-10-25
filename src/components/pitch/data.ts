@@ -1,5 +1,5 @@
-// Every figure the pitch shows, read from the recorded run (src/demo/recording.json), the learning year
-// (src/demo/learning.json) or the demo company's definition, never typed by hand. Re-export and the deck follows.
+// Every figure the pitch shows, read from the recorded run of the learning year (src/demo/recording.json, also
+// through learningYear.ts) or the demo company's definition, never typed by hand. Re-export and the deck follows.
 import recording from "@/demo/recording.json";
 import { BANK_ACCOUNTS, STORES } from "../../../convex/lib/domain";
 import { LY } from "../learningYear";

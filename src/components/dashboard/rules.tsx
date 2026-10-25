@@ -85,7 +85,7 @@ function RuleDetail({ r }: { r: Rule }) {
         </div>
       </div>
       <div className="min-w-0">
-        <div className="eyebrow">The rule as code · {r.real ? "written by Claude" : r.learnedInMonth ? "scripted" : "derived from last year's rows"}</div>
+        <div className="eyebrow">The rule as code · {r.real ? "written by Claude" : r.fittedBy === "code" ? "fitted by code from the data" : r.learnedInMonth ? "scripted" : "derived from last year's rows"}</div>
         <pre className="scroll-quiet mt-2 overflow-x-auto rounded-[8px] bg-night px-3 py-2.5 text-[11.5px] leading-relaxed text-white/85">{JSON.stringify(r.program, null, 2)}</pre>
       </div>
     </div>

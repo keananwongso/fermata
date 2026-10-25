@@ -21,26 +21,52 @@ export function draftQuestion(s: Doc<"stories">): QuestionDraft {
   const n = num(s.count);
   const amt = rpShort(s.amount);
   const at = storeName(s.store);
+  // Shapes whose answer teaches a rule fitted in code (codeLearner.ts).
+  if (s.shape === "after_reversed_voucher") return {
+    askOf: "accountant",
+    text: `${n} cash deposits at ${at} (${amt}) are short of the day's cash. Each follows a day whose cash voucher was posted and then reversed, and each is a round amount. Did the store bank a round amount and keep the rest in petty cash?`,
+    options: [
+      { id: "voucher", label: "Yes, the rest is in petty cash", impact: `Fermata fits a rule from every deposit like these, backtests it, and settles nothing until the CFO approves it.` },
+      { id: "short", label: "No, treat it as a shortfall", impact: `Keeps ${n} deposits held and opens a cash count at ${at}.` },
+      { id: "unsure", label: "I don't know", impact: "Keeps them held and asks the CFO." },
+    ],
+    summary: `Every one of these deposits is short of the cash book, by less than a round unit, on a day after the store reversed its cash voucher.`,
+    hypothesis: "The store reverses the day's voucher, banks a round amount and keeps the rest as petty cash.",
+    trace: [`read ${n} held cash deposits short of the cash book`, "the covered day's voucher was posted and reversed in each", "each deposit is a round amount", "whether the rest is petty cash is the Accountant's call: one question"],
+    auditor: "Checked that the short amount is always below one round unit. It is. Agree the question is the right one.",
+  };
+  if (s.shape === "credit_without_bills") return {
+    askOf: "accountant",
+    text: `${n} school fee credits at ${at} (${amt}) waited 75 days for a receipt that never came. Each is larger than one monthly fee. Did parents pay several months at once?`,
+    options: [
+      { id: "advance", label: "Yes, they paid months in advance", impact: `Fermata fits a rule from every credit like these against the school's monthly bills, backtests it, and settles nothing until the CFO approves it.` },
+      { id: "hold", label: "No, keep them held", impact: `Keeps ${n} credits held.` },
+      { id: "unsure", label: "I don't know", impact: "Keeps them held and asks the CFO." },
+    ],
+    summary: "No receipt matches any of these credits, and each is several times a monthly fee for its student.",
+    hypothesis: "Parents paid several months at once; the school billed each month separately.",
+    trace: [`read ${n} held school credits with no receipt after 75 days`, "each credit is a multiple of the student's monthly fee", "ask the Accountant how the school bills advance payments"],
+    auditor: "Checked a few students: the credit equals consecutive monthly bills. Agree the question is the right one.",
+  };
   switch (s.gap) {
     case "placement_conflict":
       return {
         askOf: "accountant",
-        text: `${n} school fees (${amt}) were paid into ${at}'s virtual accounts, but the school's receipts put these students at Store 11. Which store should they be booked to?`,
+        text: `${n} school fees (${amt}) were paid into ${at}'s virtual accounts, but the school's receipts put these students at another store. Which store should they be booked to?`,
         options: [
-          { id: "receipts", label: "Store 11, follow the school's receipts", impact: `Books ${n} fees (${amt}) to Store 11. Fermata will propose a rule so future cases settle on their own.` },
-          { id: "bank", label: `${at}, follow the bank`, impact: `Books ${n} fees to ${at}. Store 11's receipts stay open.` },
+          { id: "receipts", label: "Follow the school's receipts", impact: `Books ${n} fees (${amt}) where the receipts are. Fermata will propose a rule so future cases settle on their own.` },
+          { id: "bank", label: `${at}, follow the bank`, impact: `Books ${n} fees to ${at}. The receipts at the other store stay open.` },
           { id: "unsure", label: "I don't know", impact: "Keeps all of them held and asks the CFO." },
         ],
-        summary: `Every one of these payments names a ${at} virtual account. For each, a school receipt with the same student and the same amount exists, but at Store 11. No ${at} receipt exists for any of them. The receipts for January and February were entered on 3 Mar, when the term opened.`,
-        hypothesis: "The students moved to Store 11's classes but kept paying into their old virtual accounts.",
+        summary: `Every one of these payments names a ${at} virtual account. For each, a school receipt with the same student and the same amount exists, but at another store. No ${at} receipt exists for any of them.`,
+        hypothesis: "The students moved to another store's classes but kept paying into their old virtual accounts.",
         trace: [
           `read ${n} held lines with the same gap: bank sub account and school receipt disagree`,
-          `query school_receipts by student: ${n} of ${n} found at Store 11, 0 at ${at}`,
+          `query school_receipts by student: ${n} of ${n} found at another store, 0 at ${at}`,
           "amounts match to the rupiah in every case",
-          "January and February receipts recorded on 3 Mar: they were waiting, not missing",
           "decision: the receipts look right, but placement is the Accountant's call. Ask the Accountant, one question.",
         ],
-        auditor: "Checked whether any of these students also pay at Store 3. None do. Agree the question is the right one.",
+        auditor: `Checked whether any of these students also pay at ${at}. None do. Agree the question is the right one.`,
       };
     case "petty_cash_retained":
       return {

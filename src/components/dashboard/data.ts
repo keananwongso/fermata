@@ -14,7 +14,7 @@ export type Room = {
 };
 export type Backtest = { correct: number; covered: number; coverage: number; errors: number; precision: number; scope: string; examples: string[] };
 export type Rule = {
-  id: string; title: string; origin: string; learnedInMonth: number; real: boolean; state: string;
+  id: string; title: string; origin: string; learnedInMonth: number; real: boolean; fittedBy?: "code" | null; state: string;
   program: Record<string, unknown>; backtest: Backtest | null; audit: { result: string; note: string } | null;
 };
 // Written by evaluation.run on Convex and carried into the recording by scripts/export_demo.ts, when one was run.

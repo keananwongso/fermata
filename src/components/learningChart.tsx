@@ -13,8 +13,10 @@ import { pct } from "../../convex/lib/format";
 
 export type ChartRun = { months: { month: number; total: number; firstSettled: number; waiting?: number }[]; learned: { id: string; month: number }[] };
 
-// Required wherever the chart appears: the comparison is a simulation, not the recorded year.
+// Required wherever the chart appears: what each line is. Two simulated runs (What if) take SIM_CAPTION; the learning
+// year as Fermata closed it against its frozen baseline takes CLOSE_CAPTION, so the baseline is always labelled simulated.
 export const SIM_CAPTION = "Simulated on the same engine: the same year, with and without learning.";
+export const CLOSE_CAPTION = "With learning: the year as Fermata closed it. Without: the same year on the same engine with the rules frozen at onboarding, simulated.";
 
 const EASE = [0.645, 0.045, 0.355, 1] as const;
 const MUSIC = { fontFamily: "var(--font-music)" };
@@ -22,7 +24,7 @@ const share = (m: ChartRun["months"][number]) => m.firstSettled / m.total;
 
 // Three widths so the labels stay a readable size: a phone chart under `sm`, a mid one, and a wide one from `lg`.
 // `stage` draws only the mid one at its own size, for the pitch's fixed 1920×1080 stage, which scales it with `zoom`.
-export function LearningChart({ learned, baseline, stage = false, className = "" }: { learned: ChartRun; baseline: ChartRun; stage?: boolean; className?: string }) {
+export function LearningChart({ learned, baseline, stage = false, className = "", caption = SIM_CAPTION }: { learned: ChartRun; baseline: ChartRun; stage?: boolean; className?: string; caption?: string }) {
   return (
     <figure className={`min-w-0 ${className}`}>
       <Legend />
@@ -33,7 +35,7 @@ export function LearningChart({ learned, baseline, stage = false, className = ""
           <div className="hidden lg:block"><Plot L={learned} B={baseline} W={1200} H={320} /></div>
         </>
       )}
-      <figcaption className="mt-2 text-[12px] text-faint">{SIM_CAPTION}</figcaption>
+      <figcaption className="mt-2 text-[12px] text-faint">{caption}</figcaption>
     </figure>
   );
 }

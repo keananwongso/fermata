@@ -1,5 +1,7 @@
 // The close: month by month, re-check what was waiting, run the first pass, open a case room per new story,
-// pause where a person must decide, then continue. Each step is a scheduled mutation.
+// pause where a person must decide, then continue. Each step is a scheduled mutation. Where it pauses follows from the
+// stories, not the calendar: it waits at a month's close while a question there could teach a rule (codeLearner.ts),
+// and, on autopilot, until every question raised at that close has been answered.
 import { v } from "convex/values";
 import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -7,7 +9,8 @@ import type { Doc } from "./_generated/dataModel";
 import { runFirstPass, runRecheck, type BatchStats } from "./engine";
 import { YEAR, isoDate, monthEnd } from "./lib/domain";
 import { openRoom } from "./rooms";
-import { LIVE_ROOMS } from "./roomAgents";
+import { specOf } from "./roomAgents";
+import { shapeOf, storyShape } from "./codeLearner";
 import { CONSOLE_REFUSAL, consoleKey, isConsole, requireConsole } from "./lib/console";
 
 const YEAR_END_AS_OF = isoDate(YEAR + 1, 1, 20);
@@ -88,25 +91,26 @@ export const step = internalMutation({
       return save({ phase: "stories", cursor: null });
     }
     if (run.phase === "stories") {
-      const fresh = (await ctx.db.query("stories").withIndex("by_month", (q) => q.eq("month", m)).take(100)).filter((s) => s.state === "NEW");
-      for (const s of fresh) await openRoom(ctx, s, m, LIVE_ROOMS.has(s.key));
+      const fresh = (await ctx.db.query("stories").withIndex("by_month", (q) => q.eq("month", m)).take(100)).filter((s) => s.state === "NEW" && !s.scenario);
+      for (const s of fresh) {
+        const shape = await shapeOf(ctx, s);
+        if (shape) await ctx.db.patch(s._id, { shape });
+        const opened = (await ctx.db.get(s._id))!;
+        await openRoom(ctx, opened, m, !!(await specOf(ctx, opened)));
+      }
       await addStats(ctx, m, { questions: fresh.length, stories: fresh.length });
       await ctx.db.insert("trace_events", { agent: "engine", month: m, kind: "result", text: `Month closed on first pass. ${fresh.length} new ${fresh.length === 1 ? "story" : "stories"}.`, real: true, at: Date.now() });
-      const pauseFor = m === 3 ? "A" : m === 6 ? "B" : null;
-      if (pauseFor) {
-        await save({ phase: "paused", pausedFor: pauseFor }, false);
-        if (run.autopilot) await ctx.scheduler.runAfter(2500, internal.humans.autopilotTick, {});
-        return null;
-      }
-      return next();
+      return await pauseOrNext();
     }
+    // A rule was approved at this close: every held line of the year so far is re-run under it.
     if (run.phase.startsWith("rerun:")) {
-      const key = run.phase.slice("rerun:".length);
-      const r = await runRecheck(ctx, { fromMonth: m, state: "HELD", storyKey: key, cursor: run.cursor, asOf: monthEnd(YEAR, m), passMonth: m });
+      const j = Number(run.phase.split(":")[1]);
+      const r = await runRecheck(ctx, { fromMonth: j, state: "HELD", storyKey: null, cursor: run.cursor, asOf: monthEnd(YEAR, m), passMonth: m });
       await addStats(ctx, m, { settledByNewRule: r.stats.settledLater });
       if (!r.done) return save({ cursor: r.cursor });
+      if (j < m) return save({ phase: `rerun:${j + 1}`, cursor: null });
       await ctx.db.insert("trace_events", { agent: "engine", month: m, kind: "result", text: `Re-ran held lines under ${run.rerunRule}. Continuing.`, real: true, at: Date.now() });
-      return next();
+      return await pauseOrNext();
     }
     if (run.phase.startsWith("yearend:")) {
       const j = Number(run.phase.split(":")[1]);
@@ -119,6 +123,14 @@ export const step = internalMutation({
     }
     return null;
 
+    async function pauseOrNext() {
+      if (await pendingAtClose(ctx, m, run.autopilot)) {
+        await save({ phase: "paused", pausedFor: "close", cursor: null }, false);
+        if (run.autopilot) await ctx.scheduler.runAfter(2500, internal.humans.autopilotTick, {});
+        return null;
+      }
+      return next();
+    }
     async function next() {
       if (m === 12) return save({ phase: "yearend:1", cursor: null, pausedFor: null });
       return save({ month: m + 1, phase: "second:1", cursor: null, pausedFor: null, rerunRule: null });
@@ -126,12 +138,38 @@ export const step = internalMutation({
   },
 });
 
-// Resume after a pause: optionally re-run held lines of one story under a newly approved rule first.
-export async function resume(ctx: MutationCtx, rerun: { storyKey: string; ruleId: string } | null) {
+// What the close still waits for at month m's close: a rule being written or waiting for the CFO, a room still meeting,
+// or a question not yet answered and confirmed. Without autopilot it waits only on stories whose answer could teach a
+// rule; other questions can be answered at any time, as before.
+export async function pendingAtClose(ctx: MutationCtx, m: number, autopilot: boolean): Promise<boolean> {
+  const stories = (await ctx.db.query("stories").take(400)).filter((s) => !s.scenario && s.month <= m);
+  if (stories.some((s) => s.learning)) return true;
+  const rules = (await ctx.db.query("rules").take(200)).filter((r) => !r.scenario && r.learnedInMonth && (r.state === "NEW" || r.state === "PROPOSED"));
+  if (rules.length) return true;
+  for (const s of stories) {
+    if (!autopilot && !storyShape(s)) continue;
+    if (s.room?.state === "meeting") return true;
+    const q = await ctx.db.query("questions").withIndex("by_story", (x) => x.eq("storyKey", s.key)).first();
+    if (q && (q.state === "NEEDS_INFO" || q.state === "PROPOSED")) return true;
+  }
+  return false;
+}
+
+// After an answer or an approval: carry on once nothing at this close is left to wait for.
+export async function continueClose(ctx: MutationCtx) {
+  const close = await getClose(ctx);
+  const run = close?.run;
+  if (!run?.pausedFor) return;
+  if (await pendingAtClose(ctx, run.month, run.autopilot)) return;
+  await resume(ctx, null);
+}
+
+// Resume after a pause: optionally re-run the year's held lines under a newly approved rule first.
+export async function resume(ctx: MutationCtx, rerun: { ruleId: string } | null) {
   const close = await getClose(ctx);
   if (!close?.run) return;
   const run = close.run;
-  if (rerun) await ctx.db.patch(close._id, { run: { ...run, pausedFor: null, phase: `rerun:${rerun.storyKey}`, cursor: null, rerunRule: rerun.ruleId } });
+  if (rerun) await ctx.db.patch(close._id, { run: { ...run, pausedFor: null, phase: "rerun:1", cursor: null, rerunRule: rerun.ruleId } });
   else {
     const m = run.month;
     const nextRun = m === 12 ? { ...run, pausedFor: null, phase: "yearend:1", cursor: null } : { ...run, pausedFor: null, month: m + 1, phase: "second:1", cursor: null, rerunRule: null };
