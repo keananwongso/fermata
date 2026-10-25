@@ -49,9 +49,9 @@ function Landing() {
           (src/demo/recording.json, through learningYear.ts). */}
       <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
         <Reveal className="relative" stagger={0.1}>
-          <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={LY.fewer} suffix="×" /> fewer lines left for people, once Fermata learns from their answers.</p></RevealItem>
+          <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={LY.fewer} suffix="×" /> fewer payments left for people, once Fermata learns from their answers.</p></RevealItem>
           <RevealItem><p className="mx-auto mt-6 max-w-[600px] text-[15px] text-secondary">
-            <span className="num text-ink">{num(LY.heldLearned)}</span> left at year end. <span className="num text-ink">{num(LY.heldBaseline)}</span> without learning, simulated.
+            <span className="num text-ink">{num(LY.heldLearned)}</span> left at year end, against <span className="num text-ink">{num(LY.heldBaseline)}</span> without learning (same year, simulated).
           </p></RevealItem>
         </Reveal>
       </section>
