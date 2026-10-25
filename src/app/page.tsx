@@ -63,7 +63,7 @@ function Landing() {
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(34px,4.6vw,56px)]">Code settles. Claude investigates. People approve.</h2></RevealItem>
           <RevealItem><p className="mt-4 text-[16px] text-secondary">Banks, ERP and marketplaces, in one place.</p></RevealItem>
-          <RevealItem className="mt-5"><LinkArrow href="/demo?guide">Step through it in the demo</LinkArrow></RevealItem>
+          <RevealItem className="mt-5"><LinkArrow href="/demo">Watch it close a year</LinkArrow></RevealItem>
         </Reveal>
         <div>
           <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it&apos;s built. Pick a path, click a box.</h3>

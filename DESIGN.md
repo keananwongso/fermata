@@ -200,13 +200,9 @@ The transcript of the agents' meeting on one held story.
   and the months share the top row, the stats sit under them, and the workspace takes whatever height is left, each panel
   scrolling inside itself. The page marks itself `data-fixed-page`; `globals.css` hides the footer and the page scroll
   from that. Below 1280px the panels stack and the page scrolls as usual (still no footer).
-* **The guided demo** (`/demo?guide`, `src/app/demo/tour.tsx`; the "Show how it works" switch before the year starts,
-  and the landing page's How it works links to it). The year holds at six stops, and each stop takes the workspace's
-  place until it is left: Day 0 (the mined rules, approved as CFO), settle (one real line: store, rule, settled), hold
-  (story A held, the four in the room), learn (story A's answer, its rule, the backtest, approved), guardrails (story B's
-  staged self-approval, blocked, labelled Staged) and the result. Each stop is a `Pill`, a one-phrase `.display` title,
-  a small picture that builds in steps, and one primary button named for the next step ("Find the store", "Approve as
-  CFO"); Space, Enter or → presses it, so a recording can step through with the keyboard. Hints are off in the guide.
+* **The demo has one stop.** The year plays on its own; every room closes by itself except story B (a lender nobody
+  knew), where the agents meet, an approval is refused in code, and the visitor answers the CFO's one question. That
+  room is the demo's only `LIVE` room. Explaining is How it works' job on the landing page, not the demo's.
 * **Plain words on the site.** Say payments, not lines; waiting, not held; no "X: y, z" formula captions. Each caption is
   a sentence a shop owner would say.
 * **Copy is skimmable.** A title, caption or hint is one short phrase, readable at a glance. No paragraphs inside the

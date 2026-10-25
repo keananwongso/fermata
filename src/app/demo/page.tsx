@@ -12,7 +12,6 @@ import { CONSOLE_LINK } from "@/components/nav";
 import { openAsk } from "@/components/ask/overlay";
 import { Arrival, Reveal, RevealItem, Roll, scrollBoxToEnd } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
-import { Tour, type Stop } from "./tour";
 
 type Line = {
   date: string; account: string; memo: string; amount: number; channel: string; outcome: "settled" | "waiting" | "held";
@@ -37,7 +36,10 @@ const R = recording as unknown as Rec;
 const asChat = (m: RecMsg, extra: Partial<ChatMessage>): ChatMessage => ({ ...m, ...extra });
 const MONTH_MS = 3200;
 const STREAM_LINES = 22; // more than the tallest engine panel shows; the rest sit under the fade
-const LIVE = R.rooms.filter((r) => r.live).sort((a, b) => a.month - b.month);
+// The one stop in the year: the room where you answer. It is story B (a lender nobody knew), because it shows the
+// agents meeting, an approval refused in code, one question and the rule it becomes. Every other room, story A
+// included, closes on its own as the year runs.
+const LIVE = R.rooms.filter((r) => r.live && r.messages.some((m) => m.kind === "denied")).sort((a, b) => a.month - b.month);
 const cum = (upTo: number, f: (m: Rec["months"][number]) => number) => R.months.filter((m) => m.month <= upTo).reduce((a, m) => a + f(m), 0);
 // Months in which an answer became a rule. A month with a live room teaches its rule once you answer there; the
 // others, once their close is over.
@@ -61,19 +63,7 @@ function DemoPage() {
   const [shown, setShown] = useState<ChatMessage[]>([]);
   const [answered, setAnswered] = useState<string[]>([]);
   const [line, setLine] = useState<Line | null>(null);
-  // The guided demo (`?guide`): the year stops at six moments to show what is underneath (tour.tsx). A stop holds the
-  // year like a pause.
-  const [guide, setGuide] = useState(false);
-  const [stop, setStop] = useState<Stop | null>(null);
-  const [visited, setVisited] = useState<Stop[]>([]);
-  useEffect(() => {
-    if (!new URLSearchParams(window.location.search).has("guide")) return;
-    hintsOff = true;
-    const t = setTimeout(() => setGuide(true), 0);
-    return () => clearTimeout(t);
-  }, []);
-  const visit = useCallback((s: Stop) => { setVisited((v) => (v.includes(s) ? v : [...v, s])); setStop(s); }, []);
-  const holding = paused || !!stop;
+  const holding = paused;
 
   // The engine: each month plays for MONTH_MS, then a live room meets if this month has one.
   useEffect(() => {
@@ -81,29 +71,16 @@ function DemoPage() {
     const id = setInterval(() => setP((x) => Math.min(1, x + (50 * speed) / MONTH_MS)), 50);
     return () => clearInterval(id);
   }, [phase, holding, speed]);
-  // The guide's stops that wait on the year: January's first lines settling, and the close.
-  useEffect(() => {
-    if (!guide) return;
-    const due: Stop | null = phase === "running" && month === 1 && p >= 0.4 && !visited.includes("settle") ? "settle"
-      : phase === "done" && !visited.includes("result") ? "result" : null;
-    if (!due) return;
-    const t = setTimeout(() => visit(due), 0);
-    return () => clearTimeout(t);
-  }, [guide, phase, month, p, visited, visit]);
   useEffect(() => {
     if (phase !== "running" || p < 1) return;
     const t = setTimeout(() => {
       const meet = LIVE.find((r) => r.month === month && !answered.includes(r.key));
-      if (meet) {
-        setRoom(meet); setShown([]); setPhase("meeting");
-        if (guide) visit(meet.messages.some((m) => m.kind === "denied") ? "refuse" : "hold");
-        return;
-      }
+      if (meet) { setRoom(meet); setShown([]); setPhase("meeting"); return; }
       if (month === 12) { setPhase("done"); return; }
       setMonth(month + 1); setP(0);
     }, 0);
     return () => clearTimeout(t);
-  }, [phase, p, month, answered, guide, visit]);
+  }, [phase, p, month, answered]);
 
   // The meeting replays message by message: agents show as working while their queries run.
   const split = useMemo(() => {
@@ -117,11 +94,7 @@ function DemoPage() {
     const done = shown.filter((m) => m.status !== "working").length - (phase === "after" ? split.meeting.length : 0);
     if (done >= list.length) {
       if (phase === "meeting") { const q = setTimeout(() => setPhase("question"), 400 / speed); return () => clearTimeout(q); }
-      const t = setTimeout(() => {
-        // In the guide, the first answer's rule is shown being written before the year moves on.
-        if (guide && !visited.includes("learn") && !room.messages.some((m) => m.kind === "denied")) visit("learn");
-        setRoom(null); if (month === 12) setPhase("done"); else { setMonth(month + 1); setP(0); setPhase("running"); }
-      }, 1800 / speed);
+      const t = setTimeout(() => { setRoom(null); if (month === 12) setPhase("done"); else { setMonth(month + 1); setP(0); setPhase("running"); } }, 1800 / speed);
       return () => clearTimeout(t);
     }
     const next = list[done];
@@ -137,7 +110,7 @@ function DemoPage() {
     }
     const t = setTimeout(() => setShown((s) => [...(agent ? s.slice(0, -1) : s), asChat(next, { status: "done" })]), (agent ? 900 : 1100) / speed);
     return () => clearTimeout(t);
-  }, [phase, holding, room, shown, split, speed, month, guide, visited, visit]);
+  }, [phase, holding, room, shown, split, speed, month]);
 
   const asking = phase === "question" && !!room?.question;
 
@@ -158,22 +131,17 @@ function DemoPage() {
   // Starting the year brings the timeline, the counters and the workspace into view together, once; after that
   // the page stays still and each panel scrolls inside itself.
   const stage = useRef<HTMLDivElement>(null);
-  const toStage = () => stage.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   const start = () => {
     setPhase("running");
-    if (guide) visit("day0");
-    toStage();
+    stage.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
-  // Each guide stop brings the stage back into view, so the stop's card is on screen whole.
-  useEffect(() => { if (stop) toStage(); }, [stop]);
 
   const answer = () => {
     if (!room) return;
     setAnswered((a) => [...a, room.key]);
     setPhase("after");
   };
-  const restart = () => { setPhase("idle"); setMonth(1); setP(0); setRoom(null); setShown([]); setAnswered([]); setLine(null); setPaused(false); setStop(null); setVisited([]); };
-  const leaveTour = () => { setStop(null); setGuide(false); };
+  const restart = () => { setPhase("idle"); setMonth(1); setP(0); setRoom(null); setShown([]); setAnswered([]); setLine(null); setPaused(false); };
 
   // Counters: everything before this month, plus this month's share so far. Held lines a new rule releases count once
   // the month's question is answered, and December's waiting lines once the year closes, so done shows final.settled.
@@ -222,12 +190,6 @@ function DemoPage() {
             {[1, 2, 4].map((s) => <button key={s} role="radio" aria-checked={speed === s} onClick={() => setSpeed(s)} className={`calm num min-h-9 rounded-[4.5px] px-2.5 text-[12px] lg:min-h-7 ${speed === s ? "bg-accent text-white" : "text-secondary hover:text-ink"}`}>{s}×</button>)}
           </div>
           {phase !== "idle" ? <Button variant="ghost" onClick={restart}>Restart</Button> : null}
-          {phase === "idle" ? (
-            <button role="switch" aria-checked={guide} onClick={() => setGuide((g) => !g)} className="calm flex min-h-9 items-center gap-2 rounded-[6px] px-2 text-[12px] text-secondary hover:text-ink lg:min-h-7">
-              <span className={`relative h-4 w-7 rounded-full transition-colors ${guide ? "bg-accent" : "bg-mute"}`}><span className={`absolute top-0.5 size-3 rounded-full bg-white transition-all ${guide ? "left-3.5" : "left-0.5"}`} /></span>
-              Show how it works
-            </button>
-          ) : null}
         </div>
         <div ref={stage} className="min-w-0 flex-1 basis-full scroll-mt-32 xl:basis-auto"><Timeline month={month} phase={phase} p={p} answered={answered} /></div>
       </RevealItem>
@@ -240,13 +202,10 @@ function DemoPage() {
         <Stat label="Rules learned" value={<Roll value={rules.length} />} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
       </RevealItem>
 
-      {/* A guide stop takes the workspace's place while the year holds. */}
-      {stop ? <Tour key={stop} stop={stop} onDone={() => setStop(null)} onSkip={leaveTour} /> : null}
-
       {/* While a room meets, the engine (paused anyway) steps aside so the conversation gets the width, and the
           question takes the right column beside it. The columns resize rather than jump; spacing lives inside the
           columns so a collapsed column leaves no gap. */}
-      <RevealItem className={`${stop ? "hidden! " : ""}grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:flex-1 xl:gap-x-0 xl:grid-rows-[minmax(0,1fr)] xl:transition-[grid-template-columns] xl:duration-700 xl:ease-brand ${asking ? "xl:grid-cols-[0px_minmax(0,1fr)_456px]" : room ? "xl:grid-cols-[0px_minmax(0,1fr)_296px]" : "xl:grid-cols-[336px_minmax(0,1fr)_296px]"}`}>
+      <RevealItem className={`grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:flex-1 xl:gap-x-0 xl:grid-rows-[minmax(0,1fr)] xl:transition-[grid-template-columns] xl:duration-700 xl:ease-brand ${asking ? "xl:grid-cols-[0px_minmax(0,1fr)_456px]" : room ? "xl:grid-cols-[0px_minmax(0,1fr)_296px]" : "xl:grid-cols-[336px_minmax(0,1fr)_296px]"}`}>
         <div inert={!!room} className={`min-w-0 xl:flex xl:min-h-0 xl:overflow-hidden xl:transition-[opacity,padding] xl:duration-500 xl:ease-brand ${room ? "xl:pointer-events-none xl:pr-0 xl:opacity-0" : "xl:pr-4"}`}>
           <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} hint={tip("stream")} onLinger={() => show("stream")} onLeave={() => hide("stream")} />
         </div>

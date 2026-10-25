@@ -2,7 +2,7 @@
 
 **Self-learning cash reconciliation for multi-store retail.**
 
-**[getfermata.tech](https://getfermata.tech)** · [step through it](https://getfermata.tech/demo?guide) · [how it works](https://getfermata.tech/#how)
+**[getfermata.tech](https://getfermata.tech)** · [live demo](https://getfermata.tech/demo) · [how it works](https://getfermata.tech/#how)
 
 Picture fourteen stores sharing five bank accounts, with money coming in from marketplaces, dealers and a music school, and systems that don't agree on any of it. Every month, a team spends weeks matching it all by hand.
 
