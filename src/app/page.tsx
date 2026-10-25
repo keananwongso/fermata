@@ -103,7 +103,7 @@ function Landing() {
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href={CONSOLE_LINK.href}>{CONSOLE_LINK.label}</LinkArrow>
           </RevealItem>
-          <RevealItem><p className="mt-8 text-[12px] text-faint">Built with a multi-store retailer in Indonesia, the first design partner.</p></RevealItem>
+          <RevealItem><p className="mt-8 text-[12px] text-faint">Modelled on a multi-store retailer in Indonesia, the first design partner.</p></RevealItem>
         </Reveal>
       </section>
     </div>

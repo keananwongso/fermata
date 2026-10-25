@@ -443,14 +443,14 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
   (60px narrower) for its six tabs and the switch. On mobile both are full width and the links fold into a menu.
   The card sticks to the top, so the header never moves when you scroll or jump to an anchor; give anchor targets
   `scroll-mt-36` so they land below it. Only the card takes the pointer (its full-width wrapper is
-  `pointer-events-none`), so controls that scroll beside it, like the demo's Pause, stay clickable. No notice bar, and
-  no "fictional" on screen: the footer's synthetic-data line is the one disclosure.
-* Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.
+  `pointer-events-none`), so controls that scroll beside it, like the demo's Pause, stay clickable. No notice bar and
+  no "fictional" on screen; the closing's "Modelled on a multi-store retailer" is the one hint.
+* Footer: navy, a large faint 𝄐, the tagline, the screens, and the music mark line.
 * Tabs live in `src/components/nav.ts`; add a screen there once and the header and footer pick it up.
 
 ## Rules that carry the product
 
-* **Every number is synthetic, and the UI says so once** (the footer). Never put real company
+* **Every number is synthetic.** The site says so quietly ("Modelled on a multi-store retailer"), never with "fictional". Never put real company
   names, people or figures on screen, in the code or in comments.
 * **Honest claims about learning.** The recording is the learning year: nothing in its generator plants a first pass
   rate, so its curve climbs only where an answer became a rule, and the same year with the rules frozen (the baseline,
