@@ -26,9 +26,9 @@ export function Providers({ children }: { children: ReactNode }) {
   // What if runs the engine offline on this machine, so it needs no Convex either.
   const consolePage = !["/", "/demo", "/pitch", "/dashboard", "/ask", "/whatif"].includes(path);
   const page = !convex && consolePage ? <ConsoleIsLocal /> : children;
-  // Ask the books on every site page: hold Control + Option, or the floating button on a phone. Not the console,
-  // and not the pitch, whose keys step the deck. Keyed by page, so moving on closes it and stops its voice.
-  const ask = ["/", "/demo", "/dashboard", "/ask"].includes(path) ? <AskOverlay key={path} fab={path !== "/ask"} /> : null;
+  // Ask the books on every page: the glass pill at the bottom centre, or hold Control + Option. Keyed by page, so
+  // moving on closes it and stops its voice.
+  const ask = <AskOverlay key={path} />;
   const inner = <RoleContext.Provider value={{ role, setRole }}><MotionConfig reducedMotion="user">{page}{ask}</MotionConfig></RoleContext.Provider>;
   // The hosted site has no Convex URL at all: the landing page and demo replay a recording, and the console
   // pages redirect to the demo (next.config.ts), so nothing on it can reach the deployment.

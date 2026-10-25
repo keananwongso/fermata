@@ -9,7 +9,7 @@ import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, LinkArrow, LinkButton, Pill } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { AskHint, openAsk } from "@/components/ask/overlay";
+import { openAsk } from "@/components/ask/overlay";
 import { Arrival, Reveal, RevealItem, Roll, scrollBoxToEnd } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
 import { Tour, type Stop } from "./tour";
@@ -297,7 +297,6 @@ function DemoPage() {
                       </span>
                       <LinkArrow onClick={() => openAsk()}>Ask the books</LinkArrow>
                     </div>
-                    <AskHint lead="Anywhere on the site, " keysOnly quiet className="mt-1" />
                     <Link href={CONSOLE_LINK.href} className="calm mt-3 inline-block text-[12px] text-faint hover:text-accent">{CONSOLE_LINK.label} →</Link>
                   </div>
                 ) : null}

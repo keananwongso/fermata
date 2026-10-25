@@ -9,7 +9,7 @@
 // voice) → done (the answer's template, with ask again). The orb is one element the whole way, so a press that
 // starts on it always ends on it.
 //
-// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books"). The site wide overlay (overlay.tsx) shares its
+// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books"). The dock on every page (overlay.tsx) shares its
 // question and answer (useAsk), its answer (answer.tsx) and its orb.
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -18,6 +18,7 @@ import { AnswerBody, AnswerHead } from "./answer";
 import { RECORDED, PER_SET, SETS, fromRecording, useAsk, type Shown } from "./useAsk";
 import { usePushToTalk, useVoiceInput } from "./pushToTalk";
 import { OrbButton } from "./orbButton";
+import { useHideDock } from "./overlay";
 import type { OrbState } from "./orb";
 
 type Phase = OrbState;
@@ -31,6 +32,8 @@ export function AskPanel({ className = "" }: { className?: string }) {
   const [set, setSet] = useState(0);
   // False on the server and where this browser cannot take a spoken question.
   const voiceIn = useVoiceInput();
+  // The panel is its own orb, so the dock's resting pill steps aside while it's on screen.
+  useHideDock();
 
   const busy = phase === "thinking" || phase === "transcribing";
   const talk = usePushToTalk({

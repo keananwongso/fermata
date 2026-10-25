@@ -16,7 +16,7 @@ All data is synthetic.
 - **Holds instead of guessing,** and agents meet on what's held.
 - **Learns from people.** Every answer becomes a backtested rule.
 - **Never writes on its own.** Agents propose, people approve, every step is recorded.
-- **Ask the books.** Hold **Control + Option** and ask out loud.
+- **Ask the books.** Hold the button at the bottom of any page and ask out loud.
 
 ## Run it yourself
 
