@@ -68,22 +68,15 @@ const typing = (el: Element | null) => !!el && (el instanceof HTMLInputElement |
 
 // The translucent graphite card that teaches the shortcut: hold the keys, then say a suggested question aloud, or
 // type instead. The popup's own card while it listens, and the landing page's lesson (`still`).
-export function CoachCard({ suggestion, status, words, onType, onClose, children, still = false }: {
-  suggestion: string; status?: ReactNode; words?: string | null; onType?: () => void; onClose?: () => void; children?: ReactNode; still?: boolean;
+export function CoachCard({ suggestion, status, words, onType, children, still = false }: {
+  suggestion: string; status?: ReactNode; words?: string | null; onType?: () => void; children?: ReactNode; still?: boolean;
 }) {
   const keyboard = useKeyboard();
   return (
     <div className="coach p-5 sm:p-6">
-      <div className="flex items-start gap-3">
-        <h2 className="min-w-0 flex-1 text-[19px] font-medium leading-snug tracking-[-0.02em] sm:text-[21px]">
-          {keyboard ? <>Hold <TalkKeys /> to {still ? "ask the books anything" : "talk"}</> : <>Hold the orb to {still ? "ask the books anything" : "talk"}</>}
-        </h2>
-        {onClose ? (
-          <button type="button" onClick={onClose} aria-label="Close" className="calm -mr-2 -mt-1.5 grid size-11 shrink-0 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 lg:size-8">
-            <X size={16} strokeWidth={1.75} />
-          </button>
-        ) : null}
-      </div>
+      <h2 className="text-[19px] font-medium leading-snug tracking-[-0.02em] sm:text-[21px]">
+        {keyboard ? <>Hold <TalkKeys /> to {still ? "ask the books anything" : "talk"}</> : <>Hold the orb to {still ? "ask the books anything" : "talk"}</>}
+      </h2>
       <p className="mt-4 text-[12.5px] text-white/65">Then say this aloud:</p>
       <blockquote className="mt-2 rounded-r-[10px] border-l-2 border-white/40 bg-white/[0.07] px-4 py-3 text-[17px] leading-snug text-white/95">&ldquo;{suggestion}&rdquo;</blockquote>
       {status ? (
@@ -209,6 +202,15 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
     : voiceIn ? "Hold the orb while you speak, then let go."
     : "This browser can't listen. Type your question instead.";
 
+  // The popup's head beside the small orb, once there is an answer: what the orb is doing, or how to ask again.
+  const headLine = state === "listening" ? "Listening · let go to ask"
+    : state === "transcribing" ? "Writing down your question"
+    : state === "thinking" ? "Reading the books"
+    : state === "speaking" ? "Answering out loud"
+    : keyboard && voiceIn ? <>Hold <TalkKeys /> or the orb to ask anything</>
+    : voiceIn ? "Hold the orb to ask anything"
+    : "Type a question below";
+
   const typeBox = (dark: boolean) => (
     <form className="mt-4 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
       <label htmlFor={`${titleId}-q`} className="sr-only">Type a question</label>
@@ -230,69 +232,71 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
           <motion.div key="ask-overlay" ref={root} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby={titleId} data-lenis-prevent
             className="fixed inset-0 z-[90] focus:outline-none"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }}>
-            {/* A soft dim over the page (a click on it closes the popup); on a phone, a full sheet of canvas. */}
-            <div aria-hidden className="absolute inset-0 bg-canvas sm:bg-night/30" />
-            <div className="scroll-quiet absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-10 pt-6 sm:pt-[clamp(24px,13vh,120px)]"
+            {/* A dim over the page, blurred so the page behind (the hero's blue grid) never competes; a click on it
+                closes the popup. On a phone, a full sheet of canvas. */}
+            <div aria-hidden className="absolute inset-0 bg-canvas sm:bg-night/55 sm:backdrop-blur-[3px]" />
+            <div className="absolute inset-0 flex items-start justify-center px-4 py-4 sm:items-center sm:py-[clamp(16px,6vh,56px)]"
               onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
               <h2 id={titleId} className="sr-only">Ask the books</h2>
               <div className="sr-only" aria-live="polite">{shown ? `${shown.question}. ${shown.answer.spoken}` : ""}</div>
-              <motion.div className="mx-auto flex w-full max-w-[680px] flex-col items-center"
+              {/* One warm tray, never taller than the window: the orb heads it, and the card under it scrolls inside. */}
+              <motion.div className={`flex max-h-full w-full flex-col overflow-hidden rounded-[16px] border border-hairline bg-warm shadow-[0_1px_2px_rgb(85_40_20/0.08),0_24px_60px_-24px_rgb(85_40_20/0.5)] ${answering ? "max-w-[680px]" : "max-w-[492px]"}`}
                 initial={{ y: 14, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.99 }} transition={{ duration: 0.35, ease: EASE }}>
-                {/* The orb on a canvas puck, so it reads over any page. */}
-                <motion.div layout transition={{ duration: 0.45, ease: EASE }} className="relative rounded-full bg-canvas p-2 shadow-[0_1px_2px_rgb(85_40_20/0.08),0_18px_40px_-18px_rgb(85_40_20/0.45)]">
-                  <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={talk.phase === "transcribing"} small={answering}
-                    className={answering ? "size-16 sm:size-20" : "size-[112px] sm:size-[136px]"} />
-                </motion.div>
-
-                <motion.div layout="position" transition={{ duration: 0.45, ease: EASE }} className="mt-6 w-full">
+                <div className={`relative flex shrink-0 items-center ${answering ? "gap-3 py-2.5 pl-3 pr-12" : "justify-center pb-3 pt-6 sm:pt-7"}`}>
+                  <motion.div layout transition={{ duration: 0.45, ease: EASE }} className="shrink-0">
+                    <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={talk.phase === "transcribing"} small={answering}
+                      className={answering ? "size-14" : "size-[112px] sm:size-[128px]"} />
+                  </motion.div>
                   {answering ? (
-                    <div className="frame w-full">
-                      <div className="card relative p-5 sm:p-6">
-                        <button type="button" onClick={close} aria-label="Close" className="calm absolute right-2 top-2 grid size-11 place-items-center rounded-full text-faint hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent lg:size-8">
-                          <X size={16} strokeWidth={1.75} />
-                        </button>
-                        <p className="pr-10 text-[13px] text-secondary"><span className="text-faint">You asked</span> <span className="text-ink">{shown!.question}</span></p>
-                        <div className="mt-2" key={shown!.question + shown!.from}>
-                          <AnswerHead shown={shown!} state={state} onPlay={() => a.play(shown!)} onStop={a.stop} onReset={() => { a.reset(); setWords(null); }} captionClass="text-[clamp(18px,2vw,22px)]" />
-                        </div>
-                        <AnimatePresence mode="wait" initial={false}>
-                          <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} />
-                        </AnimatePresence>
-                        <div className="mt-5 border-t border-hairline pt-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="eyebrow">Ask next</span>
-                            <span className="text-[12px] text-faint">{keyboard && voiceIn ? <>Or hold <TalkKeys /> and ask anything</> : voiceIn ? "Or hold the orb and ask anything" : null}</span>
-                          </div>
-                          <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
-                            {next.map((p) => (
-                              <li key={p.id} className="min-w-0">
-                                <button type="button" disabled={busy} onClick={() => { setHeard(null); setWords(null); void ask(p.question); }}
-                                  className="calm group/q flex h-full min-h-11 w-full items-center gap-3 rounded-[10px] border border-hairline bg-ground px-3.5 py-2 text-left text-[13px] leading-snug text-body hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50">
-                                  <span className="min-w-0 flex-1">{p.question}</span>
-                                  <ArrowRight aria-hidden size={14} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                          {typing_ ? typeBox(false) : (
-                            <button type="button" onClick={() => startTyping()} className="calm mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12.5px] text-link hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-0">
-                              Type instead<ArrowRight size={12} strokeWidth={1.75} aria-hidden />
-                            </button>
-                          )}
-                          <p className="mt-3 text-[12px] text-faint">Read only: it can explain the books, never change them.</p>
-                        </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-medium text-ink">Ask the books</p>
+                      <p className="truncate text-[12.5px] text-secondary">{headLine}</p>
+                    </div>
+                  ) : null}
+                  <button type="button" onClick={close} aria-label="Close" className="calm absolute right-1.5 top-1.5 grid size-11 place-items-center rounded-full text-faint hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent lg:size-9">
+                    <X size={16} strokeWidth={1.75} />
+                  </button>
+                </div>
+
+                <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
+                  {answering ? (
+                    <div className="card p-5 sm:p-6">
+                      <p className="text-[13px] text-secondary"><span className="text-faint">You asked</span> <span className="text-ink">{shown!.question}</span></p>
+                      <div className="mt-2" key={shown!.question + shown!.from}>
+                        <AnswerHead shown={shown!} state={state} onPlay={() => a.play(shown!)} onStop={a.stop} onReset={() => { a.reset(); setWords(null); }} captionClass="text-[clamp(18px,2vw,22px)]" />
+                      </div>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} />
+                      </AnimatePresence>
+                      <div className="mt-5 border-t border-hairline pt-4">
+                        <span className="eyebrow">Ask next</span>
+                        <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                          {next.map((p) => (
+                            <li key={p.id} className="min-w-0">
+                              <button type="button" disabled={busy} onClick={() => { setHeard(null); setWords(null); void ask(p.question); }}
+                                className="calm group/q flex h-full min-h-11 w-full items-center gap-3 rounded-[10px] border border-hairline bg-ground px-3.5 py-2 text-left text-[13px] leading-snug text-body hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50">
+                                <span className="min-w-0 flex-1">{p.question}</span>
+                                <ArrowRight aria-hidden size={14} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        {typing_ ? typeBox(false) : (
+                          <button type="button" onClick={() => startTyping()} className="calm mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12.5px] text-link hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-0">
+                            Type instead<ArrowRight size={12} strokeWidth={1.75} aria-hidden />
+                          </button>
+                        )}
+                        <p className="mt-3 text-[12px] text-faint">Read only: it can explain the books, never change them.</p>
                       </div>
                     </div>
                   ) : (
-                    <div className="mx-auto w-full max-w-[480px]">
-                      <CoachCard suggestion={suggestion} status={status} words={state !== "idle" || notice ? words ?? heard : null}
-                        onClose={close} onType={typing_ ? undefined : () => startTyping(suggestion)}>
-                        {typing_ ? typeBox(true) : null}
-                        <p className="mt-4 text-[11.5px] text-white/55">Read only: it can explain the books, never change them. Esc closes.</p>
-                      </CoachCard>
-                    </div>
+                    <CoachCard suggestion={suggestion} status={status} words={state !== "idle" || notice ? words ?? heard : null}
+                      onType={typing_ ? undefined : () => startTyping(suggestion)}>
+                      {typing_ ? typeBox(true) : null}
+                      <p className="mt-4 text-[11.5px] text-white/55">Read only: it can explain the books, never change them. Esc closes.</p>
+                    </CoachCard>
                   )}
-                </motion.div>
+                </div>
               </motion.div>
             </div>
           </motion.div>

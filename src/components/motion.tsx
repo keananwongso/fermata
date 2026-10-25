@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import NumberFlow, { type Format } from "@number-flow/react";
 import { AnimatePresence, motion, useInView, type Variants } from "motion/react";
-import Lenis, { type VirtualScrollData } from "lenis";
+import Lenis from "lenis";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -158,31 +158,17 @@ export function withLenis(attach: LenisAttach) {
   return () => { lenisUsers.get(attach)?.(); lenisUsers.delete(attach); };
 }
 
-// Gates see every wheel or touch movement before the page scrolls; returning false swallows it, so a section can hold
-// the page still (the pinned how-it-works). Returns a remover.
-const scrollGates = new Set<(d: VirtualScrollData) => boolean>();
-export function addScrollGate(gate: (d: VirtualScrollData) => boolean) {
-  scrollGates.add(gate);
-  return () => { scrollGates.delete(gate); };
-}
-
 export function scrollToY(y: number) {
   if (lenis) lenis.scrollTo(y);
   else window.scrollTo({ top: y, behavior: reduced() ? "auto" : "smooth" });
 }
 
-// Weighted, eased scrolling (Lenis), so the page has a little friction instead of jumping with every wheel notch.
-// Used on the landing page; off under reduced motion.
+// Eased scrolling (Lenis), so the page glides instead of jumping with every wheel notch. Plain: each notch carries the
+// page as far as it would without Lenis. Used on the landing page; off under reduced motion.
 export function SmoothScroll() {
   useEffect(() => {
     if (reduced()) return;
-    const l = new Lenis({
-      lerp: 0.085, wheelMultiplier: 0.9, autoRaf: true, anchors: { offset: -144 },
-      virtualScroll: (d) => {
-        for (const gate of scrollGates) if (!gate(d)) { if (d.event.cancelable) d.event.preventDefault(); return false; }
-        return true;
-      },
-    });
+    const l = new Lenis({ lerp: 0.1, wheelMultiplier: 1, autoRaf: true, anchors: { offset: -144 } });
     lenis = l;
     // No scrollbar on a smooth-scrolled page; the wheel, trackpad and keys still scroll it.
     const html = document.documentElement;
