@@ -148,34 +148,7 @@ The transcript of the agents' meeting on one held story.
   anywhere), which adds no header link. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
-* **How it works is pinned and continuous** (`HowItWorks` in `landing.tsx`), modelled on hyphenate.ai. On wide screens
-  the whole stage (title, card, description) is pinned while the page scrolls through a track, and everything on it is
-  tied to how far through the track you are, never swapped at a threshold, so every notch of scroll visibly moves
-  something:
-  * **The text cross-fades.** Each beat's title (left) and description (right) is clear within a fifth of a step of
-    its beat and gone by half way, rising in from below and leaving upward with a short blur.
-  * **The card is one shared-element morph** (`Morph`): one set of tiles rearranges through all five beats (day 0,
-    settle, hold and ask, learn, the record; `MORPH_BEATS`, and the page must pass exactly that many). Day 0 is the
-    policies mined from last year, each a rule with its limit, under a head with their count and January's first pass
-    share in accent (the rules learned during the year fold into it); they become the six sources of sales and five shared
-    bank accounts, joined by the navy 𝄐 mark with money flowing along the lines (`.flow`); then the case room's cast
-    seated round the amber "𝄐 One question for the CFO" pill (the tiles that are not agents fold into it); then all
-    eleven rules (learned ones' ids in `hold-ink`; each day 0 policy comes back as the same rule) under a head the pill has
-    stretched into; then the record's rows, the refused approval in `danger-tint`. Positions, sizes and corners interpolate; each tile's labels cross-fade, laid out at each
-    beat's own size so they never reflow. The tiles stand still for `HOLD` either side of a beat and move half linearly,
-    half eased between. Where each tile goes is `PATHS`; the stage measures itself and paints the tiles directly as the
-    page scrolls, so nothing re-renders. Avatars are the plain neutral tile (`PlainAvatars`).
-  * **The dots** under the card widen and turn blue as their beat comes in, and jump to it when clicked. The card opens
-    out of a strip as the section arrives (a scroll-linked `clip-path`, smoothed with a spring) and drifts up `DRIFT`
-    either side of its place through the section.
-  * **No resistance, and a magnet rather than a snap.** Each beat takes `STEP` (0.8) screen heights of plain scrolling,
-    and the last holds only a short `TAIL` (0.15) before the page lets go. Nothing acts while the page is moving, so a
-    fling passes straight through. Once a scroll has come to rest (the wheel or finger has let go and Lenis has all but
-    stopped) within `MAGNET` (0.35 of a step) of a beat, the page eases onto it over `SNAP` (0.9s); further out it stays
-    where it was left. Before the first beat and after the last nothing pulls. The old version damped scrolling inside the
-    section and glided forward to the next beat, which made the section feel long; do not bring either back.
-  * On narrow screens, and under reduced motion (no morph at all), the beats stack, each beat's own picture (`DayZero`,
-    `Sources`, `MiniRoom`, `Rules`, `RecordSample`) beside or under its text.
+* **The landing page has no How it works section.** How it works is its own page (`/how`); the hero links there.
 * **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased scrolling with Hyphenate's feel,
   `lerp` 0.1 and a wheel multiplier of 1, so a notch carries the page as far as it would natively. Use `withLenis` to
   hook into it and `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off
@@ -219,7 +192,7 @@ The transcript of the agents' meeting on one held story.
   only its boxes and lines light up, numbered, in the path's colour, with the steps listed under it; click a box for
   two or three lines of what it is underneath. On a phone the steps list and box chips stand in for the canvas),
   **How it learns** (`HowLearns`: pick any rule and see it as rule, policy and precedents, stacked) and **Proof** (three
-  figures and the learning chart). The landing page's How it works stays as the teaser.
+  figures and the learning chart). The landing page has no copy of it.
 * **The demo is one fixed screen** on wide screens (1280px and up): no heading, no footer, no page scroll. The controls
   and the months share the top row, the stats sit under them, and the workspace takes whatever height is left, each panel
   scrolling inside itself. The page marks itself `data-fixed-page`; `globals.css` hides the footer and the page scroll
