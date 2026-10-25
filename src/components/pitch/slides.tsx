@@ -10,6 +10,7 @@ import { BrandGrid, Roll } from "../motion";
 import { CLOSE_CAPTION, LearningChart } from "../learningChart";
 import { usdApprox } from "../money";
 import { Pill } from "../ui";
+import { SystemDiagram } from "../systemDiagram";
 import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
 
@@ -242,76 +243,13 @@ function Rooms() {
   );
 }
 
-// 7 · How it's built: the two paths through the system, and who may do what, read from the roles table.
-function Node({ x, y, w, title, sub, dark }: { x: number; y: number; w: number; title: string; sub: string; dark?: boolean }) {
-  return (
-    <div className={`absolute rounded-[10px] border px-6 py-4 ${dark ? "border-heading bg-heading text-white" : "border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05)]"}`} style={{ left: x, top: y, width: w }}>
-      <div className={`text-[26px] font-medium ${dark ? "text-white" : "text-ink"}`}>{title}</div>
-      <div className={`mt-0.5 text-[19px] ${dark ? "text-white/70" : "text-faint"}`}>{sub}</div>
-    </div>
-  );
-}
-const COLS = ["propose", "ask", "block", "approve", "post"] as const;
-const TABLE_ROLES: Role[] = ["engine", "investigator", "auditor", "learner", "manager", "accountant", "cfo", "gateway"];
-function Built() {
-  const arrow = (d: string, k: number, label?: [number, number, string]) => (
-    <g key={k}>
-      <motion.path d={d} fill="none" stroke="var(--color-mute)" strokeWidth="2.5" markerEnd="url(#arrowhead)"
-        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 0.5 + k * 0.15, ease: EASE_OUT }} />
-      {label ? <text x={label[0]} y={label[1]} fontSize="19" fill="var(--color-secondary)" fontFamily="var(--font-sans)">{label[2]}</text> : null}
-    </g>
-  );
+// 7 · How it's built: the architecture, with the three kinds of traffic as builds (settles, needs a person, refused).
+// The diagram reads who may do what from the roles table in code, so the old table now lives inside its tiles.
+function Built(step: number) {
   return (
     <Frame chapter="How it's built" n={7}>
-      <In><h2 className="title text-[64px]">Agents propose. People approve. Only the gateway writes.</h2></In>
-      <div className="mt-14 grid grid-cols-[1040px_1fr] gap-16">
-        <In delay={0.2}>
-          <div className="relative h-[560px]">
-            <svg aria-hidden className="absolute inset-0" width="1040" height="560">
-              <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--color-mute)" /></marker></defs>
-              {arrow("M210 50 H268", 0)}
-              {arrow("M490 50 H548", 1, [430, 22, ""])}
-              {arrow("M770 50 H828", 2)}
-              {arrow("M380 112 V288", 3, [396, 210, `the ${pct(D.heldEver / D.total, 0)} it can't explain`])}
-              {arrow("M712 430 H828", 4, [722, 414, "asks once"])}
-              {arrow("M935 380 C935 250 700 230 660 112", 5, [872, 236, "approves"])}
-            </svg>
-            <Node x={0} y={0} w={210} title="Bank lines" sub={`and ${D.channels.length} sources`} />
-            <Node x={270} y={0} w={220} title="Engine" sub="code · under a rule" />
-            <Node x={550} y={0} w={220} title="Gateway" sub="code · only writer" dark />
-            <Node x={830} y={0} w={210} title="Books" sub="and the record" />
-            <div className="absolute left-[150px] top-[290px] w-[560px] rounded-[16px] border border-hairline bg-warm p-[6px]">
-              <div className="card px-6 py-5">
-                <div className="flex items-center justify-between"><span className="text-[26px] font-medium text-ink">Case room</span><span className="text-[19px] text-faint">one per held story</span></div>
-                <div className="mt-4 flex gap-6">
-                  {(["investigator", "auditor", "learner", "manager"] as Role[]).map((r) => (
-                    <div key={r} className="flex flex-col items-center gap-2"><span style={{ zoom: 1.6 }}><Avatar who={r} size={32} /></span><span className="text-[18px] text-secondary">{r === "manager" ? "Manager" : ROLES[r].label}</span></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <Node x={830} y={380} w={210} title="Accountant or CFO" sub="people" />
-          </div>
-        </In>
-        <In delay={0.4}>
-          <table className="w-full table-fixed text-[22px]">
-            <colgroup><col className="w-[190px]" />{COLS.map((c) => <col key={c} />)}</colgroup>
-            <thead><tr>{["", ...COLS].map((c) => <th key={c} className="eyebrow pb-4 text-left text-[14px] font-normal">{c}</th>)}</tr></thead>
-            <tbody>
-              {TABLE_ROLES.map((r) => (
-                <tr key={r} className="border-t border-hairline">
-                  <td className="py-[11px] pr-4 text-ink">{r === "manager" ? "Manager" : ROLES[r].label}</td>
-                  {COLS.map((c) => {
-                    const yes = c in ROLES[r].actions;
-                    return <td key={c} className={`py-[11px] ${yes ? (c === "approve" ? "text-success" : "text-accent") : "text-mute"}`}>{yes ? (c === "approve" && r === "engine" ? "rule" : "✓") : "·"}</td>;
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-6 text-[20px] leading-snug text-faint">From the roles table in code, checked on every step. Each change and its record are written in one Convex transaction.</p>
-        </In>
-      </div>
+      <In><h2 className="title whitespace-nowrap text-[56px]">Agents propose. People approve. Only the gateway writes.</h2></In>
+      <In delay={0.2} className="mt-7"><SystemDiagram step={step} /></In>
     </Frame>
   );
 }
@@ -554,7 +492,7 @@ export const SLIDES: Slide[] = [
   { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"Most lines never need a meeting. The ones that do, the agents meet on themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns, and only lets them ask a person once."
 
 Video: cut to the demo here (/demo?tips=off: close the year, the school story's room in ${MONTH_LABELS[(D.storyA?.month ?? 1) - 1]}, the new lender's room in ${MONTH_LABELS[(D.storyB?.month ?? 6) - 1]}, the no), then hold Control + Option on the landing page and ask "What's our real cash?".` },
-  { id: "built", chapter: "How it's built", render: Built, notes: `"Under the hood, a matching engine settles what an approved rule explains. What it can't goes to a case room of Claude agents with separate permissions. Agents propose, people approve, and only the gateway writes to the books. Every change is written together with its record, in Convex."` },
+  { id: "built", chapter: "How it's built", steps: 3, render: Built, notes: `"Here's how it's built. Everything goes through one place in the middle: the system of work, in Convex. Every change, from every agent and every person, is one transition, written together with its audit row." (click) "Blue is a line that settles on its own. It syncs in from the bank, the ERP, the marketplaces and the school. The engine places it and matches it, and if an approved rule explains it, it's settled, and the gateway posts it to the books. That's most of them." (click) "Amber is a line that needs a person. The engine holds it as a story, and the agents meet on it in a case room: the Investigator, the Auditor and the Learner, on Claude, with a meeting manager in code. They ask one person one question. The answer comes back, the Learner turns it into a rule and backtests it, and from then on the engine settles that kind of line on its own." (click) "Red is an agent trying to approve something itself. The gateway refuses, and the refusal is written to the audit log. Agents propose. People approve. Only the gateway writes."`},
   { id: "stack", chapter: "How it's built", render: Stack, notes: `"It runs in three places. The site is Next.js on Vercel, and it loads the closed year with no backend. Convex is the whole backend: the engine, the case rooms, the rules and every record. And the same engine runs offline, to generate the year, simulate what-ifs, and export what the site shows."` },
   { id: "measure", chapter: "Proves every step", render: Measure, notes: `"Here's how we measure it, so you don't have to trust a number. We count per bank line. We count what's left for people. We measure learning by closing the same year with and without it. Every rule is backtested before approval, and the whole year is scored against an answer key the engine never reads."` },
   { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is the year as Fermata closed it, learning from people's answers, against the same year on the same engine with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."

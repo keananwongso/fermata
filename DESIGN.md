@@ -321,6 +321,35 @@ page's proof, the pitch's Self improving slide and the What if screen, so the co
   far as the year has run, a legend naming it "Without learning, simulated", and a 𝄐 over each month whose answer became
   a rule.
 
+## System diagram (`src/components/systemDiagram.tsx`)
+
+`SystemDiagram` is how Fermata is built, drawn as an architecture diagram: the pitch's How it's built slide, and ready for
+the landing page. It takes `step` (how many flows show, 0 to 3), `size` (`stage`: a fixed 1680×700 canvas in stage px;
+`fit`: the same canvas scaled to its container's width), `focus` and `legend`.
+
+* **One hub, everything through it.** The system of work (Convex, `transition()`) is the one `heading` navy tile in the
+  centre. Every line enters or leaves it; nothing talks to the books any other way.
+* **Zones** are `warm` trays with a 1.5px `strong` border and radius 16px, each with a small white badge (a line icon) flush
+  in its top-left corner, an eyebrow name beside it and a `faint` note on the right: Sources (left), Case room (top),
+  Engine (below the hub), People (lower left), Books (right). Claude and Ask the books are single tiles outside the zones.
+* **Tiles** are white cards (radius 10px, hairline) with a simple line icon on `well`, or the `Avatar` for a role. Avatars
+  are plain (`PlainAvatars`): colour belongs to the lines. Under each role's name is what it may do, read from `ROLES`
+  in code, never typed (this replaced the slide's old roles table).
+* **Three flows, one colour each, routed at right angles with rounded corners and arrowheads.** Parallel lines in a bundle
+  sit 24px apart and are labelled in their colour beside the bundle, with ↑ or ↓ for direction:
+  * **Accent: settles on its own.** Sources sync into the hub, the engine matches and settles it, the gateway posts it.
+  * **Hold: needs a person.** The engine holds a story, the case room meets, one question goes to the Accountant or CFO,
+    the answer comes back, and the rule returns to the engine.
+  * **Danger, dashed: refused, and recorded.** An agent tries to approve; the gateway refuses (a red ✕ on its edge) and the
+    refusal goes to the audit log.
+  * Quiet connections (Claude to the three agents, Ask the books reading from the hub) are thin `mute` lines.
+* **Motion.** A flow's lines draw in along its route (a mask over each line, so dashes survive), then a packet (a 12px
+  dot with a soft halo) travels the whole route on a loop at a calm, even speed, pausing inside each tile; the four sources'
+  packets leave so they merge on the bus. Only the newest flow moves: earlier flows recede to 30% so it reads on its own
+  (`focus`). Under reduced motion the lines are still and there are no packets.
+* **The legend** sits top right: the three flows in plain words, the upcoming ones at 35%, and one `faint` line saying
+  where the roles come from.
+
 ## Pitch deck (`src/app/pitch`, `src/components/pitch`)
 
 `/pitch` is the deck for the Devpost video and any live pitch. It is a page of the app, not a slide file, so it
@@ -339,6 +368,8 @@ uses the same tokens, type classes, components and motion as the screens it intr
   from `D` too.
 * **Self improving** is the `LearningChart` (stage size, `zoom`) under the first pass and the lines left for people,
   with and without learning: the learning year as closed, against its simulated baseline.
+* **How it's built** is the `SystemDiagram` at stage size under a one line title, with three builds: settles on its own,
+  needs a person, refused.
 * **Builds** use `In` (rise with a short blur, optional delay, or shown from a build step). Charts draw in with
   `pathLength`; numbers `Roll`.
 * App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
