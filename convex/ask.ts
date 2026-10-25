@@ -63,6 +63,14 @@ type Target = Ret<typeof AD.target>;
 
 const overview = async (ctx: ActionCtx): Promise<Overview> => await ctx.runQuery(internal.askData.overview, {});
 const heldLines = async (ctx: ActionCtx): Promise<Held> => await ctx.runQuery(internal.askData.held, {});
+// Where the held lines sit, and how many of their stories still wait on a person (an answered story can still hold
+// lines: kept held by the answer, or held later under a story already answered).
+function heldNote(amount: number, keys: (string | null | undefined)[], questions: Overview["questions"]): string {
+  const stories = [...new Set(keys)];
+  const open = stories.filter((k) => questions.some((q) => q.storyKey === k && (q.state === "NEEDS_INFO" || q.state === "PROPOSED"))).length;
+  const wait = open === 0 ? "none of them waiting on a question" : open === stories.length ? "each waiting on a person's answer" : `${open} waiting on a person's answer`;
+  return `${rpShort(amount)} in ${stories.length} ${stories.length === 1 ? "story" : "stories"}, ${wait}.`;
+}
 const share = (s: Record<string, number>) => (s.processed ?? s.total ?? 0) ? (s.firstSettled ?? 0) / (s.processed ?? s.total) : 0;
 
 function group<T>(items: T[], key: (x: T) => string, value: (x: T) => number, sub?: (x: T) => number) {
@@ -123,7 +131,7 @@ async function build(ctx: ActionCtx, name: QueryName, p: Params): Promise<Built>
         view: {
           template: "figure", title: `Still held after the close${scope ? `: ${scope}` : ""}`, label: "Bank lines held", value: items.length, unit: "count",
           compare: { label: "Held at some point in the year", value: ever, unit: "count" },
-          note: `${rpShort(amount)} in ${new Set(items.map((i) => i.storyKey)).size} stories, each waiting on a person's answer.`,
+          note: heldNote(amount, items.map((i) => i.storyKey), ov.questions),
           source: "Work items in the held state, and every story the close opened",
         },
         caption: `${num(items.length)} bank lines are still held, ${rpShort(amount)}. ${num(ever)} were held at some point in the year.`,
