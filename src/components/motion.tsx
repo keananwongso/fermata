@@ -163,19 +163,35 @@ export function scrollToY(y: number) {
   else window.scrollTo({ top: y, behavior: reduced() ? "auto" : "smooth" });
 }
 
+// Extra room above a section a link jumps to. Lenis already honours the section's own `scroll-mt-*`, which clears the
+// floating header, so this stays 0.
+const ANCHOR = 0;
+
 // Eased scrolling (Lenis), so the page glides instead of jumping with every wheel notch. Plain: each notch carries the
 // page as far as it would without Lenis. Used on the landing page; off under reduced motion.
 export function SmoothScroll() {
   useEffect(() => {
     if (reduced()) return;
-    const l = new Lenis({ lerp: 0.1, wheelMultiplier: 1, autoRaf: true, anchors: { offset: -144 } });
+    const l = new Lenis({ lerp: 0.1, wheelMultiplier: 1, autoRaf: true, anchors: { offset: -ANCHOR } });
     lenis = l;
+    // A link to a section (the header's How it works, /how's redirect) lands it under the header: on arrival once the
+    // splash has gone, and whenever the hash changes on this page.
+    const toHash = () => {
+      const el = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+      if (!el) return;
+      l.resize(); // the page was hidden under the splash, so measure it again first
+      l.scrollTo(el, { offset: -ANCHOR, force: true });
+    };
+    const arrive = location.hash ? window.setTimeout(toHash, 1100) : 0;
+    window.addEventListener("hashchange", toHash);
     // No scrollbar on a smooth-scrolled page; the wheel, trackpad and keys still scroll it.
     const html = document.documentElement;
     html.classList.add("no-scrollbar");
     html.style.scrollbarWidth = "none";
     lenisUsers.forEach((_, attach) => lenisUsers.set(attach, attach(l)));
     return () => {
+      window.clearTimeout(arrive);
+      window.removeEventListener("hashchange", toHash);
       lenisUsers.forEach((stop, attach) => { stop?.(); lenisUsers.set(attach, undefined); });
       l.destroy();
       lenis = null;

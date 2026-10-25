@@ -148,7 +148,6 @@ The transcript of the agents' meeting on one held story.
   anywhere), which adds no header link. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
-* **The landing page has no How it works section.** How it works is its own page (`/how`); the hero links there.
 * **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased scrolling with Hyphenate's feel,
   `lerp` 0.1 and a wheel multiplier of 1, so a notch carries the page as far as it would natively. Use `withLenis` to
   hook into it and `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off
@@ -163,10 +162,8 @@ The transcript of the agents' meeting on one held story.
   still coach card (a white `.card`) ("Hold ⌃ + ⌥ to ask the books anything", one question to say aloud). The hero carries
   one quiet line under its buttons, "or hold ⌃ + ⌥ to ask the books", which opens the popup ("or ask the books" on a phone).
 * **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
-  people with learning, rounded down, then both year-end counts in a quieter line); **Proof** is a white card with a
-  `Tag`, a `.title`, one paragraph, four figures (a figure can carry a `faint` sub line, the without-learning number) and
-  the `LearningChart` across the full width; **Trust** ("What if it gets one wrong?") follows the page rhythm with the
-  learned rules in a `.frame` beside it, each with its backtest and per-payment limit.
+  people with learning, rounded down, then both year-end counts in one short line); **Proof** is a white card with a
+  `Tag`, a `.title`, the first-pass climb as one figure on the right, and the `LearningChart` across the full width.
 * **US dollars beside headline rupiah** (`usdApprox` in `src/components/money.ts`): one fixed, approximate rate of
   Rp 16,000 per dollar, rounded to two significant figures, in `faint` after the figure: "−Rp 48.6bn (about $3M)". Headline
   figures only, never table rows, and never inside the product window (the dashboard stays in rupiah, as the
@@ -186,13 +183,16 @@ The transcript of the agents' meeting on one held story.
   visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
   moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
   recorded, scripted or a replay.
-* **How it works is its own page** (`/how`; the header's How it works link, the landing hero and section, and the
-  dashboard all point there). Three sections, each a `Tag` and a one-phrase `.display`: **How it's built**
-  (`HowDiagram`: eleven boxes on one canvas, quiet by default; pick a path, Day 0, Settles, Holds, Learns or Refused, and
-  only its boxes and lines light up, numbered, in the path's colour, with the steps listed under it; click a box for
-  two or three lines of what it is underneath. On a phone the steps list and box chips stand in for the canvas),
-  **How it learns** (`HowLearns`: pick any rule and see it as rule, policy and precedents, stacked) and **Proof** (three
-  figures and the learning chart). The landing page has no copy of it.
+* **How it works is a landing page section** (`#how`, right under the banner; the header's How it works link and the
+  hero scroll to it, and `/how` redirects there). A `Tag`, one `.display` line, a link to the guided demo, then two
+  parts with a `.title` each: **How it's built** (`HowDiagram`: eleven boxes on one canvas. **Whole flow** is the default:
+  once the diagram is on screen it plays every path in turn from Day 0, the playing path's tab filling as it holds;
+  pick a path, Day 0, Settles, Holds, Learns or Refused, and only its boxes and lines light up, numbered, in the path's colour,
+  with the steps listed under it; click a box for two or three lines of what it is underneath. On a phone the steps
+  list and box chips stand in for the canvas) and **How it learns** (`HowLearns`: pick any rule and see it as rule,
+  policy and precedents, stacked, with its backtest or Day 0 fit).
+* **The landing page says each thing once:** hero and product window, the banner (the year-end counts), How it works,
+  Proof (the curve and the first-pass climb only), Ask the books, then one closing with the call to action.
 * **The demo is one fixed screen** on wide screens (1280px and up): no heading, no footer, no page scroll. The controls
   and the months share the top row, the stats sit under them, and the workspace takes whatever height is left, each panel
   scrolling inside itself. The page marks itself `data-fixed-page`; `globals.css` hides the footer and the page scroll

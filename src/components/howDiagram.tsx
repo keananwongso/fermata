@@ -1,10 +1,10 @@
 "use client";
-// How it's built, for /how: eleven boxes on one quiet canvas, and five paths through them. Pick a path and only its
-// boxes and lines light up, numbered, with one phrase per step; click a box for what it is underneath. The default is
-// boxes only, so it reads in a glance and the detail is there when asked for. Drawn on a fixed canvas scaled to its
-// container; on a phone the steps list stands in for the canvas. See DESIGN.md, How it works page.
+// How it's built, for the landing page's How it works: eleven boxes on one quiet canvas, and five paths through them.
+// The whole flow plays the paths in turn; pick one and only its boxes and lines light up, numbered, with one phrase per
+// step; click a box for what it is underneath. Drawn on a fixed canvas scaled to its container; on a phone the steps
+// list stands in for the canvas. See DESIGN.md, How it works.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { motion, useInView } from "motion/react";
 import recording from "@/demo/recording.json";
 import { num } from "../../convex/lib/format";
 import { LY } from "./learningYear";
@@ -113,21 +113,45 @@ function Fit({ children }: { children: ReactNode }) {
   );
 }
 
+// How long the whole flow holds each path: its lines drawing in, then a moment to read it.
+const dwell = (p: Path) => 900 + p.steps.length * 350 + 2600;
+
 export function HowDiagram() {
+  // The whole flow plays by default: every path in turn, from Day 0, once the diagram is on screen. Picking a path stops
+  // it there; Whole flow starts it again.
+  const [auto, setAuto] = useState(true);
+  const [cycle, setCycle] = useState(0);
   const [pick, setPick] = useState(1);
   const [node, setNode] = useState<Id | null>(null);
-  const path = PATHS[pick];
+  const root = useRef<HTMLDivElement>(null);
+  const seen = useInView(root, { amount: 0.35 });
+  const shown = auto ? cycle : pick;
+  const path = PATHS[shown];
+  useEffect(() => {
+    if (!auto || !seen) return;
+    const t = setTimeout(() => setCycle((c) => (c + 1) % PATHS.length), dwell(PATHS[cycle]));
+    return () => clearTimeout(t);
+  }, [auto, seen, cycle]);
   const on = new Set(path.steps.flatMap(([a, b]) => [a, b]));
   const n = node ? NODES[node] : null;
+  const tab = (selected: boolean) => `calm flex min-h-10 items-center gap-2 rounded-[6px] px-3.5 text-[13.5px] lg:min-h-9 ${selected ? "bg-ground text-ink shadow-[0_1px_2px_rgb(85_40_20/0.08)]" : "text-secondary hover:text-ink"}`;
 
   return (
-    <div className="space-y-5">
+    <div ref={root} className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap rounded-[8px] border border-hairline bg-well p-1" role="tablist" aria-label="Paths">
+          <button role="tab" aria-selected={auto} onClick={() => { setAuto(true); setCycle(0); }} className={tab(auto)}>
+            <span aria-hidden className="text-[11px] text-accent">▶</span>Whole flow
+          </button>
           {PATHS.map((p, i) => (
-            <button key={p.key} role="tab" aria-selected={i === pick} onClick={() => setPick(i)}
-              className={`calm flex min-h-10 items-center gap-2 rounded-[6px] px-3.5 text-[13.5px] lg:min-h-9 ${i === pick ? "bg-ground text-ink shadow-[0_1px_2px_rgb(85_40_20/0.08)]" : "text-secondary hover:text-ink"}`}>
+            <button key={p.key} role="tab" aria-selected={!auto && i === pick} onClick={() => { setAuto(false); setPick(i); }}
+              className={`${tab(!auto && i === pick)} relative`}>
               <span className="size-2 rounded-full" style={{ background: INK[p.tone] }} aria-hidden />{p.label}
+              {/* While the whole flow plays, the path on screen is marked, and its bar fills as it holds. */}
+              {auto && i === shown ? (
+                <motion.span key={`bar-${cycle}`} aria-hidden className="absolute inset-x-3 bottom-1 h-[2px] origin-left rounded-full" style={{ background: INK[p.tone] }}
+                  initial={{ scaleX: 0 }} animate={{ scaleX: seen ? 1 : 0 }} transition={{ duration: seen ? dwell(p) / 1000 : 0, ease: "linear" }} />
+              ) : null}
             </button>
           ))}
         </div>

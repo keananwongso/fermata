@@ -16,7 +16,7 @@ export const REPO_URL = "https://github.com/keananwongso/fermata";
 // The site header: the guided path is the live demo (its button), the explore path is the dashboard (Ask the books
 // lives inside it). Locally the console is one more link.
 export const SITE_LINKS = [
-  { href: "/how", label: "How it works" },
+  { href: "/#how", label: "How it works" },
   { href: "/dashboard", label: "Dashboard" },
   ...(PUBLIC_SITE ? [] : [{ href: "/run", label: "Console" }]),
 ];
