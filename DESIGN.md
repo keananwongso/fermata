@@ -166,8 +166,8 @@ The transcript of the agents' meeting on one held story.
 * **US dollars beside headline rupiah** (`usdApprox` in `src/components/money.ts`): one fixed, approximate rate of
   Rp 16,000 per dollar, rounded to two significant figures, in `faint` after the figure: "−Rp 48.6bn (about $3M)". Headline
   figures only, never table rows, and never inside the product window (the dashboard stays in rupiah, as the
-  business would see it). Where Shopee and Tokopedia first appear on the page, say once what they are (Southeast
-  Asia's Amazon and eBay).
+  business would see it). Where Shopee and Tokopedia first appear on the page, say once what they are (e-commerce
+  platforms).
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
