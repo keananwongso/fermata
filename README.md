@@ -1,6 +1,6 @@
 # Fermata 𝄐
 
-**Self-learning cash reconciliation for messy, multi-system businesses.**
+**Self-learning cash reconciliation for multi-store retail.**
 
 **[getfermata.tech](https://getfermata.tech)**
 

@@ -154,12 +154,14 @@ The transcript of the agents' meeting on one held story.
   something:
   * **The text cross-fades.** Each beat's title (left) and description (right) is clear within a fifth of a step of
     its beat and gone by half way, rising in from below and leaving upward with a short blur.
-  * **The card is one shared-element morph** (`Morph`): one set of tiles rearranges through all four beats. The six
-    sources of sales and five shared bank accounts, joined by the navy 𝄐 mark with money flowing along the lines (`.flow`),
-    become the nine rules (learned ones' ids in `hold-ink`; Tokopedia merges into the marketplace rule, school receipts
-    into the correction rule) under a head the mark has stretched into; then the case room's cast seated round the amber
-    "𝄐 One question for the CFO" pill (the rules that are not agents fold into it); then the record's rows, the refused
-    approval in `danger-tint`. Positions, sizes and corners interpolate; each tile's labels cross-fade, laid out at each
+  * **The card is one shared-element morph** (`Morph`): one set of tiles rearranges through all five beats (day 0,
+    settle, hold and ask, learn, the record; `MORPH_BEATS`, and the page must pass exactly that many). Day 0 is the
+    policies mined from last year, each a rule with its limit, under a head with their count and January's first pass
+    share in accent (the rules learned during the year fold into it); they become the six sources of sales and five shared
+    bank accounts, joined by the navy 𝄐 mark with money flowing along the lines (`.flow`); then the case room's cast
+    seated round the amber "𝄐 One question for the CFO" pill (the tiles that are not agents fold into it); then all
+    eleven rules (learned ones' ids in `hold-ink`; each day 0 policy comes back as the same rule) under a head the pill has
+    stretched into; then the record's rows, the refused approval in `danger-tint`. Positions, sizes and corners interpolate; each tile's labels cross-fade, laid out at each
     beat's own size so they never reflow. The tiles stand still for `HOLD` either side of a beat and move half linearly,
     half eased between. Where each tile goes is `PATHS`; the stage measures itself and paints the tiles directly as the
     page scrolls, so nothing re-renders. Avatars are the plain neutral tile (`PlainAvatars`).
@@ -172,8 +174,8 @@ The transcript of the agents' meeting on one held story.
     stopped) within `MAGNET` (0.35 of a step) of a beat, the page eases onto it over `SNAP` (0.9s); further out it stays
     where it was left. Before the first beat and after the last nothing pulls. The old version damped scrolling inside the
     section and glided forward to the next beat, which made the section feel long; do not bring either back.
-  * On narrow screens, and under reduced motion (no morph at all), the beats stack, each beat's own picture (`Sources`,
-    `Rules`, `MiniRoom`, `RecordSample`) beside or under its text.
+  * On narrow screens, and under reduced motion (no morph at all), the beats stack, each beat's own picture (`DayZero`,
+    `Sources`, `MiniRoom`, `Rules`, `RecordSample`) beside or under its text.
 * **The landing page scrolls with Lenis** (`SmoothScroll` in `motion.tsx`): eased scrolling with Hyphenate's feel,
   `lerp` 0.1 and a wheel multiplier of 1, so a notch carries the page as far as it would natively. Use `withLenis` to
   hook into it and `scrollToY` to move the page. The landing page hides its scrollbar while Lenis runs. Both are off

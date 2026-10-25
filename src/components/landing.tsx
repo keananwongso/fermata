@@ -7,16 +7,19 @@ import { AGENT_LABEL, LinkArrow, Tag } from "./ui";
 import { scrollToY, withLenis } from "./motion";
 import recording from "@/demo/recording.json";
 import { MONTH_LABELS } from "../../convex/lib/domain";
-import { num, rpShort } from "../../convex/lib/format";
+import { num, pct, rpShort } from "../../convex/lib/format";
 import { Avatar, PlainAvatars } from "./caseRoom";
 import { LY } from "./learningYear";
 
 type Line = { date: string; memo: string; amount: number; outcome: string; rule: string | null; store: string | null; fanout: number };
-type Rule = { id: string; title: string; learnedInMonth: number; origin: string; backtest: { covered: number; precision: number } | null };
+type Rule = { id: string; title: string; learnedInMonth: number; origin: string; program: { limitIdr: number }; backtest: { covered: number; precision: number } | null };
 type Room = { key: string; month: number; title: string; count: number; live: boolean; narrated: string | null; resolution: string | null; question: { askOf: string; answer: string | null; options: { id: string; label: string }[] } | null; messages: { speaker: string; to: string; kind: string; source: string; text: string }[] };
 const R = recording as unknown as { lines: Record<string, Line[]>; rules: Rule[]; rooms: Room[]; months: { month: number; total: number }[] };
 const STORY_A = R.rooms.find((r) => r.narrated === "A") ?? null;
 const STORY_B = R.rooms.find((r) => r.narrated === "B") ?? null;
+// The policies Fermata mined from last year's matched lines before it closed a month, each fitted as a rule.
+const DAY0 = R.rules.filter((r) => !r.learnedInMonth);
+export const DAY_ZERO = DAY0.length;
 
 // The hero card: an agent closing the month of story A, line by line, until something needs a person.
 export function AgentWorking() {
@@ -58,7 +61,28 @@ export function AgentWorking() {
   );
 }
 
-// Beat 1: six sources of sales and five shared bank accounts, joined by Fermata.
+// Day 0: the policies mined from last year, each a rule with its limit, and the share of January they settle.
+const dayHead = <><span className="num text-ink">{DAY0.length}</span> policies from last year · <span className="num text-accent">{pct(LY.first, 0)}</span> on day one</>;
+export function DayZero() {
+  return (
+    <div className="frame">
+      <div className="card">
+        <div className="border-b border-hairline px-4 py-2.5 text-[12px] text-secondary">{dayHead}</div>
+        <ul className="divide-y divide-hairline">
+          {DAY0.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="num w-7 shrink-0 text-[12px] text-faint">{r.id}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-body" title={r.title}>{r.title}</span>
+              <span className="shrink-0 text-[11.5px] text-faint">up to {rpShort(r.program.limitIdr)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Settle: six sources of sales and five shared bank accounts, joined by Fermata.
 const BANKS = ["Main account", "Second account", "Third account", "School fees, virtual", "Head office"];
 const SOURCES = ["ERP and cash book", "Shopee", "Tokopedia", "Website gateway", "Dealer invoices", "School receipts"];
 export function Sources() {
@@ -78,7 +102,7 @@ export function Sources() {
   );
 }
 
-// Beat 2: rules learned from last year, then from a correction and an answer.
+// Learn: the rules from last year, then the ones learned from a correction and from answers.
 const learnedFrom = (r: Rule) => (r.learnedInMonth ? `${MONTH_LABELS[r.learnedInMonth - 1]} · from ${/correction/i.test(r.origin) ? "a correction" : "an answer"}` : "last year");
 export function Rules() {
   return (
@@ -96,7 +120,7 @@ export function Rules() {
   );
 }
 
-// Beat 3: a few lines of the real story B meeting, ending where a person comes in.
+// Hold and ask: a few lines of the real story B meeting, ending where a person comes in.
 export function MiniRoom() {
   const room = R.rooms.find((r) => r.narrated === "B") ?? R.rooms.find((r) => r.live);
   const msgs = (room?.messages ?? []).filter((m) => m.kind === "message").slice(0, 3);
@@ -120,7 +144,7 @@ export function MiniRoom() {
   );
 }
 
-// Beat 4: the record, including what was refused. Read from the run: the year's biggest fan-out, story B's answer
+// The record, including what was refused. Read from the run: the year's biggest fan-out, story B's answer
 // and what r9 then settled.
 const RECORD: { who: string; what: string; tone?: "danger" | "hold" }[] = (() => {
   const fan = (recording as unknown as { fan: Line & { channel: string } | null }).fan;
@@ -181,8 +205,8 @@ type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
 
 // How it works. On wide screens the stage (title, card, description) is pinned while the page scrolls through a track,
 // and everything on it follows the scroll continuously: the text on either side cross-fades, the dots fill, and one set
-// of tiles in the card rearranges from beat to beat (the sources and bank accounts become the rules, then the case
-// room's cast around its one question, then the record). Scrolling is plain Lenis with no resistance. When a scroll
+// of tiles in the card rearranges from beat to beat (last year's policies become the sources and bank accounts, then
+// the case room's cast around its one question, then every rule, then the record). Scrolling is plain Lenis with no resistance. When a scroll
 // comes to rest near a beat a magnet eases the page onto it; anywhere else the page stays where it was left, and a fling
 // passes straight through. On narrow screens, and under reduced motion, the beats simply stack.
 const HEAD = 104; // the sticky notice bar and header
@@ -310,35 +334,45 @@ function Dot({ at, i, label, selected, onClick }: { at: MotionValue<number>; i: 
   );
 }
 
-// ---- The morph: one set of tiles told through all four beats -------------------------------------------------------
+// ---- The morph: one set of tiles told through all five beats -------------------------------------------------------
 
-// Where each tile is on each beat. Beat 1: a source of sales or a bank account. Beat 2: a rule (its index in the
-// recording's rules), or merging into one (`into`). Beat 3: a seat in the case room (0 at the top, then clockwise), or
-// folded into the one question ("c"). Beat 4: a row of the record, or folded into its head. The paths keep a meaning
-// where they can: Shopee becomes the marketplace rule, the school's virtual account becomes the correction rule and its
-// receipts the rule for fees paid ahead, head office becomes the lender rule the CFO's answer made, and the CFO answers
-// on the record. A rule index past the year's rules folds into the head, so a shorter year still lays out.
-type Path = { b0: { src: number } | { bank: number }; b1: number | { into: number }; b2: number | "c"; b3: number | "c" };
+// The beats, in the order the page tells them. The morph needs exactly this many beats; HowItWorks falls back to each
+// beat's own picture otherwise.
+const [DAY, MONEY, ROOM, LEARN, RECORD_BEAT] = [0, 1, 2, 3, 4];
+const MORPH_BEATS = 5;
+const BEATS = [DAY, MONEY, ROOM, LEARN, RECORD_BEAT];
+
+// Where each tile is on each beat. Day 0: the policy row of its rule when that rule came from last year, or folded
+// into the head (worked out from `rule`). Money: a source of sales or a bank account. Room: a seat in the case room (0 at
+// the top, then clockwise), or folded into the one question ("c"). Learn: a rule (its index in the recording's rules),
+// or merging into one (`into`). Record: a row of the record, or folded into its head. The paths keep a meaning where
+// they can: a policy from last year stays the same rule when the rules come back, Shopee becomes the marketplace rule,
+// the school's virtual account becomes the correction rule and its receipts the rule for fees paid ahead, head office
+// becomes the lender rule the CFO's answer made, and the CFO answers on the record. A rule index past the year's rules
+// folds into the head, so a shorter year still lays out.
+type Path = { money: { src: number } | { bank: number }; room: number | "c"; rule: number | { into: number }; record: number | "c" };
 const PATHS: Path[] = [
-  { b0: { bank: 0 }, b1: 0, b2: 0, b3: 1 },
-  { b0: { src: 0 }, b1: 1, b2: 5, b3: 2 },
-  { b0: { bank: 1 }, b1: 2, b2: 1, b3: 4 },
-  { b0: { src: 1 }, b1: 3, b2: "c", b3: "c" },
-  { b0: { src: 2 }, b1: 10, b2: "c", b3: "c" },
-  { b0: { src: 3 }, b1: 4, b2: "c", b3: "c" },
-  { b0: { src: 4 }, b1: 5, b2: "c", b3: "c" },
-  { b0: { bank: 2 }, b1: 6, b2: 4, b3: 0 },
-  { b0: { bank: 3 }, b1: 7, b2: 2, b3: "c" },
-  { b0: { src: 5 }, b1: 9, b2: "c", b3: "c" },
-  { b0: { bank: 4 }, b1: 8, b2: 3, b3: 3 },
+  { money: { bank: 0 }, rule: 0, room: 0, record: 1 },
+  { money: { src: 0 }, rule: 1, room: 5, record: 2 },
+  { money: { bank: 1 }, rule: 2, room: 1, record: 4 },
+  { money: { src: 1 }, rule: 3, room: "c", record: "c" },
+  { money: { src: 2 }, rule: 10, room: "c", record: "c" },
+  { money: { src: 3 }, rule: 4, room: "c", record: "c" },
+  { money: { src: 4 }, rule: 5, room: "c", record: "c" },
+  { money: { bank: 2 }, rule: 6, room: 4, record: 0 },
+  { money: { bank: 3 }, rule: 7, room: 2, record: "c" },
+  { money: { src: 5 }, rule: 9, room: "c", record: "c" },
+  { money: { bank: 4 }, rule: 8, room: 3, record: 3 },
 ];
+// A tile's policy row on day 0, or −1 when its rule was learned during the year.
+const dayRow = (p: Path) => (typeof p.rule === "number" && R.rules[p.rule] ? DAY0.indexOf(R.rules[p.rule]) : -1);
 const SEATS = ["investigator", "auditor", "learner", "cfo", "engine", "manager"]; // from the top, clockwise
-const MORPH_BEATS = 4;
 const LEARNED = R.rules.filter((r) => r.learnedInMonth).length;
 const STAGE_LABELS = [
+  `${DAY0.length} policies mined from last year's matched lines, ${pct(LY.first, 0)} of January settled on day one`,
   `${SOURCES.length} sources of sales and ${BANKS.length} shared bank accounts, joined by Fermata`,
-  `${R.rules.length} rules, ${LEARNED} of them learned this year`,
   "The case room: the agents around one question for the CFO",
+  `${R.rules.length} rules, ${LEARNED} of them learned this year`,
   "The record: what each agent did, including an approval that was refused",
 ];
 
@@ -359,7 +393,7 @@ const weight = (q: number, b: number) => clamp01(1 - (Math.abs(q - b) - 0.05) / 
 
 function stageLayout(W: number, H: number) {
   const pad = Math.round(Math.min(W, H) * 0.06), cx = W / 2, cy = H / 2;
-  // Beat 1: the sources on the left and the bank accounts on the right, joined by the mark in the middle.
+  // Money: the sources on the left and the bank accounts on the right, joined by the mark in the middle.
   const colW = Math.min(190, (W - 2 * pad - 96) / 2), chip = 34, gap = 8;
   const column = (count: number, x: number) => {
     const top = cy - (count * chip + (count - 1) * gap) / 2 + 12;
@@ -367,15 +401,15 @@ function stageLayout(W: number, H: number) {
   };
   const src = column(SOURCES.length, pad), bank = column(BANKS.length, W - pad - colW);
   const mark: Frame = { x: cx - 32, y: cy - 20, w: 64, h: 64, o: 1, r: 14 };
-  // Beats 2 and 4: rows under a head, centred together.
+  // Day 0, Learn and Record: rows under a head, centred together.
   const list = (count: number, most: number, g: number, headW: number) => {
     const h = Math.min(most, (H - 2 * pad - 42 - (count - 1) * g) / count), top = (H - (42 + count * h + (count - 1) * g)) / 2;
     const head: Frame = { x: cx - headW / 2, y: top, w: headW, h: 28, o: 1, r: 14 };
     return { head, rows: Array.from({ length: count }, (_, k): Frame => ({ x: pad, y: top + 42 + k * (h + g), w: W - 2 * pad, h, o: 1, r: 6 })) };
   };
-  const ruleList = list(R.rules.length, 38, 6, 272), recordList = list(RECORD.length, 54, 8, 208);
+  const dayList = list(DAY0.length, 38, 6, 300), ruleList = list(R.rules.length, 38, 6, 272), recordList = list(RECORD.length, 54, 8, 208);
   const rules = ruleList.rows, record = recordList.rows;
-  // Beat 3: the cast seated round the one question.
+  // Room: the cast seated round the one question.
   const seatW = 160, seatH = 36;
   const rx = (cx - pad - seatW / 2) / Math.cos(Math.PI / 6), ry = cy - pad - seatH / 2;
   const seats = SEATS.map((_, k): Frame => {
@@ -383,45 +417,57 @@ function stageLayout(W: number, H: number) {
     return { x: cx + rx * Math.cos(a) - seatW / 2, y: cy + ry * Math.sin(a) - seatH / 2, w: seatW, h: seatH, o: 1, r: seatH / 2 };
   });
   const question: Frame = { x: cx - 122, y: cy - 18, w: 244, h: 36, o: 1, r: 18 };
-  const centre = [mark, ruleList.head, question, recordList.head];
+  const centre = [dayList.head, mark, question, ruleList.head, recordList.head];
   const tucked = (c: Frame): Frame => ({ x: c.x + c.w / 2 - 40, y: c.y + c.h / 2 - 12, w: 80, h: 24, o: 0, r: 12 });
+  // One frame per beat, in BEATS order.
   const tiles = PATHS.map((p): Frame[] => [
-    "src" in p.b0 ? src[p.b0.src] : bank[p.b0.bank],
-    typeof p.b1 === "number" ? rules[p.b1] ?? tucked(centre[1]) : { ...(rules[p.b1.into] ?? centre[1]), o: 0 },
-    p.b2 === "c" ? tucked(centre[2]) : seats[p.b2],
-    p.b3 === "c" ? tucked(centre[3]) : record[p.b3] ?? tucked(centre[3]),
+    dayList.rows[dayRow(p)] ?? tucked(centre[DAY]),
+    "src" in p.money ? src[p.money.src] : bank[p.money.bank],
+    p.room === "c" ? tucked(centre[ROOM]) : seats[p.room],
+    typeof p.rule === "number" ? rules[p.rule] ?? tucked(centre[LEARN]) : { ...(rules[p.rule.into] ?? centre[LEARN]), o: 0 },
+    p.record === "c" ? tucked(centre[RECORD_BEAT]) : record[p.record] ?? tucked(centre[RECORD_BEAT]),
   ]);
   return { pad, tiles, centre, src, bank, mark, seats, question, record };
 }
 
 // What a tile says on each beat, laid out at that beat's size so it never reflows while the tile changes shape.
 function tileContent(p: Path, b: number): { node: ReactNode; className: string } | null {
-  if (b === 0) return { className: "px-2.5", node: <span className="truncate text-[12px] text-body">{"src" in p.b0 ? SOURCES[p.b0.src] : BANKS[p.b0.bank]}</span> };
-  if (b === 1) {
-    const r = typeof p.b1 === "number" ? R.rules[p.b1] : null;
+  if (b === DAY) {
+    const r = DAY0[dayRow(p)];
+    return r ? { className: "gap-3 px-3", node: <>
+      <span className="num w-6 shrink-0 text-[12px] text-faint">{r.id}</span>
+      <span className="min-w-0 flex-1 truncate text-[12.5px] text-body">{r.title}</span>
+      <span className="shrink-0 text-[11px] text-faint">up to {rpShort(r.program.limitIdr)}</span>
+    </> } : null;
+  }
+  if (b === MONEY) return { className: "px-2.5", node: <span className="truncate text-[12px] text-body">{"src" in p.money ? SOURCES[p.money.src] : BANKS[p.money.bank]}</span> };
+  if (b === LEARN) {
+    const r = typeof p.rule === "number" ? R.rules[p.rule] : null;
     return r ? { className: "gap-3 px-3", node: <>
       <span className={`num w-6 shrink-0 text-[12px] ${r.learnedInMonth ? "font-medium text-hold-ink" : "text-faint"}`}>{r.id}</span>
       <span className="min-w-0 flex-1 truncate text-[12.5px] text-body">{r.title}</span>
       <span className="shrink-0 text-[11px] text-faint">{learnedFrom(r)}</span>
     </> } : null;
   }
-  if (b === 2) return p.b2 === "c" ? null : { className: "gap-2 pl-1.5 pr-3", node: <>
-    <Avatar who={SEATS[p.b2]} size={24} /><span className="truncate text-[12.5px] font-medium text-ink">{AGENT_LABEL[SEATS[p.b2]]}</span>
+  if (b === ROOM) return p.room === "c" ? null : { className: "gap-2 pl-1.5 pr-3", node: <>
+    <Avatar who={SEATS[p.room]} size={24} /><span className="truncate text-[12.5px] font-medium text-ink">{AGENT_LABEL[SEATS[p.room]]}</span>
   </> };
-  const row = p.b3 === "c" ? null : RECORD[p.b3];
+  const row = p.record === "c" ? null : RECORD[p.record];
   return row ? { className: "gap-2.5 px-3", node: <>
     <Avatar who={row.who} size={24} /><span className={`line-clamp-2 min-w-0 flex-1 text-[12.5px] leading-snug ${row.tone === "danger" ? "text-danger" : "text-body"}`}>{row.what}</span>
   </> } : null;
 }
 
+// The centre piece on each beat, in BEATS order: the day 0 head, the mark, the one question, the rules head, the record
+// head. Each fill shows on the beats marked 1.
 const CENTRE: ReactNode[] = [
+  <span key="day" className="text-[12px] text-secondary">{dayHead}</span>,
   <span key="mark" className="text-[34px] text-hold" style={{ fontFamily: "var(--font-music)", transform: "translateY(0.28em)" }}>𝄐</span>,
-  <span key="rules" className="text-[12px] text-secondary"><span className="num text-ink">{R.rules.length}</span> rules · <span className="text-hold-ink">{LEARNED} learned this year</span></span>,
   <span key="ask" className="font-mono text-[11px] uppercase tracking-[0.06em] text-white">𝄐 One question for the CFO</span>,
+  <span key="rules" className="text-[12px] text-secondary"><span className="num text-ink">{R.rules.length}</span> rules · <span className="text-hold-ink">{LEARNED} learned this year</span></span>,
   <span key="record" className="eyebrow">Every step, on record</span>,
 ];
-const CENTRE_FILL = [{ cls: "bg-heading", on: [1, 0, 0, 0] }, { cls: "bg-inset", on: [0, 1, 0, 1] }, { cls: "bg-hold", on: [0, 0, 1, 0] }];
-const BEATS4 = [0, 1, 2, 3];
+const CENTRE_FILL = [{ cls: "bg-heading", on: [0, 1, 0, 0, 0] }, { cls: "bg-inset", on: [1, 0, 0, 1, 1] }, { cls: "bg-hold", on: [0, 0, 1, 0, 0] }];
 
 // The card's picture on wide screens. The stage measures itself, works out every tile's place on every beat, and then
 // paints straight onto the tiles as the page scrolls, so nothing re-renders while it moves.
@@ -462,7 +508,7 @@ function Morph({ at, active }: { at: MotionValue<number>; active: number }) {
     fills.current.forEach((el, k) => { if (el) el.style.opacity = `${mixN(CENTRE_FILL[k].on, q)}`; });
     words.current.forEach((el, b) => { if (el) el.style.opacity = `${weight(q, b)}`; });
     decor.current.forEach((el, b) => { if (el) el.style.opacity = `${clamp01(1 - Math.abs(q - b) * 2.5)}`; });
-    if (danger.current) danger.current.style.opacity = `${weight(q, 3)}`;
+    if (danger.current) danger.current.style.opacity = `${weight(q, RECORD_BEAT)}`;
   }, [L]);
   useMotionValueEvent(at, "change", paint);
   useEffect(() => paint(at.get()), [paint, at]);
@@ -475,8 +521,8 @@ function Morph({ at, active }: { at: MotionValue<number>; active: number }) {
   return (
     <div ref={stage} role="img" aria-label={STAGE_LABELS[active]} className="absolute inset-0">
       {L ? <>
-        {/* Beat 1: money flowing from each source, through Fermata, into the shared accounts, under the column heads. */}
-        <div ref={(el) => { decor.current[0] = el; }} aria-hidden className="pointer-events-none absolute inset-0 opacity-0">
+        {/* Money: flowing from each source, through Fermata, into the shared accounts, under the column heads. */}
+        <div ref={(el) => { decor.current[MONEY] = el; }} aria-hidden className="pointer-events-none absolute inset-0 opacity-0">
           <svg className="absolute inset-0 h-full w-full" fill="none">
             {[...L.src.map((f, k, all) => flow(f.x + f.w, f.y + f.h / 2, L.mark.x, port(k, all.length))), ...L.bank.map((f, k, all) => flow(L.mark.x + L.mark.w, port(k, all.length), f.x, f.y + f.h / 2))].map((d, k) => (
               <g key={k}><path d={d} stroke="var(--color-strong)" /><path d={d} stroke="var(--color-accent)" strokeOpacity={0.55} className="flow" /></g>
@@ -485,22 +531,22 @@ function Morph({ at, active }: { at: MotionValue<number>; active: number }) {
           <div className="eyebrow absolute" style={{ left: L.src[0].x, top: L.src[0].y - 22 }}>{SOURCES.length} sources of sales</div>
           <div className="eyebrow absolute" style={{ left: L.bank[0].x, top: L.bank[0].y - 22 }}>{BANKS.length} bank accounts</div>
         </div>
-        {/* Beat 3: each seat speaks to the one question. */}
-        <svg ref={(el) => { decor.current[2] = el; }} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-0" fill="none">
+        {/* Room: each seat speaks to the one question. */}
+        <svg ref={(el) => { decor.current[ROOM] = el; }} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-0" fill="none">
           {L.seats.map((f, k) => { const [x, y] = mid(f), [qx, qy] = mid(L.question); return <line key={k} x1={x} y1={y} x2={qx} y2={qy} stroke="var(--color-strong)" strokeDasharray="3 5" />; })}
         </svg>
-        {/* Beat 4: one thread through the record, in order. */}
-        <svg ref={(el) => { decor.current[3] = el; }} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-0" fill="none">
+        {/* Record: one thread through the record, in order. */}
+        <svg ref={(el) => { decor.current[RECORD_BEAT] = el; }} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-0" fill="none">
           <line x1={L.pad + 24} y1={mid(L.record[0])[1]} x2={L.pad + 24} y2={mid(L.record[L.record.length - 1])[1]} stroke="var(--color-strong)" />
         </svg>
 
         {PATHS.map((p, k) => (
           <div key={k} ref={(el) => { tiles.current[k] = el; }} aria-hidden className="absolute left-0 top-0 overflow-hidden border border-hairline bg-ground opacity-0 shadow-[0_1px_1px_rgb(85_40_20/0.04)]">
-            {p.b3 !== "c" && RECORD[p.b3]?.tone === "danger" ? <div ref={danger} className="absolute inset-0 bg-danger-tint/60 opacity-0" /> : null}
-            {BEATS4.map((b) => {
+            {p.record !== "c" && RECORD[p.record]?.tone === "danger" ? <div ref={danger} className="absolute inset-0 bg-danger-tint/60 opacity-0" /> : null}
+            {BEATS.map((b) => {
               const c = tileContent(p, b), f = L.tiles[k][b];
               return (
-                <div key={b} ref={(el) => { labels.current[k * MORPH_BEATS + b] = el; }} className={`absolute left-0 top-0 flex items-center opacity-0 ${b < 3 ? "whitespace-nowrap" : ""} ${c?.className ?? ""}`} style={{ width: f.w - 2, height: f.h - 2 }}>
+                <div key={b} ref={(el) => { labels.current[k * MORPH_BEATS + b] = el; }} className={`absolute left-0 top-0 flex items-center opacity-0 ${b !== RECORD_BEAT ? "whitespace-nowrap" : ""} ${c?.className ?? ""}`} style={{ width: f.w - 2, height: f.h - 2 }}>
                   {c?.node}
                 </div>
               );
