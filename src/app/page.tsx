@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
 import { HowItWorks, LearnedRules, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
-import { LearningChart } from "@/components/learningChart";
+import { CLOSE_CAPTION, LearningChart } from "@/components/learningChart";
 import { LY } from "@/components/learningYear";
 import { usdApprox } from "@/components/money";
 import recording from "@/demo/recording.json";
@@ -13,6 +13,9 @@ import { Dashboard } from "@/components/dashboard";
 
 // What the books claimed for the head office account on 31 December, read from the recording.
 const HEAD_OFFICE = (recording as unknown as { headOffice: number }).headOffice;
+// The questions a visitor answers in the demo: one per case room the agents meet live.
+const LIVE_ROOMS = (recording as unknown as { rooms: { live: boolean }[] }).rooms.filter((r) => r.live).length;
+const COUNT_WORD = ["no", "one", "two", "three", "four", "five", "six"];
 const signedRp = (n: number) => (n < 0 ? `−${rpShort(-n)}` : rpShort(n));
 
 export default function Page() {
@@ -49,12 +52,13 @@ function Landing() {
         </div>
       </section>
 
-      {/* Banner: the learning claim, from the same year closed twice on the same engine (src/demo/learning.json). */}
+      {/* Banner: the learning claim: the year as Fermata closed it against the same year with the rules frozen
+          (src/demo/recording.json, through learningYear.ts). */}
       <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
         <Reveal className="relative" stagger={0.1}>
           <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={LY.fewer} suffix="×" /> fewer lines left for people, once Fermata learns from their answers.</p></RevealItem>
           <RevealItem><p className="mx-auto mt-6 max-w-[600px] text-[15px] leading-relaxed text-secondary">
-            The same year, simulated on the same engine: <span className="num text-ink">{num(LY.heldBaseline)}</span> lines still held at year end with the rules frozen, <span className="num text-ink">{num(LY.heldLearned)}</span> with learning.
+            <span className="num text-ink">{num(LY.heldLearned)}</span> lines left for people at year end as Fermata closed it, learning from their answers. The same year on the same engine with the rules frozen at onboarding, simulated: <span className="num text-ink">{num(LY.heldBaseline)}</span>.
           </p></RevealItem>
         </Reveal>
       </section>
@@ -81,15 +85,15 @@ function Landing() {
         ]} />
       </section>
 
-      {/* Proof: the learning claim is one year closed twice on the same engine, learning and with the rules frozen. Every
-          figure here is read from src/demo/learning.json, never from the recorded year the demo plays. */}
+      {/* Proof: the learning claim is the year as Fermata closed it, learning, against the same year on the same engine with
+          the rules frozen (simulated). Every figure here is read from the recording through learningYear.ts. */}
       <Reveal className="rounded-[16px] border border-hairline bg-ground p-6 lg:p-10" stagger={0.12}>
         <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12">
           <div>
             <RevealItem><Tag tone="neutral">Proof</Tag></RevealItem>
             <RevealItem><h2 className="title mt-4 text-[clamp(26px,2.6vw,36px)]">Learning is what keeps the work small.</h2></RevealItem>
             <RevealItem><p className="mt-4 max-w-[460px] text-[15px] leading-relaxed text-body">
-              A simulated year of the mess that keeps coming back, closed twice on the same engine: once learning from people&apos;s answers, once with the rules frozen at onboarding.
+              A year of the mess that keeps coming back, closed by Fermata learning from people&apos;s answers, against the same year on the same engine with the rules frozen at onboarding, simulated.
             </p></RevealItem>
           </div>
           <RevealItem className="grid grid-cols-2 gap-6 self-end">
@@ -99,7 +103,7 @@ function Landing() {
             <Proof figure={<Roll value={LY.total} />} className="col-span-2 sm:col-span-1" label="bank lines in the year" />
           </RevealItem>
         </div>
-        <RevealItem className="mt-10"><LearningChart learned={LY.learned} baseline={LY.baseline} /></RevealItem>
+        <RevealItem className="mt-10"><LearningChart learned={LY.learned} baseline={LY.baseline} caption={CLOSE_CAPTION} /></RevealItem>
       </Reveal>
 
       {/* Trust: what keeps a mistake small. */}
@@ -118,7 +122,7 @@ function Landing() {
       {/* Closing */}
       <Reveal className="pb-6 text-center" stagger={0.1}>
         <RevealItem><h2 className="display mx-auto max-w-[760px] text-[clamp(32px,4.6vw,56px)]">Watch a year close in two minutes.</h2></RevealItem>
-        <RevealItem><p className="mx-auto mt-4 max-w-[520px] text-[15px] text-secondary">Watch the agents work through a full year. You answer the two questions they bring you.</p></RevealItem>
+        <RevealItem><p className="mx-auto mt-4 max-w-[520px] text-[15px] text-secondary">Watch the agents work through a full year. You answer the {COUNT_WORD[LIVE_ROOMS] ?? num(LIVE_ROOMS)} {LIVE_ROOMS === 1 ? "question" : "questions"} they bring you.</p></RevealItem>
         <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <LinkButton href="/demo">Watch the live demo</LinkButton>
           <LinkArrow href={CONSOLE_LINK.href}>{CONSOLE_LINK.label}</LinkArrow>

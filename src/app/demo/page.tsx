@@ -28,6 +28,7 @@ type Rec = {
   months: { month: number; total: number; firstSettled: number; waiting: number; held: number; settledLater: number; released: number }[]; yearEnd: number;
   lines: Record<string, Line[]>; fan: Line | null; rooms: Room[];
   rules: { id: string; title: string; origin: string; learnedInMonth: number; real: boolean; state: string }[];
+  baseline: { months: { month: number; total: number; firstSettled: number }[] };
 };
 
 const R = recording as unknown as Rec;
@@ -35,6 +36,11 @@ const asChat = (m: RecMsg, extra: Partial<ChatMessage>): ChatMessage => ({ ...m,
 const MONTH_MS = 3200;
 const LIVE = R.rooms.filter((r) => r.live).sort((a, b) => a.month - b.month);
 const cum = (upTo: number, f: (m: Rec["months"][number]) => number) => R.months.filter((m) => m.month <= upTo).reduce((a, m) => a + f(m), 0);
+// Months in which an answer became a rule. A month with a live room teaches its rule once you answer there; the
+// others, once their close is over.
+const LEARNED_MONTHS = [...new Set(R.rules.filter((r) => r.learnedInMonth > 0).map((r) => r.learnedInMonth))];
+// What people decided in the year: one answer per case room, one approval per rule learned from an answer.
+const DECISIONS = R.rooms.filter((r) => r.question?.answer).length + R.rules.filter((r) => r.learnedInMonth > 0).length;
 
 type Phase = "idle" | "running" | "meeting" | "question" | "after" | "done";
 
@@ -137,7 +143,7 @@ function DemoPage() {
   const f = phase === "running" ? p : phase === "idle" ? 0 : 1;
   const processed = phase === "idle" ? 0 : Math.round(cum(month - 1, (x) => x.total) + m.total * f);
   const settled = phase === "idle" ? 0 : Math.round(cum(month - 1, (x) => x.firstSettled + x.settledLater + x.released) + (m.firstSettled + m.settledLater) * f
-    + (phase === "after" || phase === "done" ? m.released : 0) + (phase === "done" ? R.yearEnd : 0));
+    + (phase === "after" || phase === "done" || (!LIVE.some((r) => r.month === month) && f >= 1) ? m.released : 0) + (phase === "done" ? R.yearEnd : 0));
   const roomsOpen = R.rooms.filter((r) => r.month < month || (r.month === month && (phase !== "running" || p > 0.6)));
   const visibleRooms = phase === "idle" ? [] : roomsOpen;
   // The engine stream runs on across months and shows at most one new line every 250ms, sampled evenly from the month's
@@ -150,7 +156,8 @@ function DemoPage() {
   const now = sampled(month);
   const stream = phase === "idle" ? [] : [...(month > 1 ? sampled(month - 1) : []), ...now.slice(0, Math.max(1, Math.ceil(now.length * f)))].slice(-9).reverse();
   const curve = R.months.filter((x) => phase !== "idle" && (x.month < month || (x.month === month && f >= 1)));
-  const rules = R.rules.filter((r) => r.learnedInMonth === 0 || answered.some((k) => R.rooms.find((x) => x.key === k)?.month === r.learnedInMonth));
+  const closed = (mo: number) => phase === "done" || mo < month || (mo === month && phase !== "idle" && (LIVE.some((r) => r.month === mo) ? answered.some((k) => LIVE.find((x) => x.key === k)?.month === mo) : f >= 1));
+  const rules = R.rules.filter((r) => r.learnedInMonth === 0 || (phase !== "idle" && closed(r.learnedInMonth)));
 
   return (
     <Reveal className="space-y-5" stagger={0.08}>
@@ -159,7 +166,7 @@ function DemoPage() {
           <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill></div>
           <h1 className="display mt-3 text-[clamp(30px,3.6vw,44px)]">Watch Fermata close a year</h1>
           <p className="mt-2 max-w-[640px] text-[13.5px] text-secondary">
-            104,820 bank lines across six channels and five shared accounts. The engine settles what it can explain; when it can&apos;t, the agents meet, and you answer the one question they bring you. Every message from the agents is real Claude output.
+            {num(R.total)} bank lines across six channels and five shared accounts. The engine settles what it can explain; when it can&apos;t, the agents meet, and you answer the one question they bring you. Every message from the agents is real Claude output.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -207,7 +214,7 @@ function DemoPage() {
                 <div ref={end} />
               </div>
             </motion.div>
-          ) : <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto">{line ? <Inspector line={line} onClose={() => setLine(null)} /> : <Curve curve={curve} answered={answered} phase={phase} />}</div>}
+          ) : <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto">{line ? <Inspector line={line} onClose={() => setLine(null)} /> : <Curve curve={curve} learnedIn={LEARNED_MONTHS.filter(closed)} phase={phase} />}</div>}
         </section>
         <div className="flex min-w-0 flex-col lg:col-span-2 xl:col-span-1 xl:min-h-0 xl:pl-4">
           <AnimatePresence mode="wait" initial={false}>
@@ -235,7 +242,7 @@ function DemoPage() {
                 {/* The hand-off: the guided path ends in the closed books, where the visitor explores on their own. */}
                 {phase === "done" ? (
                   <div className="enter mt-4 border-t border-hairline pt-4">
-                    <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} lines settled, {num(R.rooms.length)} rooms, about 40 decisions for people. Explore the closed books, or ask them anything.</p>
+                    <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} lines settled by rule, {num(R.rooms.length)} rooms, {num(DECISIONS)} decisions for people. Explore the closed books, or ask them anything.</p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                       <span className="relative">
                         <LinkButton href="/dashboard">Explore the closed books</LinkButton>
@@ -326,12 +333,13 @@ function Timeline({ month, phase, p, answered }: { month: number; phase: Phase; 
         const done = phase !== "idle" && (mo < month || (mo === month && (phase === "done" || (phase === "running" && p >= 1))));
         const cur = phase !== "idle" && phase !== "done" && mo === month;
         const live = LIVE.find((r) => r.month === mo);
+        const taught = !live && LEARNED_MONTHS.includes(mo);
         return (
           <div key={label} className="min-w-0">
             <div className="h-1.5 overflow-hidden rounded-full bg-inset"><div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: done ? "100%" : cur ? `${(phase === "running" ? p : 1) * 100}%` : "0%" }} /></div>
             <div className={`relative mx-auto mt-1 flex w-fit items-center justify-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${cur ? "font-medium text-accent" : "text-faint"}`}>
               {cur ? <motion.span layoutId="demo-month" aria-hidden className="absolute inset-0 -z-10 rounded-full bg-accent-tint" transition={{ type: "spring", stiffness: 380, damping: 32 }} /> : null}
-              {label}{live ? <span className={answered.includes(live.key) ? "text-success" : "text-hold"} style={{ fontFamily: "var(--font-music)" }} aria-label={`story ${live.narrated}`}>𝄐</span> : null}
+              {label}{live ? <span className={answered.includes(live.key) ? "text-success" : "text-hold"} style={{ fontFamily: "var(--font-music)" }} aria-label={`story ${live.narrated}`}>𝄐</span> : taught ? <span className={done ? "text-success" : "text-hold"} style={{ fontFamily: "var(--font-music)" }} aria-label="an answer became a rule">𝄐</span> : null}
             </div>
           </div>
         );
@@ -410,23 +418,31 @@ function Inspector({ line, onClose }: { line: Line; onClose: () => void }) {
   );
 }
 
-function Curve({ curve, answered, phase }: { curve: Rec["months"]; answered: string[]; phase: Phase }) {
+function Curve({ curve, learnedIn, phase }: { curve: Rec["months"]; learnedIn: number[]; phase: Phase }) {
   const W = 560, H = 220, L = 36, Rr = 12, T = 18, B = 26, lo = 0.75;
   const x = (mo: number) => L + ((mo - 1) / 11) * (W - L - Rr);
   const y = (r: number) => T + (1 - (r - lo) / (1 - lo)) * (H - T - B);
   const pts = curve.map((c) => ({ m: c.month, r: c.firstSettled / c.total }));
   const path = pts.map((q, i) => `${i ? "L" : "M"}${x(q.m).toFixed(1)},${y(q.r).toFixed(1)}`).join(" ");
+  // The same year with the rules frozen at onboarding, simulated on the same engine, drawn as far as the year has run.
+  const base = R.baseline.months.filter((b) => pts.some((q) => q.m === b.month)).map((b) => ({ m: b.month, r: b.firstSettled / b.total }));
+  const basePath = base.map((q, i) => `${i ? "L" : "M"}${x(q.m).toFixed(1)},${y(q.r).toFixed(1)}`).join(" ");
   return (
     <div className="p-4 lg:p-5">
       <div className="flex items-baseline justify-between"><h2 className="title text-[20px]">Settled on its own</h2><span className="text-[11.5px] text-faint">first pass, by month</span></div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" role="img" aria-label="Share settled automatically on first pass by month">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-secondary">
+        <span className="flex items-center gap-1.5"><svg width="18" height="6" aria-hidden><line x1="0" x2="18" y1="3" y2="3" stroke="var(--color-accent)" strokeWidth="1.75" /></svg>With learning</span>
+        <span className="flex items-center gap-1.5"><svg width="18" height="6" aria-hidden><line x1="0" x2="18" y1="3" y2="3" stroke="var(--color-mute)" strokeWidth="1.5" strokeDasharray="3 3" /></svg>Without learning, simulated</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full" role="img" aria-label="Share settled automatically on first pass by month, with learning and without">
         {[0.75, 0.8, 0.85, 0.9, 0.95, 1].map((g) => <g key={g}><line x1={L} x2={W - Rr} y1={y(g)} y2={y(g)} stroke="var(--color-hairline)" strokeWidth={0.6} strokeDasharray={g === 0.75 ? "" : "2 4"} /><text x={L - 6} y={y(g) + 4} textAnchor="end" fontSize="10" fill="var(--color-faint)">{Math.round(g * 100)}%</text></g>)}
         {MONTH_LABELS.map((mo, i) => <text key={mo} x={x(i + 1)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--color-faint)">{mo[0]}</text>)}
+        {basePath ? <path d={basePath} fill="none" stroke="var(--color-mute)" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" /> : null}
         {path ? <path d={path} fill="none" stroke="var(--color-accent)" strokeWidth={1.75} strokeLinejoin="round" /> : null}
         {pts.map((q) => <g key={q.m}><circle cx={x(q.m)} cy={y(q.r)} r={3.5} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth={1.75} /><text x={x(q.m)} y={y(q.r) + 16} textAnchor="middle" fontSize="10" fill="var(--color-secondary)">{(q.r * 100).toFixed(0)}</text></g>)}
-        {LIVE.filter((r) => answered.includes(r.key)).map((r) => { const q = pts.find((z) => z.m === r.month); return q ? <text key={r.key} x={x(r.month)} y={y(q.r) - 10} textAnchor="middle" fontSize="15" fill="var(--color-hold)" style={{ fontFamily: "var(--font-music)" }}>𝄐</text> : null; })}
+        {learnedIn.map((mo) => { const q = pts.find((z) => z.m === mo); return q ? <text key={mo} x={x(mo)} y={y(q.r) - 10} textAnchor="middle" fontSize="15" fill="var(--color-hold)" style={{ fontFamily: "var(--font-music)" }}>𝄐</text> : null; })}
       </svg>
-      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year to watch each month settle." : "Each 𝄐 is an answer you gave that became a rule."}</p>
+      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year to watch each month settle." : "Each 𝄐 is an answer that became a rule. Without learning: the same year on the same engine with the rules frozen at onboarding, simulated."}</p>
     </div>
   );
 }

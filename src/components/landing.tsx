@@ -13,12 +13,15 @@ import { LY } from "./learningYear";
 
 type Line = { date: string; memo: string; amount: number; outcome: string; rule: string | null; store: string | null; fanout: number };
 type Rule = { id: string; title: string; learnedInMonth: number; origin: string; backtest: { covered: number; precision: number } | null };
-type Room = { key: string; month: number; live: boolean; narrated: string | null; messages: { speaker: string; to: string; kind: string; source: string; text: string }[] };
-const R = recording as unknown as { lines: Record<string, Line[]>; rules: Rule[]; rooms: Room[] };
+type Room = { key: string; month: number; title: string; count: number; live: boolean; narrated: string | null; resolution: string | null; question: { askOf: string; answer: string | null; options: { id: string; label: string }[] } | null; messages: { speaker: string; to: string; kind: string; source: string; text: string }[] };
+const R = recording as unknown as { lines: Record<string, Line[]>; rules: Rule[]; rooms: Room[]; months: { month: number; total: number }[] };
+const STORY_A = R.rooms.find((r) => r.narrated === "A") ?? null;
+const STORY_B = R.rooms.find((r) => r.narrated === "B") ?? null;
 
-// The hero card: an agent closing March, line by line, until something needs a person.
+// The hero card: an agent closing the month of story A, line by line, until something needs a person.
 export function AgentWorking() {
-  const lines = (R.lines["3"] ?? []).filter((l) => l.outcome === "settled").slice(0, 5);
+  const mo = STORY_A?.month ?? 1;
+  const lines = (R.lines[String(mo)] ?? []).filter((l) => l.outcome === "settled").slice(0, 5);
   const [step, setStep] = useState(0);
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -28,10 +31,10 @@ export function AgentWorking() {
   }, [lines.length]);
   const held = step > lines.length;
   return (
-    <div className="card overflow-hidden" aria-label="An agent closing March">
+    <div className="card overflow-hidden" aria-label={`An agent closing ${MONTH_LABELS[mo - 1]}`}>
       <div className="flex items-center gap-2 border-b border-hairline bg-well px-4 py-3 text-[13px] text-secondary">
         <span className={`h-2 w-2 rounded-full ${held ? "bg-hold" : "bg-accent breathe-dot"}`} />
-        Closing March · {num(8320)} bank lines
+        Closing {MONTH_LABELS[mo - 1]} · {num(R.months[mo - 1]?.total ?? 0)} bank lines
       </div>
       <ul className="space-y-1.5 p-4">
         {lines.map((l, i) => (
@@ -43,7 +46,7 @@ export function AgentWorking() {
         ))}
         <li className={`flex items-center gap-3 rounded-[6px] border px-2.5 py-2 transition-all duration-300 ${held ? "border-hold-tint-strong bg-hold-tint/50 opacity-100" : "border-transparent opacity-25"}`}>
           <span className={`h-5 w-5 shrink-0 rounded-full border-2 ${held ? "animate-spin border-hold border-t-transparent" : "border-strong"}`} style={{ animationDuration: "1.4s" }} />
-          <span className="min-w-0 flex-1 truncate text-[12.5px] text-body">1,186 school fees: bank and receipts disagree</span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] text-body">{num(STORY_A?.count ?? 0)} school fees: bank and receipts disagree</span>
         </li>
       </ul>
       <div className="flex justify-center pb-4">
@@ -118,12 +121,16 @@ export function MiniRoom() {
 
 // Beat 4: the record, including what was refused.
 export function RecordSample() {
+  // Read from the run: the year's biggest fan-out, story B's answer and what r9 then settled.
+  const fan = (recording as unknown as { fan: Line & { channel: string } | null }).fan;
+  const answer = STORY_B?.question?.options.find((o) => o.id === STORY_B.question?.answer)?.label;
+  const r9 = (recording as unknown as { learnedRules: { id: string; released: number }[] }).learnedRules.find((r) => r.id === "r9");
   const rows: { who: string; what: string; tone?: "danger" | "hold" }[] = [
-    { who: "engine", what: "Settled a Shopee payout against 840 orders under rule r4, approved by the CFO" },
+    ...(fan ? [{ who: "engine", what: `Settled a payout of ${rpShort(fan.amount)} against ${num(fan.fanout)} records under rule ${fan.rule}, approved by the CFO` }] : []),
     { who: "investigator", what: "Tried to approve its own story. Blocked in code: Investigator may not approve", tone: "danger" },
     { who: "manager", what: "People are asked once, after the Auditor has checked. Floor goes to the Auditor" },
-    { who: "cfo", what: "Answered Yes on FIN_Z, confirmed back; r9 approved", tone: "hold" },
-    { who: "gateway", what: "Posted 738 payouts to the books under r9" },
+    ...(STORY_B && answer ? [{ who: "cfo", what: `Answered "${answer}" on ${STORY_B.title.replace(/^Payouts from /, "").replace(/, a lender we do not know$/, "")}, confirmed back; r9 approved`, tone: "hold" as const }] : []),
+    ...(r9 ? [{ who: "engine", what: `Re-ran the held payouts under r9: ${num(r9.released)} settled and posted` }] : []),
   ];
   return (
     <div className="frame">
@@ -144,14 +151,14 @@ export function LearnedRules() {
   return (
     <div className="frame">
       <div className="card">
-        <div className="eyebrow border-b border-hairline px-4 py-2.5">Rules learned in the simulated year</div>
+        <div className="eyebrow border-b border-hairline px-4 py-2.5">Rules learned from answers this year</div>
         <ul className="divide-y divide-hairline">
           {LY.rules.map((r) => (
             <li key={`${r.id}v${r.version}`} className="px-4 py-3">
               <div className="flex items-baseline gap-3">
                 <span className="num w-7 shrink-0 text-[12px] font-medium text-hold-ink">{r.id}</span>
                 <span className="min-w-0 flex-1 truncate text-[13px] text-body" title={r.title}>{r.title}</span>
-                <span className="shrink-0 text-[11.5px] text-faint">{MONTH_LABELS[r.month - 1]}</span>
+                <span className="shrink-0 text-[11.5px] text-faint">{MONTH_LABELS[r.month - 1]} · {r.by === "claude" ? "Claude" : r.by === "code" ? "Code" : "Scripted"}</span>
               </div>
               <div className="mt-1 pl-10 text-[11.5px] leading-snug text-secondary">
                 Backtest <span className="num text-ink">{num(r.backtest.covered - r.backtest.wrong)}</span> of <span className="num">{num(r.backtest.covered)}</span> right · <span className="whitespace-nowrap">nothing over <span className="num">{rpShort(r.program.limitIdr)}</span></span> a payment
