@@ -59,8 +59,10 @@ function fromAnswer(): Example | null {
 
 const EXAMPLES = [fromBooks(), fromAnswer()].filter((e): e is Example => !!e);
 
-export function HowLearns() {
-  const [i, setI] = useState(0);
+// `example`, when given, picks the example from outside (the pitch steps between them).
+export function HowLearns({ example }: { example?: number } = {}) {
+  const [picked, setI] = useState(0);
+  const i = example ?? picked;
   const ex = EXAMPLES[i];
   if (!ex) return null;
   return (

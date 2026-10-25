@@ -116,7 +116,8 @@ function Fit({ children }: { children: ReactNode }) {
 // How long the whole flow holds each path: its lines drawing in, then a moment to read it.
 const dwell = (p: Path) => 900 + p.steps.length * 350 + 2600;
 
-export function HowDiagram() {
+// `path`, when given, picks the path from outside (the pitch steps through them with the arrow keys).
+export function HowDiagram({ path: forced }: { path?: number } = {}) {
   // The whole flow plays by default: every path in turn, from Day 0, once the diagram is on screen. Picking a path stops
   // it there; Whole flow starts it again.
   const [auto, setAuto] = useState(true);
@@ -125,13 +126,13 @@ export function HowDiagram() {
   const [node, setNode] = useState<Id | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const seen = useInView(root, { amount: 0.35 });
-  const shown = auto ? cycle : pick;
+  const shown = forced ?? (auto ? cycle : pick);
   const path = PATHS[shown];
   useEffect(() => {
-    if (!auto || !seen) return;
+    if (forced !== undefined || !auto || !seen) return;
     const t = setTimeout(() => setCycle((c) => (c + 1) % PATHS.length), dwell(PATHS[cycle]));
     return () => clearTimeout(t);
-  }, [auto, seen, cycle]);
+  }, [forced, auto, seen, cycle]);
   const on = new Set(path.steps.flatMap(([a, b]) => [a, b]));
   const n = node ? NODES[node] : null;
   const tab = (selected: boolean) => `calm flex min-h-10 items-center gap-2 rounded-[6px] px-3.5 text-[13.5px] lg:min-h-9 ${selected ? "bg-ground text-ink shadow-[0_1px_2px_rgb(85_40_20/0.08)]" : "text-secondary hover:text-ink"}`;
@@ -140,15 +141,15 @@ export function HowDiagram() {
     <div ref={root} className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap rounded-[8px] border border-hairline bg-well p-1" role="tablist" aria-label="Paths">
-          <button role="tab" aria-selected={auto} onClick={() => { setAuto(true); setCycle(0); }} className={tab(auto)}>
+          <button role="tab" aria-selected={forced === undefined && auto} onClick={() => { setAuto(true); setCycle(0); }} className={tab(forced === undefined && auto)}>
             <span aria-hidden className="text-[11px] text-accent">▶</span>Whole flow
           </button>
           {PATHS.map((p, i) => (
-            <button key={p.key} role="tab" aria-selected={!auto && i === pick} onClick={() => { setAuto(false); setPick(i); }}
-              className={`${tab(!auto && i === pick)} relative`}>
+            <button key={p.key} role="tab" aria-selected={forced !== undefined ? i === forced : !auto && i === pick} onClick={() => { setAuto(false); setPick(i); }}
+              className={`${tab(forced !== undefined ? i === forced : !auto && i === pick)} relative`}>
               <span className="size-2 rounded-full" style={{ background: INK[p.tone] }} aria-hidden />{p.label}
               {/* While the whole flow plays, the path on screen is marked, and its bar fills as it holds. */}
-              {auto && i === shown ? (
+              {forced === undefined && auto && i === shown ? (
                 <motion.span key={`bar-${cycle}`} aria-hidden className="absolute inset-x-3 bottom-1 h-[2px] origin-left rounded-full" style={{ background: INK[p.tone] }}
                   initial={{ scaleX: 0 }} animate={{ scaleX: seen ? 1 : 0 }} transition={{ duration: seen ? dwell(p) / 1000 : 0, ease: "linear" }} />
               ) : null}
