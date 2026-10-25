@@ -145,6 +145,15 @@ function Landing() {
         <Reveal className="min-w-0"><RevealItem><LearnedRules /></RevealItem></Reveal>
       </section>
 
+      {/* What it adds up to, in the banner's type, and the one mention of the design partner. */}
+      <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
+        <Reveal className="relative" stagger={0.1}>
+          <RevealItem><p className="mx-auto max-w-[600px] text-[15px] leading-relaxed text-secondary">Because everything is documented, everything is audit-ready by default.</p></RevealItem>
+          <RevealItem><p className="display mx-auto mt-5 max-w-[900px] text-[clamp(30px,4.6vw,56px)]">It isn&apos;t a list the accounting team works through. It&apos;s a close that runs itself.</p></RevealItem>
+          <RevealItem><p className="mt-6 text-[12px] text-faint">Modelled on a real 14-store music retailer, the first design partner.</p></RevealItem>
+        </Reveal>
+      </section>
+
       {/* Closing */}
       <Reveal className="pb-6 text-center" stagger={0.1}>
         <RevealItem><h2 className="display mx-auto max-w-[760px] text-[clamp(32px,4.6vw,56px)]">Watch a year close in two minutes.</h2></RevealItem>
