@@ -240,7 +240,7 @@ function Learns(step: number) {
     `${onboarding.length} policies → ${pct(L.baselineFirst, 0)} on day one`,
     "settles on its own · held, never guessed",
     "one answer · one rule · never asked twice",
-    "handles a no · a rule can fall",
+    "handles a no · designed so a rule can fall",
     "measured, not claimed",
   ][step];
   const measured = (
@@ -612,7 +612,7 @@ export const SLIDES: Slide[] = [
 
 (click) "Each story opens a case room. Three agents meet, under a manager that is code, not a model. The Investigator gathers evidence with read-only queries and drafts one question. The Auditor tries to break the hypothesis. The Learner drafts the rule a yes would create, as a program, and backtests it. None of them can approve or post; the one that tries is refused, in red, and the refusal is logged. The manager won't let a question out until the Auditor has checked it. One question goes to one person. The answer is a precedent. The fitter pools every held line with the same cause, fits the parameters, and backtests: how many it covers, how many it would get wrong. If it passes, the CFO approves once, every held line the rule explains settles, and the same question is never asked twice."
 
-(click) "When the answer is 'not ours', nothing is booked, ever. When a rule fails on new data, it drops back to a policy and its lines go back to held."
+(click) "When the answer is 'not ours', nothing is booked, ever. The design also lets a rule fall: if it fails on new data, it drops back to a policy and its lines go back to held. No rule failed this year, so that part is drawn, not recorded."
 
 (click) "Same year, same engine, rules frozen at day one: flat at ${pct(D.learning.baselineLast, 0)}. With learning: ${Math.round(D.learning.first * 100)} to ${Math.round(D.learning.last * 100)}. ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. And because the engine is code, the live close matched the simulator in every month. Every step is in the log as a diff, denials included, so 'why' is one query."` },
   { id: "rooms", chapter: "Case rooms", render: Rooms, notes: `"Most lines never need a meeting. The ones that do, the agents meet on themselves. The Investigator finds the pattern. The Auditor tries to break it. The Learner writes the rule as code. And a meeting manager, written in code, keeps them honest: it stops at six turns, and only lets them ask a person once."

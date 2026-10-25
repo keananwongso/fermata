@@ -23,7 +23,7 @@ const R8 = LY.rules[0];
 const NODES: Record<Id, { c: number; r: number; name: string; sub: string; tag: string; detail: string[]; dark?: boolean }> = {
   history: { c: 0, r: 0, name: "Historic books", sub: "every year you already have", tag: "Data", detail: ["Every payment a person matched by hand", "A labelled dataset nobody had to label"] },
   mining: { c: 1, r: 0, name: "Policy mining", sub: "finds the patterns, in code", tag: "Code", detail: ["Groups past payments by kind", "Fits each shape: fee, commission, cut", `${DAY0} rules before the first month`] },
-  rules: { c: 2, r: 0, name: "Rules", sub: "approved, with limits", tag: "Data", detail: ["Each rule is a small program", "A per-payment limit it never exceeds", "Versioned; a failing rule drops back"] },
+  rules: { c: 2, r: 0, name: "Rules", sub: "approved, with limits", tag: "Data", detail: ["Each rule is a small program", "A per-payment limit it never exceeds", "Versioned, with who approved it"] },
   backtest: { c: 3, r: 0, name: "Backtest", sub: "on historic books", tag: "Code", detail: ["Every proposed rule runs on past books first", R8 ? `${R8.id}: ${num(R8.backtest.covered - R8.backtest.wrong)} of ${num(R8.backtest.covered)} right` : "Right and wrong, counted", "A person sees the result, not a guess"] },
   sources: { c: 0, r: 1, name: "Sources", sub: "bank · ERP · shops", tag: "Sync", detail: ["5 shared bank accounts, every payment", "Store sales, Shopee, Tokopedia, dealers, school", "Read in, never edited"] },
   engine: { c: 1, r: 1, name: "Engine", sub: "place · match · decide", tag: "Code, no AI", detail: ["TypeScript, deterministic", "Which store: evidence votes", "Which records: one line to many"] },
