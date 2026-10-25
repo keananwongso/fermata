@@ -32,11 +32,11 @@ function Landing() {
         {/* One band of brand cells hangs from the top of the page, behind the header, and clears before the window. */}
         <BrandGrid top cols={24} rows={12} className="absolute left-1/2 -top-40 h-[680px] w-screen -translate-x-1/2 opacity-70 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)] lg:-top-44 lg:h-[820px]" />
         <Reveal className="relative mx-auto max-w-[880px] text-center" stagger={0.1}>
-          <RevealItem><Tag tone="neutral">Autonomous cash reconciliation</Tag></RevealItem>
-          <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">Every bank line, matched on its own.</h1></RevealItem>
+          <RevealItem><Tag tone="neutral">Cash reconciliation for multi-store retail</Tag></RevealItem>
+          <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">The cash clerk a multi-store retailer can actually hire.</h1></RevealItem>
           <RevealItem><p className="mx-auto mt-5 max-w-[600px] text-[16px] leading-relaxed text-body">
-            Fermata closes the books for a business that sells everywhere. It matches every bank line to the store and the sales it pays for,
-            holds only what nobody wrote down, and asks the right person one question. Then it turns the answers into tested rules, so fewer lines need a person.
+            Fermata closes the books by matching every bank transaction to the store and the sales it pays for. It learns the business from the books it already has,
+            holds and asks only about what nobody wrote down, and gets better every month.
           </p></RevealItem>
           <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
