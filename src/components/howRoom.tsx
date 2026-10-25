@@ -28,18 +28,22 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const ASKING = MEETING.length + 1;
 const ANSWERED = ASKING + 1;
 const END = ANSWERED + AFTER.length;
+// The presses a presenter needs to step the whole room, starting with its first message on screen (the pitch).
+export const ROOM_STEPS = END - 1;
 
-export function HowRoom() {
+// `step`, when given, drives the room from outside: the pitch steps it one message per press instead of a timer.
+export function HowRoom({ step }: { step?: number } = {}) {
   const root = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const seen = useInView(root, { amount: 0.3 });
-  const [t, setT] = useState(0);
+  const [timed, setT] = useState(0);
+  const t = step === undefined ? timed : Math.min(step + 1, END);
   useEffect(() => {
-    if (!seen) return;
+    if (step !== undefined || !seen) return;
     const wait = t === 0 ? 500 : t === ASKING ? ASK_MS : t >= END ? REST_MS : MSG_MS;
     const id = setTimeout(() => setT((x) => (x >= END ? 0 : x + 1)), wait);
     return () => clearTimeout(id);
-  }, [seen, t]);
+  }, [step, seen, t]);
   // Follow the newest message inside the transcript, never moving the page.
   useEffect(() => { requestAnimationFrame(() => scrollBoxToEnd(end.current)); }, [t]);
   if (!ROOM || !ROOM.question) return null;

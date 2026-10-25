@@ -10,7 +10,7 @@ import { CLOSE_CAPTION, LearningChart } from "../learningChart";
 import { usdApprox } from "../money";
 import { SystemDiagram } from "../systemDiagram";
 import { HowDiagram } from "../howDiagram";
-import { HowRoom } from "../howRoom";
+import { HowRoom, ROOM_STEPS } from "../howRoom";
 import { HowLearns } from "../howLearns";
 import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
@@ -350,7 +350,7 @@ const STORES_DRAWN: { grow: number; layout: Layout }[] = [
 ];
 // A pattern in two words, by the program's shape: what the rule learned, never which lender or store.
 const PATTERN: Record<string, string> = {
-  bank_fee: "Bank fee", cancel_pair: "Reversal", card_batch: "Card batch", marketplace_payout: "Commission", gateway_settlement: "Gateway fee",
+  bank_fee: "Bank fee", cancel_pair: "Reversal", card_batch: "Card batch", marketplace_payout: "Platform cut", gateway_settlement: "Gateway fee",
   open_invoices: "Open invoices", lender_sale: "Lender's cut", follow_receipt: "School receipt", school_bills: "Fees paid ahead", reversed_voucher: "Petty cash",
 };
 function Scale(step: number) {
@@ -358,24 +358,24 @@ function Scale(step: number) {
   return (
     <Frame chapter="The result" n={7}>
       <motion.div className="h-full" animate={step >= 3 ? { opacity: 0.08, filter: "blur(4px)" } : { opacity: 1, filter: "blur(0px)" }} transition={{ duration: 0.6, ease: EASE_OUT }}>
-        <In><h2 className="title text-[60px]">Built for retail. It gets better with every store.</h2></In>
+        <In><h2 className="title text-[60px]">Built for scale. More stores, not more questions.</h2></In>
         <div className="mt-12 grid grid-cols-[300px_1fr] items-start gap-x-[60px] gap-y-10">
           <In delay={0.2}>
             <div className="text-[30px] font-medium text-ink">Stores</div>
-            <div className="mt-1 text-[21px] leading-snug text-secondary">{step ? "every one adds evidence" : `${words(D.stores).toLowerCase()}, the first design partner`}</div>
+            <div className="mt-1 text-[21px] leading-snug text-secondary">{step ? "each one adds evidence, not work" : `${words(D.stores).toLowerCase()} in this year`}</div>
           </In>
           <In delay={0.2} className="h-[230px]">
             <Tiles count={D.stores * drawn.grow} layout={drawn.layout} mark={D.stores} delay={(s) => (s < D.stores ? 0.3 + s * 0.03 : ((s - D.stores) / (D.stores * drawn.grow)) * 0.9)} />
           </In>
           <In delay={0.4}>
-            <div className="text-[30px] font-medium text-ink">Policies and rules</div>
-            <div className="mt-1 text-[21px] leading-snug text-secondary">one per pattern, not per store</div>
+            <div className="text-[30px] font-medium text-ink">Rules</div>
+            <div className="mt-1 text-[21px] leading-snug text-secondary">one per kind of payment, not per store</div>
           </In>
           <In delay={0.4}>
             <div className="grid grid-cols-11 gap-3">
               {D.rules.map((r) => (
                 <div key={r.id} className="card flex h-[96px] flex-col justify-between px-3 py-3">
-                  <div className="text-[17px] font-medium leading-tight text-ink">{PATTERN[r.program.match ?? ""] ?? "Rule"}</div>
+                  <div className="text-[16px] font-medium leading-tight text-ink [overflow-wrap:anywhere]">{PATTERN[r.program.match ?? ""] ?? "Rule"}</div>
                   <div className="eyebrow text-[13px]">{r.learnedInMonth ? "learned" : "fitted"}</div>
                 </div>
               ))}
@@ -383,17 +383,17 @@ function Scale(step: number) {
           </In>
           <In delay={0.6}>
             <div className="text-[30px] font-medium text-ink">Decisions for people</div>
-            <div className="mt-1 text-[21px] leading-snug text-secondary">questions asked and rules approved</div>
+            <div className="mt-1 text-[21px] leading-snug text-secondary">everything a person did all year</div>
           </In>
           <In delay={0.6}>
             <div className="flex items-baseline gap-8">
               <span className="figure text-[120px] leading-none text-heading"><Roll value={D.decisions} prefix="~" /></span>
-              <span className="text-[26px] leading-snug text-secondary">for {num(D.total)} bank lines in the recorded year:<br />{D.rooms.length} questions answered, {D.rules.length} rules approved.</span>
+              <span className="text-[26px] leading-snug text-secondary">for {num(D.total)} payments:<br />{D.rooms.length} answers and {D.rules.length} approvals.</span>
             </div>
           </In>
         </div>
         <In show={step >= 1 && step < 3} className="absolute bottom-0 left-0 right-0">
-          <p className="text-[20px] text-faint">The recorded year has {words(D.stores).toLowerCase()} stores. The larger grids show the shape, not a measurement: the cost of learning a pattern stays the same, the evidence for it grows with every store.</p>
+          <p className="text-[20px] text-faint">Only the {words(D.stores).toLowerCase()}-store year is measured. The bigger grids show the idea: a pattern is learned once, and more stores only add evidence.</p>
         </In>
       </motion.div>
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-center">
@@ -404,27 +404,17 @@ function Scale(step: number) {
   );
 }
 
-// 13 · The end card: the name, the line, what is next, where to find it.
+// The end card: the mark, the name, the line, where to find it. The title slide's look, so the deck closes where it opened.
 function End() {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-night text-white">
-      <span aria-hidden className="pointer-events-none absolute -bottom-[260px] -right-[60px] select-none text-[1100px] leading-none text-white/[0.05]" style={MUSIC}>𝄐</span>
-      <div className="relative flex h-full flex-col justify-center px-[160px]">
-        <In><div className="flex items-center gap-6"><span className="text-[80px] leading-none text-hold" aria-hidden>𝄐</span><span className="display text-[140px]" style={{ color: "white" }}>Fermata</span></div></In>
-        <In delay={0.2}><p className="mt-10 max-w-[1500px] text-[44px] leading-snug text-white/85">The cash clerk a multi-store retailer can actually hire.</p></In>
-        <In delay={0.45}>
-          <div className="mt-20 max-w-[1300px] space-y-4 text-[30px] text-white/70">
-            <p>My family&apos;s business is the first design partner.</p>
-            <p>Next: shadow mode at one store, where it proposes and people still decide.</p>
-          </div>
-        </In>
-        <In delay={0.7}>
-          <div className="mt-20 flex gap-16 text-[28px]">
-            <span className="text-white">getfermata.tech</span>
-            <span className="text-white/70">github.com/keananwongso/fermata</span>
-            <span className="text-white/50">Built with Claude and Convex</span>
-          </div>
-        </In>
+    <div className="absolute inset-0 bg-canvas">
+      <BrandGrid cols={24} rows={14} className="absolute inset-0 h-full w-full opacity-70 [mask-image:radial-gradient(ellipse_at_center,transparent_42%,#000_100%)]" />
+      <div className="relative flex h-full flex-col items-center justify-center text-center">
+        <In><div className="card grid size-[150px] place-items-center rounded-[34px]"><span className="text-[96px] leading-none text-hold" style={{ ...MUSIC, transform: "translateY(0.28em)" }} aria-hidden>𝄐</span></div></In>
+        <In delay={0.2}><h1 className="display mt-12 text-[150px]">Fermata</h1></In>
+        <In delay={0.4}><p className="mt-6 text-[46px] text-heading-2">A close that runs itself, at any number of stores.</p></In>
+        <In delay={0.6}><p className="mt-16 text-[34px] font-medium text-accent">getfermata.tech</p></In>
+        <In delay={0.75}><p className="mt-4 text-[22px] text-faint">github.com/keananwongso/fermata · Built with Claude and Convex</p></In>
       </div>
     </div>
   );
@@ -445,12 +435,12 @@ function BuiltLive(step: number) {
   );
 }
 
-// 4 · A case room: story B's real meeting, playing on its own while you talk.
-function RoomLive() {
+// 4 · A case room: story B's real meeting, one message per press, then the question, the answer and the rest.
+function RoomLive(step: number) {
   return (
     <Frame chapter="Case rooms" n={4}>
       <In><h2 className="title text-[60px]">The agents meet. One question comes out.</h2></In>
-      <In delay={0.2} className="mt-8"><div style={{ zoom: 1.2 }}><HowRoom /></div></In>
+      <In delay={0.2} className="mt-8"><div style={{ zoom: 1.2 }}><HowRoom step={step} /></div></In>
     </Frame>
   );
 }
@@ -473,15 +463,23 @@ export const SLIDES: Slide[] = [
 (click, Waits) "If nothing explains it, it waits, and goes to a case room."
 (click, Learns) "The answer becomes a draft rule. It's backtested on the historic books, the CFO approves it, and from then on that kind of payment matches itself."
 (click, Blocked) "And every change goes through one Convex function that checks who's allowed to make it. So an agent can never approve its own work."` },
-  { id: "room-live", chapter: "Case rooms", render: RoomLive, notes: `"Here's a real one. June: 300 payouts from a lender nobody's seen. Three Claude agents meet on it. The Investigator finds every payout is one sale minus 3.8%. The Auditor tries to break that. A meeting manager, written in code, gives them six turns and lets them ask a person once." (Point at the red line.) "And here an agent tries to approve its own work. Blocked in code." (When the question lands.) "One question to the CFO. Yes, and it becomes a rule."
-(The meeting is real Claude output from the recorded run; the self-approval attempt is staged, and labelled.)` },
+  { id: "room-live", chapter: "Case rooms", steps: ROOM_STEPS, render: RoomLive, notes: `(Opens on the Engine's message.) "Here's a real one. June: 300 payouts from a lender nobody's seen, so the engine holds them."
+(Space · Investigator) "The Investigator finds every payout is one sale, minus 3.8%."
+(Space · red line) "And here it tries to approve its own work. Blocked in code."
+(Space · Auditor) "The Auditor tries to break the 3.8%, and can't."
+(Space · Manager) (Space · Learner's rule) "The Learner drafts the rule as code. That's the whole rule."
+(Space · Manager: 2 turns left) "A meeting manager, written in code, keeps them to six turns."
+(Space · Auditor) (Space · Meeting closed) "And it lets them ask a person once."
+(Space · the question) "One question, to the CFO."
+(Space · answered) "Yes."
+(Space) (Space · r9 approved) "The answer becomes a rule, and all 300 payments match."
+(12 presses in all. The meeting is real Claude output from the recorded run; the self-approval attempt is staged, and labelled.)` },
   { id: "learns-live", chapter: "How it learns", steps: 1, render: LearnsLive, notes: `"So it learns two ways. From the historic books: Shopee sends one transfer for 840 orders, and Fermata worked out from 126 payouts matched by hand that Shopee keeps 6.5%." (click) "And from one answer: the CFO says yes once, FIN_Z keeps 3.8%, and the rule is tested, 300 out of 300, before it counts. Every rule works this way: a kind of payment, and the number that explains it."` },
   { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is the year as Fermata closed it, learning from people's answers, against the same year on the same engine with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
 (Say the line without learning is simulated. With learning is the close itself, run on autopilot: the answers came from the generator's answer key, ${words(D.learning.rules.filter((r) => r.by === "claude").length).toLowerCase()} rules were written by Claude in live case rooms and ${words(D.learning.rules.filter((r) => r.by === "code").length).toLowerCase()} were fitted by code.)` },
-  { id: "scale", chapter: "The result", steps: 4, render: Scale, notes: `"This is built for retail, and my family's business is the first design partner." (click) "What happens at a retailer with a thousand stores," (click) "or ten thousand? It gets better. Fermata learns patterns, not stores: a lender's cut, a marketplace's commission, a bank's fee. The cost of learning a pattern stays the same; the evidence for it grows with every store. So it learns in days what took us months, and the number of questions it asks barely moves."
-
-(click) "Because everything is documented, everything is audit-ready by default." (click) "And this isn't a list the accounting team works through. It's a close that runs itself."
-(The counter is the recorded year's: ${num(D.total)} bank lines, about ${num(D.decisions)} decisions for people. The larger grids are drawn, not measured; never put a number on them.)` },
+  { id: "scale", chapter: "The result", steps: 4, render: Scale, notes: `"It's built for scale. This year has ${words(D.stores).toLowerCase()} stores, and people made about ${num(D.decisions)} decisions in total." (click) "At a thousand stores," (click) "or ten thousand, it doesn't need more questions. It learns kinds of payment, not stores: a marketplace's cut, a lender's cut, a bank's fee. So every new store adds evidence, not work."
+(click) "Everything is documented, so everything is audit-ready by default." (click) "It's not a list for the accounting team. It's a close that runs itself."
+(Only the ${words(D.stores).toLowerCase()}-store year is measured; the bigger grids are drawn. Never put a number on them.)` },
   { id: "end", chapter: "Fermata", render: End, notes: `(Nothing spoken. Hold on the card for three seconds.)` },
   // After the end card: backup slides for Q&A. Skip past the end to reach them.
   { id: "built", chapter: "Appendix · how it's built", steps: 3, render: Built, notes: `"Here's how it's built. Everything goes through one place in the middle: the system of work, in Convex. Every change, from every agent and every person, is one transition, written together with its audit row." (click) "Blue is a line that settles on its own. It syncs in from the bank, the ERP, the marketplaces and the school. The engine places it and matches it, and if an approved rule explains it, it's settled, and the gateway posts it to the books. That's most of them." (click) "Amber is a line that needs a person. The engine holds it as a story, and the agents meet on it in a case room: the Investigator, the Auditor and the Learner, on Claude, with a meeting manager in code. They ask one person one question. The answer comes back, the Learner turns it into a rule and backtests it, and from then on the engine settles that kind of line on its own." (click) "Red is an agent trying to approve something itself. The gateway refuses, and the refusal is written to the audit log. Agents propose. People approve. Only the gateway writes."`},
