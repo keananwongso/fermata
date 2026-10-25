@@ -503,13 +503,20 @@ away, with `{ type: true }` it opens on the type box).
   Mac, "Hold Ctrl + Alt to talk" elsewhere (`useTalkKeys`, `TalkKeys`). On a phone or tablet (no fine pointer) it reads
   "Hold the orb to talk" and a small floating **Ask the books** button (white pill, blue mic, bottom right) opens the
   popup. The fallbacks are the orb itself, held by pointer or touch, and Space or Enter while it has focus.
-* **The popup:** the orb on a canvas puck, then a card under it. Before an answer the card is the `.coach` card: "Hold
-  ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the status line
-  with the live words, the read only promise and Esc, and a quiet Type instead (a type box prefilled with the
-  suggestion). With an answer it is a white `.card` in a `.frame`: You asked, the captioned answer with its labels, the
-  template, then **Ask next** (two suggested questions), the shortcut reminder and Type instead.
-* **Calm, never in the way.** A soft `night` dim over the page on wider screens, a full canvas sheet on a phone (the
-  header would crowd it). Escape, the close button or a click outside closes it. The shortcut is ignored while another
+* **The popup is one warm tray** (`bg-warm`, hairline, radius 16px), and the orb lives inside it as its head, never
+  floating over the page. Before an answer the orb sits large and centred at the top of the tray, over the `.coach`
+  card: "Hold ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the
+  status line with the live words, the read only promise and Esc, and a quiet Type instead (a type box prefilled with the
+  suggestion). With an answer the orb shrinks into a header row beside "Ask the books" and what it is doing (Listening,
+  Reading the books, Answering out loud, or how to ask again), over a white `.card`: You asked, the captioned answer with
+  its labels, the template, then **Ask next** (two suggested questions), Type instead and the read only line. The close
+  button sits in the tray's top right corner in both states.
+* **Never taller than the window.** The tray is centred and capped at the window's height less a comfortable margin
+  (`clamp(16px, 6vh, 56px)` top and bottom; 16px on a phone). The orb's head stays put and the card under it scrolls
+  inside the tray (`.scroll-quiet`, `overscroll-contain`), so Type instead is always reachable on a short screen.
+* **Calm, never in the way.** A `night` dim at 55% with a slight blur (3px) over the page on wider screens, strong enough
+  that the page behind (the hero's blue grid) never competes with the popup; a full canvas sheet on a phone (the header
+  would crowd it). Escape, the close button or a click outside closes it. The shortcut is ignored while another
   text field has focus (the popup's own type box excepted), the popup is `data-lenis-prevent` so its own scrolling never
   moves the smooth-scrolled page, and it is a non-modal `dialog` that takes focus only when opened by a click.
 * Two colours with jobs here too: blue for the orb's listening badge, links and the send button; amber only inside an
