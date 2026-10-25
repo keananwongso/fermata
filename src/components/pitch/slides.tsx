@@ -11,7 +11,7 @@ import { usdApprox } from "../money";
 import { HowDiagram } from "../howDiagram";
 import { HowRoom, ROOM_STEPS } from "../howRoom";
 import { HowLearns } from "../howLearns";
-import { D } from "./data";
+import { D, type Evaluation } from "./data";
 import { Frame, In, type Slide } from "./deck";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -189,7 +189,7 @@ const PATTERN: Record<string, string> = {
 function Scale(step: number) {
   const drawn = STORES_DRAWN[Math.min(step, 2)];
   return (
-    <Frame chapter="The result" n={7}>
+    <Frame chapter="The result" n={8}>
       <motion.div className="h-full" animate={step >= 3 ? { opacity: 0.08, filter: "blur(4px)" } : { opacity: 1, filter: "blur(0px)" }} transition={{ duration: 0.6, ease: EASE_OUT }}>
         <In><h2 className="title text-[60px]">Built for scale. More stores, not more questions.</h2></In>
         <div className="mt-12 grid grid-cols-[300px_1fr] items-start gap-x-[60px] gap-y-10">
@@ -288,7 +288,45 @@ function LearnsLive(step: number) {
   );
 }
 
+// 7 · How we measure it: what each number means and where it comes from, so no figure needs trusting.
+function Measure() {
+  const L = D.learning;
+  const e: Evaluation | null = D.evaluation;
+  const rows: [string, string, string][] = [
+    ["Matched on its own", "Share of payments matched the month they arrive", `${pct(L.first, 0)} → ${pct(L.last, 0)}`],
+    ["Left for people", "Payments no rule could explain by year end", num(L.heldLearned)],
+    ["What learning did", "Same year, same engine, rules frozen at Day 0 (simulated)", `${num(L.heldLearned)} vs ${num(L.heldBaseline)}`],
+    ["Decisions for people", "Every answer and every rule approval, all year", `~${num(D.decisions)}`],
+    ["Rules tested first", "Each learned rule backtested before the CFO approves it", `${L.rules.filter((r) => r.backtest.pass).length} of ${L.rules.length} passed`],
+    ["Graded, not trusted", "Against an answer key the engine never reads", e ? `${num(Number(e.wrongStore ?? 0))} wrong stores` : "graded"],
+  ];
+  return (
+    <Frame chapter="How we measure it" n={7}>
+      <In><h2 className="title text-[60px]">How we measure it.</h2></In>
+      <div className="mt-12 grid grid-cols-2 gap-x-8 gap-y-6">
+        {rows.map(([name, def, now], i) => (
+          <In key={name} delay={0.15 + i * 0.08}>
+            <div className="card flex h-full items-center justify-between gap-8 px-8 py-6">
+              <div className="min-w-0">
+                <div className="text-[28px] font-medium text-ink">{name}</div>
+                <div className="mt-1.5 text-[21px] leading-snug text-secondary">{def}</div>
+              </div>
+              <div className="figure shrink-0 whitespace-nowrap text-[40px] text-heading">{now}</div>
+            </div>
+          </In>
+        ))}
+      </div>
+    </Frame>
+  );
+}
+
+// 0 · A blank canvas to open on, so the first press starts the pitch.
+function Blank() {
+  return <div className="absolute inset-0 bg-canvas" />;
+}
+
 export const SLIDES: Slide[] = [
+  { id: "blank", chapter: "Start", render: Blank, notes: `(Blank. Press Space to start.)` },
   { id: "mess", chapter: "Why", steps: 3, render: Family, notes: `"My family runs a multi-store retailer in Indonesia. ${words(D.stores)} stores, and a music school inside them." (click) "Three systems of record, none of which agree. ${words(D.team)} accountants spend weeks after every month-end working out which payment belongs to which store. Until they finish, nobody in leadership sees a real number." (click) "Right now the books say one of its bank accounts is millions of dollars in the red." (click) "It isn't."` },
   { id: "title", chapter: "Fermata", render: Title, notes: `"This is Fermata. A close that runs itself, at any number of stores. In music, a fermata is the mark that means hold, and that's the job: hold only what nobody can explain, and let everything else play on."` },
   { id: "built-live", chapter: "How it's built", steps: PATH_STEPS, render: BuiltLive, notes: `(Day 0) "Before month one, policy mining reads the historic books, every payment someone already matched by hand. Code, not AI, turns each pattern into a rule with a limit. Shopee keeps 6.5%, for example. The CFO approves each rule once."
@@ -310,6 +348,7 @@ export const SLIDES: Slide[] = [
   { id: "learns-live", chapter: "How it learns", steps: 1, render: LearnsLive, notes: `"So it learns two ways. From the historic books: Shopee sends one transfer for 840 orders, and Fermata worked out from 126 payouts matched by hand that Shopee keeps 6.5%." (click) "And from one answer: the CFO says yes once, FIN_Z keeps 3.8%, and the rule is tested, 300 out of 300, before it counts. Every rule works this way: a kind of payment, and the number that explains it."` },
   { id: "curve", chapter: "Self improving", render: Curve, notes: `"Does the learning matter? Here is the year as Fermata closed it, learning from people's answers, against the same year on the same engine with the rules frozen at onboarding. With learning, the share settled on first pass goes from ${pct(D.learning.first, 0)} in January to ${pct(D.learning.last, 0)} by December. Without it, it ends at ${pct(D.learning.baselineLast, 0)}. At year end that is ${num(D.learning.heldLearned)} lines left for people instead of ${num(D.learning.heldBaseline)}. Each mark is an answer that became a rule, fitted from the data and backtested first."
 (Say the line without learning is simulated. With learning is the close itself, run on autopilot: the answers came from the generator's answer key, ${words(D.learning.rules.filter((r) => r.by === "claude").length).toLowerCase()} rules were written by Claude in live case rooms and ${words(D.learning.rules.filter((r) => r.by === "code").length).toLowerCase()} were fitted by code.)` },
+  { id: "measure", chapter: "How we measure it", render: Measure, notes: `"So you don't have to trust a number, here's how each one is measured. We count per payment, not per account. 'Left for people' is what no rule could explain by year end. The learning number comes from closing the same year twice, with and without learning. Every learned rule is backtested before the CFO approves it. And the whole year is graded against an answer key the engine never reads."` },
   { id: "scale", chapter: "The result", steps: 4, render: Scale, notes: `"It's built for scale. This year has ${words(D.stores).toLowerCase()} stores, and people made about ${num(D.decisions)} decisions in total." (click) "At a thousand stores," (click) "or ten thousand, it doesn't need more questions. It learns kinds of payment, not stores: a marketplace's cut, a lender's cut, a bank's fee. So every new store adds evidence, not work."
 (click) "Everything is documented, so everything is audit-ready by default." (click) "It's not a list for the accounting team. It's a close that runs itself."
 (Only the ${words(D.stores).toLowerCase()}-store year is measured; the bigger grids are drawn. Never put a number on them.)` },

@@ -404,13 +404,13 @@ uses the same tokens, type classes, components and motion as the screens it intr
 * App components scale with CSS `zoom` (the case room transcript, avatars, pills) rather than being copied.
 
 
-**The live deck (current).** The pitch is presented live, stepped with the arrow keys, and built from the landing
-page's own pieces so the deck and the site tell one story: the family hook (`Family`), the title (tagline and the
-name), **How it's built** (`HowDiagram`, one path per press via its `path` prop), **Case rooms** (`HowRoom`, playing
-on its own), **How it learns** (`HowLearns`, the two examples via `example`), the curve, scale, and the end card.
-The end card is the last slide; Q&A answers live in the Kavi Q&A prep doc, not in the deck. Speaker notes
+**The live deck (current).** Presented live, stepped with the arrow keys or Space, built from the landing page's own
+pieces so the deck and the site tell one story: a blank opener (the first press starts the pitch), the family hook
+(`Family`), the title (tagline and the name), **How it's built** (`HowDiagram`, one path per press via `path`), **Case
+rooms** (`HowRoom`, one message per press via `step`), **How it learns** (`HowLearns`, the two examples via `example`),
+the curve, **How we measure it** (six plain measures, so no figure needs trusting), scale ("built for scale"), and the
+end card in the title's look. The end card is the last slide; Q&A answers live in the Kavi Q&A prep doc. Speaker notes
 (N) are the spoken lines.
-## Motion (`globals.css`, `src/components/motion.tsx`)
 
 | Name | Use |
 | :--- | :--- |
