@@ -5,6 +5,7 @@ import { useState } from "react";
 import { MONTH_LABELS } from "../../../convex/lib/domain";
 import { num } from "../../../convex/lib/format";
 import { AGENT_LABEL, Bar, Pill, StateBadge } from "../ui";
+import { DAY_ZERO, fitSentence, seenOf } from "../dayZero";
 import { R, learned, pctOf, type Rule } from "./data";
 import { ViewHead } from "./parts";
 
@@ -21,12 +22,14 @@ const AUDIT: Record<string, ["neutral" | "hold" | "danger", string]> = { pass: [
 export function Rules() {
   const [openId, setOpenId] = useState<string | null>(learned[0]?.id ?? null);
   const fitted = R.rules.length - learned.length;
+  const onboarding = R.rules.filter((r) => !r.learnedInMonth);
   return (
     <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-6">
       <ViewHead title="Rules"
-        aside={<span className="num text-[12px] text-faint">{R.rules.length} rules · {fitted} from last year · {learned.length} learned this year</span>}>
+        aside={<span className="num text-[12px] text-faint">{R.rules.length} rules · {fitted} mined from last year · {learned.length} learned this year</span>}>
         Small programs the engine runs. Each settlement records which rule allowed it.
       </ViewHead>
+      {onboarding.length ? <DayZero rules={onboarding} /> : null}
       <ul className="card divide-y divide-hairline overflow-hidden">
         {R.rules.map((r) => {
           const open = openId === r.id;
@@ -51,8 +54,50 @@ export function Rules() {
   );
 }
 
+// Day 0: one pass over last year's matched lines before the first close. Each row is the question asked of the old
+// books, the fit that answered it (read from the rule's program), and how many lines it saw. Open by default.
+function DayZero({ rules }: { rules: Rule[] }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="card overflow-hidden">
+      <button type="button" aria-expanded={open} aria-controls="day-zero" onClick={() => setOpen(!open)}
+        className="calm flex min-h-11 w-full items-start gap-3 px-4 py-3 text-left hover:bg-hover lg:px-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-medium text-heading">Day 0 · what it learned from last year</span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug text-secondary">One pass over last year&apos;s matched lines. Code, not a model: each shape&apos;s parameters are fitted, written as a program, and backtested before anyone approves it.</span>
+        </span>
+        <span aria-hidden className={`calm mt-0.5 shrink-0 text-faint ${open ? "rotate-90" : ""}`}>›</span>
+      </button>
+      {open ? (
+        <div id="day-zero" className="enter border-t border-hairline">
+          <ul className="divide-y divide-hairline">
+            {rules.map((r) => {
+              const seen = seenOf(r);
+              return (
+                <li key={r.id} className="grid gap-x-4 gap-y-1.5 px-4 py-3 sm:grid-cols-[1.5rem_1fr_auto] lg:px-5">
+                  <span className="num text-[12px] text-faint">{r.id}</span>
+                  <div className="min-w-0">
+                    <div className="text-[13px] leading-snug text-ink">{DAY_ZERO[r.id]?.question ?? r.title}</div>
+                    <div className="mt-0.5 text-[12px] leading-snug text-secondary">{fitSentence(r.program)}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:flex-col sm:items-end sm:text-right">
+                    {seen ? <span className="text-[12px] text-secondary"><span className="num text-ink">{num(seen.count)}</span> seen · <span className="text-faint">{seen.scope}</span></span> : null}
+                    <Pill>Approved once by the CFO</Pill>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="border-t border-hairline bg-well/60 px-4 py-2.5 text-[11.5px] leading-snug text-faint lg:px-5">Last year here is one full month plus a full year of lender payouts.</p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function RuleDetail({ r }: { r: Rule }) {
   const bt = r.backtest;
+  const seen = r.learnedInMonth ? null : seenOf(r);
   const audit = r.audit ? AUDIT[r.audit.result] ?? (["neutral", r.audit.result] as const) : null;
   return (
     <div id={`rule-${r.id}`} className="enter grid gap-4 border-t border-hairline bg-well/60 px-4 py-4 lg:grid-cols-2 lg:px-5">
@@ -74,7 +119,9 @@ function RuleDetail({ r }: { r: Rule }) {
                 </ul>
               ) : null}
             </div>
-          ) : <p className="mt-2 text-[12.5px] leading-snug text-secondary">Fitted on last year&apos;s rows and approved at last year&apos;s close. The recording holds no backtest for it.</p>}
+          ) : <p className="mt-2 text-[12.5px] leading-snug text-secondary">{seen
+            ? <>Fitted on <span className="num text-ink">{num(seen.count)}</span> of last year&apos;s lines ({seen.scope}) and approved once by the CFO at last year&apos;s close. The recording holds no separate backtest for it.</>
+            : <>Fitted on last year&apos;s rows and approved at last year&apos;s close. The recording holds no backtest for it.</>}</p>}
         </div>
         <div>
           <div className="eyebrow">Auditor</div>
