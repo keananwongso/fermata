@@ -75,6 +75,7 @@ function Landing() {
         <Reveal className="max-w-[640px]">
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">From messy books to a closed year.</h2></RevealItem>
+          <RevealItem className="mt-4"><LinkArrow href="/demo?guide">Step through it, under the hood</LinkArrow></RevealItem>
         </Reveal>
         {/* Five beats, the number the morph in landing.tsx is laid out for (MORPH_BEATS): day 0, settle, hold and ask,
             learn, the record. */}

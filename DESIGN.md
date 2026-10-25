@@ -213,6 +213,15 @@ The transcript of the agents' meeting on one held story.
   visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
   moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
   recorded, scripted or a replay.
+* **The guided demo** (`/demo?guide`, `src/app/demo/tour.tsx`; the "Show how it works" switch before the year starts,
+  and the landing page's How it works links to it). The year holds at six stops, and each stop takes the workspace's
+  place until it is left: Day 0 (the mined rules, approved as CFO), settle (one real line: store, rule, settled), hold
+  (story A held, the four in the room), learn (story A's answer, its rule, the backtest, approved), guardrails (story B's
+  staged self-approval, blocked, labelled Staged) and the result. Each stop is a `Pill`, a one-phrase `.display` title,
+  a small picture that builds in steps, and one primary button named for the next step ("Find the store", "Approve as
+  CFO"); Space, Enter or → presses it, so a recording can step through with the keyboard. Hints are off in the guide.
+* **Copy is skimmable.** A title, caption or hint is one short phrase, readable at a glance. No paragraphs inside the
+  demo or a stop; when something needs more words, it needs a picture instead.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.
 
 ## Dashboard (`src/components/dashboard.tsx`, `/dashboard`)
