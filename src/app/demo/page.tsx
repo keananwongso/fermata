@@ -35,6 +35,7 @@ type Rec = {
 const R = recording as unknown as Rec;
 const asChat = (m: RecMsg, extra: Partial<ChatMessage>): ChatMessage => ({ ...m, ...extra });
 const MONTH_MS = 3200;
+const STREAM_LINES = 22; // more than the tallest engine panel shows; the rest sit under the fade
 const LIVE = R.rooms.filter((r) => r.live).sort((a, b) => a.month - b.month);
 const cum = (upTo: number, f: (m: Rec["months"][number]) => number) => R.months.filter((m) => m.month <= upTo).reduce((a, m) => a + f(m), 0);
 // Months in which an answer became a rule. A month with a live room teaches its rule once you answer there; the
@@ -155,7 +156,10 @@ function DemoPage() {
     return all.filter((_, i) => i % Math.ceil(all.length / n) === 0);
   };
   const now = sampled(month);
-  const stream = phase === "idle" ? [] : [...(month > 1 ? sampled(month - 1) : []), ...now.slice(0, Math.max(1, Math.ceil(now.length * f)))].slice(-9).reverse();
+  // Enough lines to fill the tallest panel (the list clips under its fade), so the stream reaches the bottom on any screen.
+  const earlier: Line[] = [];
+  for (let mo = month - 1; mo >= 1 && earlier.length < STREAM_LINES; mo--) earlier.unshift(...sampled(mo));
+  const stream = phase === "idle" ? [] : [...earlier, ...now.slice(0, Math.max(1, Math.ceil(now.length * f)))].slice(-STREAM_LINES).reverse();
   const curve = R.months.filter((x) => phase !== "idle" && (x.month < month || (x.month === month && f >= 1)));
   const closed = (mo: number) => phase === "done" || mo < month || (mo === month && phase !== "idle" && (LIVE.some((r) => r.month === mo) ? answered.some((k) => LIVE.find((x) => x.key === k)?.month === mo) : f >= 1));
   const rules = R.rules.filter((r) => r.learnedInMonth === 0 || (phase !== "idle" && closed(r.learnedInMonth)));
