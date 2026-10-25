@@ -186,7 +186,8 @@ The transcript of the agents' meeting on one held story.
   parts with a `.title` each: **How it's built** (`HowDiagram`: eleven boxes on one canvas. **Whole flow** is the default:
   once the diagram is on screen it plays every path in turn from Day 0, the playing path's tab filling as it holds;
   pick a path, Day 0, Matches, Waits, Learns or Blocked, and only its boxes and lines light up, numbered, in the path's colour,
-  with the steps listed under it; click a box for two or three lines of what it is underneath. On a phone the steps
+  with the steps in one numbered row under it; click a box and a small card opens beside it with two or three lines of
+  what it is underneath (under the box on the top rows, over it on the bottom row). On a phone the steps
   list and box chips stand in for the canvas) and **Inside a case room** (`HowRoom`: story B's real meeting, played on its own while on screen: a message at a
   time with the transcript following it at full width, then the question's column opening from the right and pushing it over, the recorded answer picked, the rest of the room, a
   pause, then again. Nobody has to touch it; it still scrolls by hand, with `data-lenis-prevent` so the page's smooth

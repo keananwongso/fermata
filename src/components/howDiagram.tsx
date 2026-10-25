@@ -4,7 +4,7 @@
 // step; click a box for what it is underneath. Drawn on a fixed canvas scaled to its container; on a phone the steps
 // list stands in for the canvas. See DESIGN.md, How it works.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion, useInView } from "motion/react";
+import { AnimatePresence, motion, useInView } from "motion/react";
 import recording from "@/demo/recording.json";
 import { num } from "../../convex/lib/format";
 import { LY } from "./learningYear";
@@ -201,38 +201,44 @@ export function HowDiagram() {
                 </motion.span>
               );
             })}
+            {/* What a box is underneath, in a small card beside the box: under it on the top two rows, over it on the
+                bottom row, kept inside the canvas at the right edge. */}
+            <AnimatePresence>
+              {node && n ? (
+                <motion.div key={node} className="absolute z-10 w-[280px] rounded-[12px] border border-hairline bg-ground p-4 shadow-[0_12px_32px_-12px_rgb(85_40_20/0.35)]"
+                  style={{ left: Math.min(COL(n.c), W - 280), ...(n.r < 2 ? { top: ROW(n.r) + BOX.h + 10 } : { bottom: H - ROW(n.r) + 10 }) }}
+                  initial={{ opacity: 0, y: n.r < 2 ? -6 : 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-[16px] font-medium text-ink">{n.name}</div>
+                    <button onClick={() => setNode(null)} aria-label="Close" className="calm -mr-1 -mt-1 grid size-7 place-items-center rounded-[6px] text-faint hover:bg-hover hover:text-ink">×</button>
+                  </div>
+                  <ul className="mt-1.5 space-y-1">{n.detail.map((d) => <li key={d} className="text-[14px] leading-snug text-secondary">› {d}</li>)}</ul>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </Fit>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <ol className="card divide-y divide-hairline">
-          {path.steps.map(([a, b, what], i) => (
-            <motion.li key={`${path.key}-s${i}`} className="flex items-center gap-3 px-4 py-2.5" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.15 + i * 0.35, ease: EASE }}>
+      {/* The path's steps in one numbered row, and the one hint. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <ol className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {path.steps.map(([, , what], i) => (
+            <motion.li key={`${path.key}-s${i}`} className="flex items-center gap-2" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 + i * 0.35, ease: EASE }}>
               <span className={`num grid size-6 shrink-0 place-items-center rounded-full text-[12px] font-medium ${BADGE[path.tone]}`}>{i + 1}</span>
-              <span className="min-w-0 flex-1 text-[13.5px] text-ink">{what}</span>
-              <span className="hidden shrink-0 text-[12px] text-faint sm:inline">{NODES[a].name} → {NODES[b].name}</span>
+              <span className="text-[14px] text-ink">{what}</span>
             </motion.li>
           ))}
         </ol>
-        <div className="card p-4">
-          {n ? (
-            <motion.div key={node} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-              <div className="eyebrow">{n.tag}</div>
-              <div className="title mt-1 text-[18px]">{n.name}</div>
-              <ul className="mt-2 space-y-1">{n.detail.map((d) => <li key={d} className="text-[13px] text-secondary">› {d}</li>)}</ul>
-            </motion.div>
-          ) : (
-            <>
-              <div className="eyebrow">Under the hood</div>
-              <p className="mt-2 text-[13px] text-secondary">Click any box to see what it is.</p>
-            </>
-          )}
-          {/* On a phone there is no canvas to click, so the boxes are chips. */}
-          <div className="mt-3 flex flex-wrap gap-1.5 md:hidden">
-            {(Object.keys(NODES) as Id[]).map((id) => <button key={id} onClick={() => setNode(id)} aria-pressed={node === id} className={`calm rounded-full border px-2.5 py-1 text-[12px] ${node === id ? "border-accent text-accent" : "border-hairline text-secondary hover:text-ink"}`}>{NODES[id].name}</button>)}
-          </div>
+        <span className="hidden text-[12.5px] text-faint md:inline">Click any box to see what it is.</span>
+      </div>
+
+      {/* On a phone there is no canvas to click, so the boxes are chips, and the detail shows under them. */}
+      <div className="space-y-3 md:hidden">
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(NODES) as Id[]).map((id) => <button key={id} onClick={() => setNode(node === id ? null : id)} aria-pressed={node === id} className={`calm rounded-full border px-2.5 py-1 text-[12px] ${node === id ? "border-accent text-accent" : "border-hairline text-secondary hover:text-ink"}`}>{NODES[id].name}</button>)}
         </div>
+        {n ? <ul className="card space-y-1 p-4">{n.detail.map((d) => <li key={d} className="text-[13px] text-secondary">› {d}</li>)}</ul> : null}
       </div>
     </div>
   );
