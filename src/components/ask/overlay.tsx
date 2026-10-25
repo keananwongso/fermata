@@ -1,116 +1,86 @@
 "use client";
-// Ask the books, anywhere on the site: hold Control + Option (Ctrl + Alt on Windows), ask out loud, let go. A popup
-// opens over the page with the orb and the coach card while it listens, then the answer, spoken aloud over its
-// template. Voice only: no type box and no transcript (the panel on /ask has both).
-// Holding again while it speaks interrupts it. On a phone with no keyboard a small floating button opens the same
-// popup, where the orb is held instead. Read only, like every Ask the books surface: the assistant role has no actions.
+// Ask the books, anywhere: one glass pill at the bottom centre of every page. Hold it (or hold Control + Option,
+// Ctrl + Alt on Windows) and talk; while it listens, thinks and speaks the pill becomes the orb. Let go and the answer
+// rises out of it in a glass card, spoken aloud and captioned. A tap opens the card with suggested questions instead.
+// Read only, like every Ask the books surface: the assistant role has no actions.
 //
-// Mounted once by Providers on the site pages. Anything can open it with `openAsk()` (a suggested question, the
-// demo's hand-off, the landing page's chips). It shares the question and answer (useAsk), the answer (answer.tsx),
-// the orb and the voice pipeline with the panel on /ask; see DESIGN.md, "Ask the books, anywhere".
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+// Mounted once by Providers. Anything can open it with `openAsk()` (with `{ question }` it asks straight away). A page
+// with its own Ask panel hides the resting pill with `useHideDock()`. It shares the question and answer (useAsk), the
+// answer (answer.tsx), the orb and the voice pipeline with the panel; see DESIGN.md, "Ask the books, anywhere".
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Mic, Play, RotateCcw, Square, X } from "lucide-react";
+import { ArrowUpRight, Play, Square, X } from "lucide-react";
 import { AnswerBody } from "./answer";
-import { OrbButton } from "./orbButton";
+import { SpokenCaption } from "./caption";
+import { LevelBars } from "./level";
+import { ThinkingOrb, type OrbState } from "./orb";
 import { usePushToTalk, useVoiceInput } from "./pushToTalk";
-import { RECORDED, nextQuestions, useAsk } from "./useAsk";
+import { nextQuestions, useAsk } from "./useAsk";
 import { LIVE } from "./voice";
-import type { OrbState } from "./orb";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const SPRING = { type: "spring", stiffness: 420, damping: 34, mass: 0.9 } as const;
 const OPEN = "fermata:ask";
+// A press shorter than this is a tap (open the card); longer, it listens. The microphone only opens on a hold, so a
+// tap never asks for permission.
+const HOLD_MS = 180;
 
-// Opens the popup; with a question it asks it straight away.
+// Opens the card; with a question it asks it straight away.
 export function openAsk(detail: { question?: string } = {}) {
   window.dispatchEvent(new CustomEvent(OPEN, { detail }));
+}
+
+// ---- A page with its own Ask panel hides the resting pill ---------------------------------------------------------
+
+let hiders = 0;
+const dockSubs = new Set<() => void>();
+const subscribeDock = (cb: () => void) => { dockSubs.add(cb); return () => { dockSubs.delete(cb); }; };
+export function useHideDock() {
+  useEffect(() => {
+    hiders++; dockSubs.forEach((f) => f());
+    return () => { hiders--; dockSubs.forEach((f) => f()); };
+  }, []);
 }
 
 // ---- The shortcut, named for this platform --------------------------------------------------------------------
 
 const noop = () => () => {};
 const mac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-function subscribeMedia(q: string) {
-  return (cb: () => void) => { const m = window.matchMedia(q); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
-}
 const KEYBOARD = "(hover: hover) and (pointer: fine)";
-const subscribeKeyboard = subscribeMedia(KEYBOARD);
+const subscribeKeyboard = (cb: () => void) => { const m = window.matchMedia(KEYBOARD); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
 
-// "⌃ + ⌥" on a Mac, "Ctrl + Alt" elsewhere; null on the server. Never Command.
+// "⌃⌥" on a Mac, "Ctrl Alt" elsewhere; null on the server. Never Command.
 export function useTalkKeys() {
-  return useSyncExternalStore(noop, () => (mac() ? "⌃ + ⌥" : "Ctrl + Alt"), () => null);
+  return useSyncExternalStore(noop, () => (mac() ? "⌃⌥" : "Ctrl Alt"), () => null);
 }
-// A mouse and keyboard; false on a phone or tablet, where the orb is held instead.
+// A mouse and keyboard; false on a phone or tablet.
 export function useKeyboard() {
   return useSyncExternalStore(subscribeKeyboard, () => window.matchMedia(KEYBOARD).matches, () => true);
 }
 
-export function TalkKeys({ className = "" }: { className?: string }) {
-  const keys = useTalkKeys();
-  return <kbd className={`kbd ${className}`} title={keys === "⌃ + ⌥" ? "Control + Option" : "Control + Alt"}>{keys ?? "Ctrl + Alt"}</kbd>;
-}
-
-// A quiet line that teaches the shortcut and opens the popup when clicked: "or hold ⌃ + ⌥ to ask the books".
-// `keysOnly` shows nothing where there is no keyboard (the line only teaches the keys); `quiet` is the smaller, fainter
-// line (the demo's hand-off).
-export function AskHint({ lead = "or ", keysOnly = false, quiet = false, className = "" }: { lead?: string; keysOnly?: boolean; quiet?: boolean; className?: string }) {
-  const keyboard = useKeyboard();
-  if (keysOnly && !keyboard) return null;
-  return (
-    <button type="button" onClick={() => openAsk()} className={`calm inline-flex min-h-11 items-center gap-1.5 ${quiet ? "text-[12px] text-faint" : "text-[13px] text-secondary"} hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-0 ${className}`}>
-      {keyboard ? <>{lead}hold <TalkKeys /> to ask the books</> : <>{lead}ask the books</>}
-    </button>
-  );
-}
-
 const CANT_LISTEN = "This browser can't listen. Try Chrome, Edge or Safari.";
-// The voice pipeline's notices are shared with the /ask panel, which has a type box; this popup has none.
-const voiceOnly = (m: string) => m.replace(/\s*Type your question instead\.?/, "") || CANT_LISTEN;
-const pill = "calm inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline bg-ground px-3 text-[12.5px] font-medium text-ink hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:min-h-8";
-
+// The voice pipeline's notices are shared with the panel, which has a type box; the dock has none.
+const voiceOnly = (m: string) => m.replace(/\s*(Type your question instead\.?|, or type( it| instead)?)/, "").replace(/\s+\./, ".") || CANT_LISTEN;
 const isCombo = (e: KeyboardEvent) => e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey && (e.key === "Control" || e.key === "Alt");
 const typing = (el: Element | null) => !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable);
+const chip = "glass-chip calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:min-h-9";
 
-// ---- The coach card ------------------------------------------------------------------------------------------------
+// ---- The dock ------------------------------------------------------------------------------------------------------
 
-// The white card that teaches the shortcut: hold the keys, then say a suggested question aloud. The popup's own card
-// while it listens, and the landing page's lesson (`still`).
-export function CoachCard({ suggestion, status, children, still = false }: {
-  suggestion: string; status?: ReactNode; children?: ReactNode; still?: boolean;
-}) {
-  const keyboard = useKeyboard();
-  return (
-    <div className="card p-5 sm:p-6">
-      <h2 className="text-[19px] font-medium leading-snug tracking-[-0.02em] text-ink sm:text-[21px]">
-        {keyboard ? <>Hold <TalkKeys /> to {still ? "ask the books anything" : "talk"}</> : <>Hold the orb to {still ? "ask the books anything" : "talk"}</>}
-      </h2>
-      <p className="mt-4 text-[12.5px] text-secondary">Then say this aloud:</p>
-      <blockquote className="mt-2 rounded-r-[6px] border-l-2 border-accent bg-well px-4 py-3 text-[17px] leading-snug text-ink">&ldquo;{suggestion}&rdquo;</blockquote>
-      {status ? (
-        <div className="mt-4 flex items-start gap-2.5 text-[13px] text-secondary" role="status" aria-live="polite">
-          <Mic size={15} strokeWidth={1.75} className="mt-px shrink-0 text-faint" aria-hidden />
-          <div className="min-w-0">{status}</div>
-        </div>
-      ) : null}
-      {children}
-    </div>
-  );
-}
-
-// ---- The popup -----------------------------------------------------------------------------------------------------
-
-export function AskOverlay({ fab = true }: { fab?: boolean }) {
+export function AskOverlay() {
   const a = useAsk();
-  const { phase, setPhase, shown, notice, setNotice, heard, setHeard, ask, reset, listening } = a;
-  const [open, setOpen] = useState(false);
-  const [nth, setNth] = useState(0);
-  // The keys are down: the popup says Listening at once, before the microphone has opened.
-  const [pressed, setPressed] = useState(false);
+  const { phase, setPhase, shown, notice, setNotice, heard, setHeard, ask, reset, listening, stop } = a;
+  const [card, setCard] = useState(false);
+  // The press is down (pointer, Space or the shortcut), and a hold has begun listening.
+  const [pressing, setPressing] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [words, setWords] = useState("");
   const voiceIn = useVoiceInput();
   const keyboard = useKeyboard();
-  const root = useRef<HTMLDivElement>(null);
+  const keys = useTalkKeys();
+  const hidden = useSyncExternalStore(subscribeDock, () => hiders > 0, () => false);
+  const cardRef = useRef<HTMLElement>(null);
   const titleId = useId();
-  const suggestion = RECORDED[nth % Math.max(1, RECORDED.length)]?.question ?? "";
 
   const talk = usePushToTalk({
     disabled: !voiceIn, blips: true,
@@ -119,178 +89,208 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
       else if (p === "transcribing") setPhase("transcribing");
       else setPhase((cur) => (cur === "listening" || cur === "transcribing" ? "idle" : cur));
     },
+    onWords: setWords,
     onText: (t) => { setHeard(t); void ask(t); },
     onError: (m) => { setNotice(m); setPhase((cur) => (cur === "listening" ? "idle" : cur)); },
   });
-  const live = useRef({ talk, open, voiceIn });
-  useEffect(() => { live.current = { talk, open, voiceIn }; });
+
+  const state: OrbState = talk.phase === "listening" || (holding && talk.phase === "idle") ? "listening" : talk.phase === "transcribing" ? "transcribing" : phase;
+  const working = state !== "idle";
+  const open = card || !!shown || !!notice;
+  const busy = state === "thinking" || state === "transcribing";
+
+  const live = useRef({ talk, open, voiceIn, state });
+  useEffect(() => { live.current = { talk, open, voiceIn, state }; });
 
   const close = useCallback(() => {
     live.current.talk.cancel();
     reset();
-    setOpen(false); setPressed(false);
+    setCard(false); setHolding(false); setWords("");
   }, [reset]);
 
-  // Hold Control + Option (Ctrl + Alt) anywhere to talk; let go to ask. Ignored while a text field has focus.
+  // One press, whatever started it: a hold listens, a tap opens the card (or stops the voice while it talks).
+  const press = useRef<{ timer: number | null; held: boolean } | null>(null);
+  const pressStart = useCallback(() => {
+    if (press.current) return;
+    const p: { timer: number | null; held: boolean } = { timer: null, held: false };
+    press.current = p;
+    setPressing(true);
+    if (!live.current.voiceIn) return;
+    p.timer = window.setTimeout(() => {
+      if (press.current !== p) return;
+      p.held = true;
+      setHolding(true); setWords(""); listening();
+      void live.current.talk.begin();
+    }, HOLD_MS);
+  }, [listening]);
+  const pressEnd = useCallback(() => {
+    const p = press.current;
+    if (!p) return;
+    press.current = null;
+    setPressing(false);
+    if (p.timer) clearTimeout(p.timer);
+    if (p.held) {
+      // Let go before the microphone opened: there is nothing to ask, so the orb goes back to rest.
+      const opened = live.current.talk.phase === "listening";
+      setHolding(false);
+      if (opened) void live.current.talk.end();
+      else { live.current.talk.cancel(); setPhase((cur) => (cur === "listening" ? "idle" : cur)); }
+      return;
+    }
+    // A tap.
+    const s = live.current.state;
+    if (s === "speaking" || s === "thinking") { stop(); return; }
+    if (!live.current.voiceIn) setNotice(CANT_LISTEN);
+    if (live.current.open) close(); else setCard(true);
+  }, [stop, close, setNotice, setPhase]);
+
+  // Hold Control + Option (Ctrl + Alt) anywhere; let go to ask. Ignored while a text field has focus.
   useEffect(() => {
-    let down = 0;
     const onDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && live.current.open) { close(); return; }
-      if (down || e.repeat || !isCombo(e)) return;
-      const el = document.activeElement;
-      if (typing(el)) return;
+      if (e.repeat || !isCombo(e) || typing(document.activeElement)) return;
       e.preventDefault();
-      down = performance.now();
-      if (!live.current.open) setNth((n) => n + 1);
-      setOpen(true);
-      if (!live.current.voiceIn) { setNotice(CANT_LISTEN); return; }
-      // Holding again while it speaks interrupts it: the voice stops and the old answer goes.
-      setPressed(true); listening();
-      void live.current.talk.begin();
+      pressStart();
     };
-    const release = () => {
-      if (!down) return;
-      // A quick tap only opens the popup; a hold asks.
-      const tap = performance.now() - down < 280;
-      down = 0;
-      setPressed(false);
-      if (tap) live.current.talk.cancel(); else void live.current.talk.end();
-    };
-    const onUp = (e: KeyboardEvent) => { if (e.key === "Control" || e.key === "Alt") release(); };
+    const onUp = (e: KeyboardEvent) => { if (e.key === "Control" || e.key === "Alt") pressEnd(); };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
-    window.addEventListener("blur", release);
-    return () => { window.removeEventListener("keydown", onDown, true); window.removeEventListener("keyup", onUp, true); window.removeEventListener("blur", release); };
-  }, [close, listening, setNotice]);
+    window.addEventListener("blur", pressEnd);
+    return () => { window.removeEventListener("keydown", onDown, true); window.removeEventListener("keyup", onUp, true); window.removeEventListener("blur", pressEnd); };
+  }, [close, pressStart, pressEnd]);
 
-  // openAsk(): from a suggested question, the demo's hand-off or the floating button.
+  // openAsk(): a suggested question, the demo's hand-off.
   useEffect(() => {
     const onOpen = (e: Event) => {
       const d = (e as CustomEvent<{ question?: string }>).detail ?? {};
-      if (!live.current.open) setNth((n) => n + 1);
-      setOpen(true);
+      setCard(true);
       if (d.question) { setHeard(null); void ask(d.question); }
-      // Keyboard users land in the popup, so Escape and Tab start there.
-      requestAnimationFrame(() => root.current?.focus({ preventScroll: true }));
+      requestAnimationFrame(() => cardRef.current?.focus({ preventScroll: true }));
     };
     window.addEventListener(OPEN, onOpen);
     return () => window.removeEventListener(OPEN, onOpen);
   }, [ask, setHeard]);
 
-  const state: OrbState = talk.phase === "listening" || (pressed && talk.phase === "idle") ? "listening" : talk.phase === "transcribing" ? "transcribing" : phase;
-  const answering = !!shown;
-  const busy = state === "thinking" || state === "transcribing";
-  const next = nextQuestions(shown?.question ?? null, 2);
-
-  const status = state === "listening" ? <><span className="font-medium text-ink">Listening</span> · let go to ask</>
-    : state === "transcribing" ? <><span className="font-medium text-ink">Got it</span> · writing down your question</>
-    : state === "thinking" ? <><span className="font-medium text-ink">Reading the books</span>{heard ? null : " · every number comes from the data"}</>
-    : notice ? voiceOnly(notice)
-    : keyboard && voiceIn ? "Let go of the keys when you're done."
-    : voiceIn ? "Hold the orb while you speak, then let go."
-    : CANT_LISTEN;
-
-  // The popup's head beside the small orb, once there is an answer: what the orb is doing, or how to ask again.
-  const headLine = state === "listening" ? "Listening · let go to ask"
-    : state === "transcribing" ? "Writing down your question"
+  // What the orb is doing, in a few words.
+  const status = state === "listening" ? (words ? null : "Listening")
+    : state === "transcribing" ? "Got it"
     : state === "thinking" ? "Reading the books"
-    : state === "speaking" ? "Answering out loud"
-    : keyboard && voiceIn ? <>Hold <TalkKeys /> or the orb to ask anything</>
-    : voiceIn ? "Hold the orb to ask anything"
-    : CANT_LISTEN;
+    : state === "speaking" ? "Answering"
+    : null;
+
+  const suggestions = nextQuestions(shown?.question ?? null, shown ? 2 : 4);
+  const showPill = !hidden || open || working || pressing;
 
   return (
     <>
+      {/* A faint veil while the card is open: a click on it closes. No blur, so the page stays itself. */}
       <AnimatePresence>
         {open ? (
-          <motion.div key="ask-overlay" ref={root} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby={titleId} data-lenis-prevent
-            className="fixed inset-0 z-[90] focus:outline-none"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }}>
-            {/* A dim over the page, blurred so the page behind (the hero's blue grid) never competes; a click on it
-                closes the popup. On a phone, a full sheet of canvas. */}
-            <div aria-hidden className="absolute inset-0 bg-canvas sm:bg-night/55 sm:backdrop-blur-[3px]" />
-            <div className="absolute inset-0 flex items-start justify-center px-4 py-4 sm:items-center sm:py-[clamp(16px,6vh,56px)]"
-              onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
-              <h2 id={titleId} className="sr-only">Ask the books</h2>
-              <div className="sr-only" aria-live="polite">{shown ? `${shown.question}. ${shown.answer.spoken}` : ""}</div>
-              {/* One warm tray, never taller than the window: the orb heads it, and the card under it scrolls inside. */}
-              <motion.div className={`flex max-h-full w-full flex-col overflow-hidden rounded-[16px] border border-hairline bg-warm shadow-[0_1px_2px_rgb(85_40_20/0.08),0_24px_60px_-24px_rgb(85_40_20/0.5)] ${answering ? "max-w-[680px]" : "max-w-[492px]"}`}
-                initial={{ y: 14, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.99 }} transition={{ duration: 0.35, ease: EASE }}>
-                <div className={`relative flex shrink-0 items-center ${answering ? "gap-3 py-2.5 pl-3 pr-12" : "justify-center pb-3 pt-6 sm:pt-7"}`}>
-                  <motion.div layout transition={{ duration: 0.45, ease: EASE }} className="shrink-0">
-                    <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={talk.phase === "transcribing"} small={answering}
-                      className={answering ? "size-14" : "size-[112px] sm:size-[128px]"} />
-                  </motion.div>
-                  {answering ? (
-                    <div className="min-w-0">
-                      <p className="text-[14px] font-medium text-ink">Ask the books</p>
-                      <p className="truncate text-[12.5px] text-secondary">{headLine}</p>
-                    </div>
-                  ) : null}
-                  <button type="button" onClick={close} aria-label="Close" className="calm absolute right-1.5 top-1.5 grid size-11 place-items-center rounded-full text-faint hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent lg:size-9">
-                    <X size={16} strokeWidth={1.75} />
-                  </button>
-                </div>
-
-                <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
-                  {answering ? (
-                    <div className="card p-5 sm:p-6">
-                      {/* Voice only: the answer is heard, not read. The card holds what it shows (the template, or
-                          the gateway's refusal), the controls for the voice, and where the answer came from. */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {state === "speaking" || state === "thinking" ? (
-                          <button type="button" onClick={a.stop} className={pill}>
-                            <Square size={10} strokeWidth={2} fill="currentColor" className="text-accent" />Stop
-                          </button>
-                        ) : (
-                          <button type="button" onClick={() => a.play(shown!)} disabled={!shown!.audio && !LIVE} className={pill}>
-                            <Play size={11} strokeWidth={2} fill="currentColor" className="text-accent" />Play again
-                          </button>
-                        )}
-                        <button type="button" onClick={() => a.reset()} className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium text-secondary hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8">
-                          <RotateCcw size={12} strokeWidth={1.75} />Ask again
-                        </button>
-                      </div>
-                      <AnimatePresence mode="wait" initial={false}>
-                        <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} className="mt-4" />
-                      </AnimatePresence>
-                      <div className="mt-5 border-t border-hairline pt-4">
-                        <span className="eyebrow">Ask next</span>
-                        <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
-                          {next.map((p) => (
-                            <li key={p.id} className="min-w-0">
-                              <button type="button" disabled={busy} onClick={() => { setHeard(null); void ask(p.question); }}
-                                className="calm group/q flex h-full min-h-11 w-full items-center gap-3 rounded-[10px] border border-hairline bg-ground px-3.5 py-2 text-left text-[13px] leading-snug text-body hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50">
-                                <span className="min-w-0 flex-1">{p.question}</span>
-                                <ArrowRight aria-hidden size={14} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-4 text-[12px] text-faint">
-                          {shown!.from === "recorded" ? "Recorded answer" : "Live: Claude chose the query"} · {shown!.answer.checked ? "every number checked against the data" : "sentence written by code"} · read only
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <CoachCard suggestion={suggestion} status={status}>
-                      <p className="mt-4 border-t border-hairline pt-3 text-[12px] text-faint">Read only: it can explain the books, never change them. Esc closes.</p>
-                    </CoachCard>
-                  )}
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
+          <motion.div key="veil" aria-hidden onClick={close} className="fixed inset-0 z-[89] bg-night/10"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} />
         ) : null}
       </AnimatePresence>
 
-      {/* On a phone or tablet there is no shortcut: a small button opens the popup, where the orb is held. */}
-      {fab && !open ? (
-        <button type="button" onClick={() => openAsk()}
-          className="calm fixed bottom-[max(16px,env(safe-area-inset-bottom))] right-4 z-[80] inline-flex min-h-11 items-center gap-2 rounded-full border border-hairline bg-ground px-4 text-[13px] font-medium text-ink shadow-[0_10px_30px_-12px_rgb(85_40_20/0.35)] hover:border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hidden">
-          <Mic size={15} strokeWidth={1.75} className="text-accent" aria-hidden />Ask the books
-        </button>
-      ) : null}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[max(16px,env(safe-area-inset-bottom))] z-[90] flex flex-col items-center gap-3 px-4">
+        <div className="sr-only" aria-live="polite">{shown ? `${shown.question}. ${shown.answer.spoken}` : status ?? ""}</div>
+
+        {/* The card rises out of the pill. */}
+        <AnimatePresence>
+          {open ? (
+            <motion.section key="card" ref={cardRef} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby={titleId} data-lenis-prevent
+              className="glass pointer-events-auto flex max-h-[min(72vh,680px)] w-full max-w-[600px] origin-bottom flex-col overflow-hidden rounded-[26px] focus:outline-none"
+              initial={{ opacity: 0, y: 24, scale: 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.95 }} transition={SPRING}>
+              <header className="flex shrink-0 items-center gap-2.5 py-3 pl-5 pr-2">
+                <h2 id={titleId} className="text-[13px] font-medium text-ink">Ask the books</h2>
+                <span className="text-[12.5px] text-secondary">{status ? <>· {status}</> : shown ? null : "· read only"}</span>
+                <button type="button" onClick={close} aria-label="Close" className="calm ml-auto grid size-11 place-items-center rounded-full text-faint hover:bg-white/70 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent lg:size-8">
+                  <X size={15} strokeWidth={1.75} />
+                </button>
+              </header>
+
+              <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
+                {shown ? (
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div key={shown.question + shown.from} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3, ease: EASE }}>
+                      <p className="text-[12.5px] text-faint">&ldquo;{heard ?? shown.question}&rdquo;</p>
+                      <SpokenCaption text={shown.answer.spoken} live={state === "speaking"} className="title mt-2 text-[19px] leading-[1.3] sm:text-[21px]" />
+                      <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                        {state === "speaking" || state === "thinking" ? (
+                          <button type="button" onClick={a.stop} className={chip}><Square size={10} strokeWidth={2} fill="currentColor" className="text-accent" />Stop</button>
+                        ) : (
+                          <button type="button" onClick={() => a.play(shown)} disabled={!shown.audio && !LIVE} className={chip}><Play size={11} strokeWidth={2} fill="currentColor" className="text-accent" />Play again</button>
+                        )}
+                        <span className="text-[11.5px] text-faint">
+                          {shown.from === "recorded" ? "Recorded" : "Live"} · {shown.answer.checked ? "every number from the books" : "written by code"}
+                        </span>
+                      </div>
+                      <AnswerBody shown={shown} state={state} className="mt-4" />
+                    </motion.div>
+                  </AnimatePresence>
+                ) : notice ? (
+                  <p className="pt-1 text-[14px] text-body" role="status">{voiceOnly(notice)}</p>
+                ) : (
+                  <p className="pt-1 text-[15px] leading-snug text-body">
+                    {voiceIn ? <>Hold the button below and ask anything about the books.</> : CANT_LISTEN}
+                  </p>
+                )}
+
+                {!working || shown ? (
+                  <div className="mt-5">
+                    <span className="eyebrow">{shown ? "Ask next" : "Or try"}</span>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {suggestions.map((p) => (
+                        <li key={p.id} className="min-w-0">
+                          <button type="button" disabled={busy} onClick={() => { setHeard(null); void ask(p.question); }}
+                            className="glass-chip calm group/q inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-left text-[13px] leading-snug text-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 lg:min-h-9">
+                            <span className="min-w-0">{p.question}</span>
+                            <ArrowUpRight aria-hidden size={13} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
+
+        {/* While it listens with the card closed, the words so far float above the orb. */}
+        <AnimatePresence>
+          {!open && working ? (
+            <motion.div key="bubble" className="glass pointer-events-none flex max-w-[min(520px,100%)] items-center gap-2.5 rounded-full px-4 py-2 text-[13.5px] text-ink"
+              initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.97 }} transition={SPRING}>
+              {state === "listening" ? <LevelBars active className="shrink-0" /> : null}
+              <span className={`min-w-0 truncate ${words && state === "listening" ? "" : "text-secondary"}`}>{state === "listening" && words ? words : status}</span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {/* The pill, which is the orb while it works. */}
+        <AnimatePresence>
+          {showPill ? (
+            <motion.button key="pill" type="button" layout transition={SPRING} style={{ borderRadius: 999 }}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, scale: pressing ? 0.95 : 1 }} exit={{ opacity: 0, y: 12 }}
+              aria-label={!voiceIn ? "Ask the books" : state === "listening" ? "Listening. Let go to ask" : state === "speaking" ? "Tap to stop" : "Hold to ask the books out loud, or tap for suggestions"}
+              onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); pressStart(); }}
+              onPointerUp={pressEnd} onPointerCancel={pressEnd} onContextMenu={(e) => e.preventDefault()}
+              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) pressStart(); } }}
+              onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); pressEnd(); } }}
+              className={`glass group pointer-events-auto flex touch-none select-none items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${working ? "size-[76px] justify-center p-1.5" : "h-12 gap-2.5 pl-2 pr-4"}`}>
+              <motion.span layout="position" transition={SPRING} className={`relative block shrink-0 ${working ? "float size-full" : "size-8"}`}>
+                <ThinkingOrb state={state} className="absolute inset-0" />
+              </motion.span>
+              {!working ? (
+                <motion.span layout="position" className="flex items-center gap-2 whitespace-nowrap text-[13.5px] font-medium text-ink">
+                  {open && voiceIn ? "Hold to talk" : "Ask the books"}
+                  {keyboard && voiceIn && keys ? <kbd className="font-mono text-[11px] font-normal tracking-normal text-faint">{keys}</kbd> : null}
+                </motion.span>
+              ) : null}
+            </motion.button>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </>
   );
 }

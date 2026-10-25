@@ -1,10 +1,11 @@
 "use client";
 // Hold to talk: press (or hold Space or Enter), speak, let go. Hands the transcript to `onText`.
 // `usePushToTalk` is the behaviour, so any control can be the button (the orb in Ask the books, the overlay's
-// shortcut); `PushToTalk` is the plain round button the case room's voice answers use. All of them listen through
+// shortcut); `PushToTalk` is the glass pill the case room's voice answer uses. All of them listen through
 // one pipeline, `listen` in voice.ts.
 import { useEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes } from "react";
-import { Mic, Square } from "lucide-react";
+import { Mic } from "lucide-react";
+import { LevelBars } from "./level";
 import { blipIn, blipOut, canListen, listen, stopSpeaking, type Listening } from "./voice";
 
 export type TalkPhase = "idle" | "listening" | "transcribing";
@@ -63,7 +64,7 @@ export function usePushToTalk({ onText, onError, disabled = false, onPhase, onWo
     if ("error" in t) latest.current.onError(t.error); else latest.current.onText(t.text);
   };
 
-  // Let go without asking (a tap of the shortcut, or the popup closing while it listens).
+  // Let go without asking (a hold let go before the microphone opened, or the dock closing while it listens).
   const cancel = () => {
     const was = holding.current || !!rec.current;
     holding.current = false;
@@ -86,13 +87,16 @@ export function usePushToTalk({ onText, onError, disabled = false, onPhase, onWo
   return { phase, props, begin, end, cancel };
 }
 
-export function PushToTalk({ size = 64, label = "Hold to answer", ...talk }: Talk & { size?: number; label?: string }) {
+// The plain hold to talk control for the case room's voice answer: a glass pill that fills blue and shows the voice's
+// level while it listens.
+export function PushToTalk({ label = "Hold to answer", ...talk }: Talk & { label?: string }) {
   const { phase, props } = usePushToTalk(talk);
+  const on = phase === "listening";
   return (
-    <button {...props} aria-label={label} style={{ width: size, height: size }}
-      className={`calm relative grid shrink-0 touch-none select-none place-items-center rounded-full text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-mute ${phase === "listening" ? "bg-accent-hover" : "bg-accent hover:bg-accent-hover"}`}>
-      {phase === "listening" ? <span aria-hidden className="listen absolute inset-0 rounded-full" /> : null}
-      {phase === "listening" ? <Square size={Math.round(size / 3.2)} strokeWidth={2} fill="currentColor" /> : <Mic size={Math.round(size / 2.7)} strokeWidth={1.75} />}
+    <button {...props} aria-label={on ? "Listening. Let go when you're done" : label}
+      className={`calm inline-flex min-h-11 shrink-0 touch-none select-none items-center gap-2 rounded-full px-4 text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 lg:min-h-10 ${on ? "bg-accent text-white shadow-[0_8px_20px_-8px_rgb(31_95_192/0.65)]" : "glass text-ink"}`}>
+      {on ? <LevelBars active white /> : <Mic size={15} strokeWidth={1.75} className="text-accent" />}
+      {on ? "Listening" : phase === "transcribing" ? "Got it" : label}
     </button>
   );
 }

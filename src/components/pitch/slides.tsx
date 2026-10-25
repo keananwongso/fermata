@@ -429,7 +429,7 @@ function ProofCard({ label, figure, sub, delay }: { label: string; figure: strin
 const STACK: { place: string; who: string; items: [string, string][] }[] = [
   { place: "The site", who: "Next.js on Vercel", items: [
     ["Landing, demo, dashboard, pitch", "read the exported year, so they load with no backend"],
-    ["Ask the books", "hold ⌃ + ⌥ and talk: Claude picks the answer, code fills every number, Cartesia speaks it"],
+    ["Ask the books", "hold to talk: Cartesia hears you, Claude picks the answer, code fills every number, Cartesia speaks it"],
   ] },
   { place: "The backend", who: "Convex", items: [
     ["Sync and the engine", "every bank line placed, matched and settled under approved rules"],

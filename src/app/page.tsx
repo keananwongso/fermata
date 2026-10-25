@@ -8,8 +8,6 @@ import { LY } from "@/components/learningYear";
 import { num, pct } from "../../convex/lib/format";
 import { Arrival, BrandGrid, Reveal, RevealItem, Roll, SmoothScroll } from "@/components/motion";
 import { Dashboard } from "@/components/dashboard";
-import { AskChips, AskLesson } from "@/components/ask/lesson";
-import { AskHint } from "@/components/ask/overlay";
 
 export default function Page() {
   return <Arrival><SmoothScroll /><Landing /></Arrival>;
@@ -33,7 +31,6 @@ function Landing() {
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href="#how">See how it works</LinkArrow>
           </RevealItem>
-          <RevealItem><AskHint className="mt-1" /></RevealItem>
         </Reveal>
         <div className="relative mt-12 lg:mt-16">
           <Reveal className="relative min-w-0" delay={0.35}><RevealItem><Dashboard /></RevealItem></Reveal>
@@ -72,20 +69,6 @@ function Landing() {
           <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns. Every rule starts as a decision a person made.</h3>
           <HowLearns />
         </div>
-      </section>
-
-      {/* Ask the books: teach the shortcut. Holding Control + Option anywhere on the site opens the popup
-          (src/components/ask/overlay.tsx); the suggested questions here open it and ask. */}
-      <section id="ask" className="scroll-mt-36 grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-        <Reveal className="min-w-0 max-w-[560px]" stagger={0.1}>
-          <RevealItem><Tag tone="neutral">Ask the books</Tag></RevealItem>
-          <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">Ask the books. Out loud.</h2></RevealItem>
-          <RevealItem><p className="mt-5 text-[15px] leading-relaxed text-body">
-            It answers from the closed books, out loud and on screen, and every number comes from the books, not from the model. Read only: it can explain the books, never change them.
-          </p></RevealItem>
-          <RevealItem className="mt-6"><div className="eyebrow mb-2.5">Try asking</div><AskChips /></RevealItem>
-        </Reveal>
-        <Reveal className="min-w-0"><RevealItem><AskLesson /></RevealItem></Reveal>
       </section>
 
       {/* Proof: the year as Fermata closed it, learning, against the same year with the rules frozen (simulated). The

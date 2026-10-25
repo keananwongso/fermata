@@ -82,13 +82,15 @@ inside rule code and the record.
 * `.frame`: a warm tray (radius 16px, 6px padding) that holds one or more cards. Use it to group
   a hero card with its supporting cards.
 * `.panel`: a flat warm well (radius 6px) for traces, code and evidence inside a card.
+* `.glass`: frosted white over whatever is behind it, a bright top rim, a soft warm shadow. **Voice only**: the Ask dock,
+  its card, the panel's orb and the case room's voice answer. Nothing else is translucent. `.glass-chip` is a lighter
+  glass well inside it (suggestions, Play and Stop); `.float` is the orb's slow bob while it works.
 * `.hatch`: diagonal hatching on canvas for empty states and "nothing here yet".
 * `.scroll-quiet`: put it on every scroll box inside a card. The scrollbar is thin and stays invisible until the box
   is hovered. Lists that stream in (the demo's engine) do not scroll at all: they clip with a fade at the bottom.
 * `.field`: a text input or select. White, hairline border, radius 6px, blue border when focused, 44px tall on
   mobile and 36px on desktop. Its label is an `.eyebrow` above it.
-* `.kbd`: a key or a shortcut ("⌃ + ⌥") in mono, white with a strong border. `TalkKeys` renders the
-  Ask the books shortcut named for the platform.
+* `.kbd`: a key or a shortcut in mono, white with a strong border.
 * Radii: card 10px, panel 6px, button 4.5px, pill fully round. Nothing else.
 
 ## Components (`src/components/ui.tsx`)
@@ -144,7 +146,7 @@ The transcript of the agents' meeting on one held story.
   button, last and the only primary; on `/demo` itself the button drops out, because running the demo is the action
   there. Console tabs and the Acting as switch everywhere else. Two paths, no more doors: the guided path is the demo,
   the explore path is the dashboard (Ask the books lives inside it), and the demo hands off to the dashboard when the
-  year closes. Ask the books is also everywhere on the site pages as a shortcut (hold ⌃ + ⌥; see Ask the books,
+  year closes. Ask the books is also on every page as the glass pill at the bottom centre (see Ask the books,
   anywhere), which adds no header link. `/ask` still works as a direct address; the footer lists every way in.
 * The landing page follows one rhythm: a `Tag`, a `.display` or `.title` heading, one short paragraph, then a
   `LinkArrow`. Illustrations sit in a `.frame` around a `.card`.
@@ -156,11 +158,8 @@ The transcript of the agents' meeting on one held story.
   `scripts/export_demo.ts --preset learning`): the learning year as Fermata closed it, with the same year's frozen
   baseline beside it. Learning figures go through `src/components/learningYear.ts`. One file, so the demo, the
   dashboard, the landing page and the pitch tell the same year. Never type a figure into the page by hand.
-* **Ask the books on the landing page** sits between How it works and Proof and teaches the shortcut rather than
-  embedding the panel: the page rhythm on the left (`Tag`, "Ask the books. Out loud.", one paragraph, then four
-  suggested questions as chips that open the popup and ask), and on the right, in a `warm` tray, the idle orb over a
-  still coach card (a white `.card`) ("Hold ⌃ + ⌥ to ask the books anything", one question to say aloud). The hero carries
-  one quiet line under its buttons, "or hold ⌃ + ⌥ to ask the books", which opens the popup ("or ask the books" on a phone).
+* **The landing page has no Ask the books section** and no shortcut hint: the dock's pill is on screen the whole
+  time and teaches itself.
 * **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
   people with learning, rounded down, then both year-end counts in one short line); **Proof** is a white card with a
   `Tag`, a `.title`, the first-pass climb as one figure on the right, and the `LearningChart` across the full width.
@@ -172,8 +171,7 @@ The transcript of the agents' meeting on one held story.
 * The demo does not call itself a recording on screen, but it never claims more than it is: every agent message
   inside a room keeps its Claude, code or scripted label, and answers the recording did not take are greyed out.
 * **The demo ends in the closed books.** When the year closes, the case rooms card ends with the hand-off: the brand
-  button **Explore the closed books** (`/dashboard`), **Ask the books** (opens the popup over the closed year), a faint
-  line teaching the shortcut ("Anywhere on the site, hold ⌃ + ⌥ to ask the books", keyboards only), and Run it yourself as
+  button **Explore the closed books** (`/dashboard`), **Ask the books** (opens the dock's card over the closed year), and Run it yourself as
   a quiet text link. Play again steps down to a secondary button so the hand-off is the one primary. The demo never
   embeds the dashboard; it sends the visitor there.
 * **Hints only for a visitor who hesitates** (`useHints`, `Hint` in `demo/page.tsx`, drawn as `.tip`). Each waits for
@@ -529,56 +527,48 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   matching) are answered from `src/demo/ask.json` with the recorded audio in `public/ask/`, with no Claude call. Re-record
   with `npx tsx --env-file=.env scripts/export_ask.ts`. Only unmatched questions go live, rate limited per visitor and
   capped per day; past the cap the answer is "I can only answer the suggested questions right now".
-* **One voice pipeline** (`listen` in `ask/voice.ts`) for the orb, the popup's shortcut and the case room's round button:
+* **One voice pipeline** (`listen` in `ask/voice.ts`) for the orb, the dock and the case room's voice answer:
   the microphone recorder (Cartesia's transcript when the live service is there, and the orb's level) together with the
   browser's own speech recognition (`ask/speech.ts`: the words while the person speaks, and the transcript when there is
   no live service). Either is enough, so a spoken suggested question is answered from the recording on the hosted site too.
-  Rising and falling earcons (`blipIn`, `blipOut`) mark press and release on the orb and the shortcut; the case room stays quiet.
+  Rising and falling earcons (`blipIn`, `blipOut`) mark press and release on the orb and the dock; the case room stays quiet.
 * **Without a Convex URL** (the hosted site today) spoken and typed questions only match presets (anything else gets
   "I can only answer the suggested questions right now"), and recorded answers still play out loud and still drive the
   orb. Only where the browser can neither record for Cartesia nor recognise speech is the orb unpressable, with a crossed
   mic badge and a line saying why. A rate limit or a failed answer shows as a short note under the orb.
 * **Screenshots in development:** `/ask?orb=listening` (or `transcribing`, `thinking`, `speaking`) holds the orb in that
   state; the check is compiled out of production builds. `/ask?q=<preset id>` opens a recorded answer without playing it.
-* **Voice answers in a case room** (`voiceAnswer.tsx`): a question for the CFO can be answered by voice under its options,
-  with the plain round `PushToTalk` button (64px or 48px, blue, `.listen` pulse while it listens).
-  The answer is read back ("You said …. That means …") and only a spoken yes sends it, marked "By voice". Confirming the
-  restated answer and approving a rule stay clicks.
+* **Voice answers in a case room** (`voiceAnswer.tsx`): under a CFO question's options, one `.glass` strip with the
+  `PushToTalk` pill ("Hold to answer"; it fills blue with `LevelBars` while it listens) and one line beside it: the
+  words as they are heard, or "Or answer out loud. It's read back first." A matched answer swaps the strip for "You said"
+  and the option and its impact, read back out loud, then **Send answer** (primary), the pill again as "Or say yes", and
+  Cancel. It is sent marked "By voice". Confirming the restated answer and approving a rule stay clicks on the card.
 * **Speech** is Cartesia: one voice, `sonic-3.6`, mp3. The browser gets a one minute access token from Convex, never the key.
 
 ## Ask the books, anywhere (`src/components/ask/overlay.tsx`)
 
-On every site page (`/`, `/demo`, `/dashboard`, `/ask`; not the console, not the pitch, whose keys step the deck), hold
-**Control + Option** (Ctrl + Alt on Windows, never Command) and ask out loud; let go to ask. Modelled on Loci's hold to talk.
-`AskOverlay` is mounted once by `Providers` and keyed by page, so moving on closes it and stops its voice. It shares
-everything with the panel: the question and answer (`useAsk`), the answer (`AnswerHead`, `AnswerBody` in `ask/answer.tsx`),
-the orb (`OrbButton`) and the voice pipeline. Anything opens it with `openAsk()` (with `{ question }` it asks straight
-away). **Voice only:** no type box and no transcript, neither the live words nor the answer as a caption; the answer is
-heard, and the card shows only its template. The panel on `/ask` keeps both. Notices that say to type are trimmed here.
+One `.glass` pill at the bottom centre of every page, console and pitch included: a small idle orb, "Ask the books", and
+the shortcut in faint mono (⌃⌥ on a Mac, Ctrl Alt elsewhere; keyboards only). `AskOverlay` is mounted once by
+`Providers` and keyed by page, so moving on closes it and stops its voice. It shares the question and answer (`useAsk`),
+the answer (`AnswerBody`, `SpokenCaption`), the orb and the voice pipeline with the panel. Anything opens it with
+`openAsk()` (with `{ question }` it asks straight away). A page with its own `AskPanel` hides the resting pill
+(`useHideDock()`); the shortcut still works there.
 
-* **Hold and release.** Keys down: a rising blip, the popup opens and says Listening at once (before the microphone has
-  opened), the words appear as they are heard. Keys up: a falling blip and "Got it · writing down your question", then
-  Reading the books, then the answer. Holding again while it speaks interrupts it. A tap under 280ms only opens the popup.
-* **The shortcut is the call to action**, labelled per platform: "Hold ⌃ + ⌥ to talk" with a Control + Option tooltip on a
-  Mac, "Hold Ctrl + Alt to talk" elsewhere (`useTalkKeys`, `TalkKeys`). On a phone or tablet (no fine pointer) it reads
-  "Hold the orb to talk" and a small floating **Ask the books** button (white pill, blue mic, bottom right) opens the
-  popup. The fallbacks are the orb itself, held by pointer or touch, and Space or Enter while it has focus.
-* **The popup is one warm tray** (`bg-warm`, hairline, radius 16px), and the orb lives inside it as its head, never
-  floating over the page. Before an answer the orb sits large and centred at the top of the tray, over the coach card, a
-  white `.card` like the answer's (no dark surface: one warm tray, one white card, in both states): "Hold ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the
-  status line and the read only promise and Esc. With an answer the orb shrinks into a header row beside "Ask the books"
-  and what it is doing (Listening, Reading the books, Answering out loud, or how to ask again), over a white `.card`:
-  Play again or Stop and Ask again, the template (or the gateway's refusal), **Ask next** (two suggested questions),
-  and one faint line saying where the answer came from, whether its numbers were checked, and read only. The close
-  button sits in the tray's top right corner in both states.
-* **Never taller than the window.** The tray is centred and capped at the window's height less a comfortable margin
-  (`clamp(16px, 6vh, 56px)` top and bottom; 16px on a phone). The orb's head stays put and the card under it scrolls
-  inside the tray (`.scroll-quiet`, `overscroll-contain`), so Ask next is always reachable on a short screen.
-* **Calm, never in the way.** A `night` dim at 55% with a slight blur (3px) over the page on wider screens, strong enough
-  that the page behind (the hero's blue grid) never competes with the popup; a full canvas sheet on a phone (the header
-  would crowd it). Escape, the close button or a click outside closes it. The shortcut is ignored while another
-  text field has focus, the popup is `data-lenis-prevent` so its own scrolling never
-  moves the smooth-scrolled page, and it is a non-modal `dialog` that takes focus only when opened by a click.
-* Two colours with jobs here too: blue for the orb's listening badge, links and the send button; amber only inside an
-  answer that is about held lines; everything else ink, white and neutral. Reduced motion keeps the orb's still frames
-  and the popup's fades.
+* **Hold to talk, tap to look.** A press held past 180ms listens (a rising blip); letting go asks (a falling blip). A
+  shorter press is a tap: it opens the card with suggested questions, closes it if open, or stops the voice while it
+  talks. The microphone opens only on a hold, so a tap never asks for permission. Control + Option (Ctrl + Alt, never
+  Command) does the same anywhere except in a text field; Space or Enter does it while the pill has focus.
+* **The pill becomes the orb.** While it listens, writes down the question, reads the books or speaks, the pill morphs
+  (a spring layout animation) into a 76px glass circle with the orb filling it and bobbing gently (`.float`). With the
+  card closed, a glass bubble above it carries `LevelBars` and the words as they are heard, then Got it, Reading the
+  books, Answering. Back at rest it is the pill again.
+* **The card rises out of the pill**: `.glass`, radius 26px, up to 600px wide and never taller than `min(72vh, 680px)`,
+  scrolling inside (`.scroll-quiet`, `data-lenis-prevent`). Its head is "Ask the books" and what the orb is doing, with
+  the close button. With an answer: the question in quotes, the spoken sentence as a `SpokenCaption`, Play again or Stop
+  (a `.glass-chip`) with one faint provenance line (Recorded or Live · every number from the books or written by code),
+  the template, and **Ask next** (two suggestions as glass chips). Without one: one line ("Hold the button below and ask
+  anything about the books.") and **Or try** (four suggestions).
+* **Calm, never in the way.** A faint `night` veil at 10% with no blur while the card is open; a click on it, Escape or
+  the close button closes. The dock sits 16px from the bottom edge (or the safe area).
+* Two colours with jobs here too: blue for the orb, the level bars and links; amber only inside an answer about held
+  lines; everything else ink and white glass. Reduced motion keeps the orb's still frames and the fades.
