@@ -16,7 +16,7 @@ export function AskLesson() {
         <ThinkingOrb state="idle" className="absolute inset-0" />
       </button>
       <div className="mt-6 w-full max-w-[440px] text-left">
-        <CoachCard still suggestion={say} onType={() => openAsk({ type: true })}
+        <CoachCard still suggestion={say}
           status={keyboard ? "Let go of the keys to ask. The answer is spoken and shown." : "Tap the orb, then hold it while you speak."} />
       </div>
     </div>

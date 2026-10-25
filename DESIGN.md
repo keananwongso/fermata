@@ -87,10 +87,7 @@ inside rule code and the record.
   is hovered. Lists that stream in (the demo's engine) do not scroll at all: they clip with a fade at the bottom.
 * `.field`: a text input or select. White, hairline border, radius 6px, blue border when focused, 44px tall on
   mobile and 36px on desktop. Its label is an `.eyebrow` above it.
-* `.coach`: the one dark card on the site pages, warm graphite (`ink`) with a faint grain, white text, radius 16px. Only
-  for teaching the Ask the books shortcut (the popup while it listens, and the landing page's lesson). Opaque: the
-  page's dark headings show through any translucency.
-* `.kbd`: a key or a shortcut ("⌃ + ⌥") in mono, light on the page and frosted inside `.coach`. `TalkKeys` renders the
+* `.kbd`: a key or a shortcut ("⌃ + ⌥") in mono, white with a strong border. `TalkKeys` renders the
   Ask the books shortcut named for the platform.
 * Radii: card 10px, panel 6px, button 4.5px, pill fully round. Nothing else.
 
@@ -188,7 +185,7 @@ The transcript of the agents' meeting on one held story.
 * **Ask the books on the landing page** sits between How it works and Proof and teaches the shortcut rather than
   embedding the panel: the page rhythm on the left (`Tag`, "Ask the books. Out loud.", one paragraph, then four
   suggested questions as chips that open the popup and ask), and on the right, in a `warm` tray, the idle orb over a
-  still `.coach` card ("Hold ⌃ + ⌥ to ask the books anything", one question to say aloud, Type instead). The hero carries
+  still coach card (a white `.card`) ("Hold ⌃ + ⌥ to ask the books anything", one question to say aloud). The hero carries
   one quiet line under its buttons, "or hold ⌃ + ⌥ to ask the books", which opens the popup ("or ask the books" on a phone).
 * **The landing page's learning sections:** the banner states the learning claim (how many times fewer lines are left for
   people with learning, rounded down, then both year-end counts in a quieter line); **Proof** is a white card with a
@@ -528,7 +525,8 @@ On every site page (`/`, `/demo`, `/dashboard`, `/ask`; not the console, not the
 `AskOverlay` is mounted once by `Providers` and keyed by page, so moving on closes it and stops its voice. It shares
 everything with the panel: the question and answer (`useAsk`), the answer (`AnswerHead`, `AnswerBody` in `ask/answer.tsx`),
 the orb (`OrbButton`) and the voice pipeline. Anything opens it with `openAsk()` (with `{ question }` it asks straight
-away, with `{ type: true }` it opens on the type box).
+away). **Voice only:** no type box and no transcript, neither the live words nor the answer as a caption; the answer is
+heard, and the card shows only its template. The panel on `/ask` keeps both. Notices that say to type are trimmed here.
 
 * **Hold and release.** Keys down: a rising blip, the popup opens and says Listening at once (before the microphone has
   opened), the words appear as they are heard. Keys up: a falling blip and "Got it · writing down your question", then
@@ -538,20 +536,20 @@ away, with `{ type: true }` it opens on the type box).
   "Hold the orb to talk" and a small floating **Ask the books** button (white pill, blue mic, bottom right) opens the
   popup. The fallbacks are the orb itself, held by pointer or touch, and Space or Enter while it has focus.
 * **The popup is one warm tray** (`bg-warm`, hairline, radius 16px), and the orb lives inside it as its head, never
-  floating over the page. Before an answer the orb sits large and centred at the top of the tray, over the `.coach`
-  card: "Hold ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the
-  status line with the live words, the read only promise and Esc, and a quiet Type instead (a type box prefilled with the
-  suggestion). With an answer the orb shrinks into a header row beside "Ask the books" and what it is doing (Listening,
-  Reading the books, Answering out loud, or how to ask again), over a white `.card`: You asked, the captioned answer with
-  its labels, the template, then **Ask next** (two suggested questions), Type instead and the read only line. The close
+  floating over the page. Before an answer the orb sits large and centred at the top of the tray, over the coach card, a
+  white `.card` like the answer's (no dark surface: one warm tray, one white card, in both states): "Hold ⌃ + ⌥ to talk", "Then say this aloud:" with one suggested question (the next one each time it opens), the
+  status line and the read only promise and Esc. With an answer the orb shrinks into a header row beside "Ask the books"
+  and what it is doing (Listening, Reading the books, Answering out loud, or how to ask again), over a white `.card`:
+  Play again or Stop and Ask again, the template (or the gateway's refusal), **Ask next** (two suggested questions),
+  and one faint line saying where the answer came from, whether its numbers were checked, and read only. The close
   button sits in the tray's top right corner in both states.
 * **Never taller than the window.** The tray is centred and capped at the window's height less a comfortable margin
   (`clamp(16px, 6vh, 56px)` top and bottom; 16px on a phone). The orb's head stays put and the card under it scrolls
-  inside the tray (`.scroll-quiet`, `overscroll-contain`), so Type instead is always reachable on a short screen.
+  inside the tray (`.scroll-quiet`, `overscroll-contain`), so Ask next is always reachable on a short screen.
 * **Calm, never in the way.** A `night` dim at 55% with a slight blur (3px) over the page on wider screens, strong enough
   that the page behind (the hero's blue grid) never competes with the popup; a full canvas sheet on a phone (the header
   would crowd it). Escape, the close button or a click outside closes it. The shortcut is ignored while another
-  text field has focus (the popup's own type box excepted), the popup is `data-lenis-prevent` so its own scrolling never
+  text field has focus, the popup is `data-lenis-prevent` so its own scrolling never
   moves the smooth-scrolled page, and it is a non-modal `dialog` that takes focus only when opened by a click.
 * Two colours with jobs here too: blue for the orb's listening badge, links and the send button; amber only inside an
   answer that is about held lines; everything else ink, white and neutral. Reduced motion keeps the orb's still frames

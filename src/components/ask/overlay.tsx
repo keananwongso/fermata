@@ -1,6 +1,7 @@
 "use client";
 // Ask the books, anywhere on the site: hold Control + Option (Ctrl + Alt on Windows), ask out loud, let go. A popup
-// opens over the page with the orb and the coach card while it listens, then the answer, spoken and in its template.
+// opens over the page with the orb and the coach card while it listens, then the answer, spoken aloud over its
+// template. Voice only: no type box and no transcript (the panel on /ask has both).
 // Holding again while it speaks interrupts it. On a phone with no keyboard a small floating button opens the same
 // popup, where the orb is held instead. Read only, like every Ask the books surface: the assistant role has no actions.
 //
@@ -9,18 +10,19 @@
 // the orb and the voice pipeline with the panel on /ask; see DESIGN.md, "Ask the books, anywhere".
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowUp, Mic, X } from "lucide-react";
-import { AnswerBody, AnswerHead } from "./answer";
+import { ArrowRight, Mic, Play, RotateCcw, Square, X } from "lucide-react";
+import { AnswerBody } from "./answer";
 import { OrbButton } from "./orbButton";
 import { usePushToTalk, useVoiceInput } from "./pushToTalk";
 import { RECORDED, nextQuestions, useAsk } from "./useAsk";
+import { LIVE } from "./voice";
 import type { OrbState } from "./orb";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const OPEN = "fermata:ask";
 
-// Opens the popup; with a question it asks it straight away, with `type` it opens on the type box.
-export function openAsk(detail: { question?: string; type?: boolean } = {}) {
+// Opens the popup; with a question it asks it straight away.
+export function openAsk(detail: { question?: string } = {}) {
   window.dispatchEvent(new CustomEvent(OPEN, { detail }));
 }
 
@@ -61,39 +63,36 @@ export function AskHint({ lead = "or ", keysOnly = false, quiet = false, classNa
   );
 }
 
+const CANT_LISTEN = "This browser can't listen. Try Chrome, Edge or Safari.";
+// The voice pipeline's notices are shared with the /ask panel, which has a type box; this popup has none.
+const voiceOnly = (m: string) => m.replace(/\s*Type your question instead\.?/, "") || CANT_LISTEN;
+const pill = "calm inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline bg-ground px-3 text-[12.5px] font-medium text-ink hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:min-h-8";
+
 const isCombo = (e: KeyboardEvent) => e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey && (e.key === "Control" || e.key === "Alt");
 const typing = (el: Element | null) => !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable);
 
 // ---- The coach card ------------------------------------------------------------------------------------------------
 
-// The translucent graphite card that teaches the shortcut: hold the keys, then say a suggested question aloud, or
-// type instead. The popup's own card while it listens, and the landing page's lesson (`still`).
-export function CoachCard({ suggestion, status, words, onType, children, still = false }: {
-  suggestion: string; status?: ReactNode; words?: string | null; onType?: () => void; children?: ReactNode; still?: boolean;
+// The white card that teaches the shortcut: hold the keys, then say a suggested question aloud. The popup's own card
+// while it listens, and the landing page's lesson (`still`).
+export function CoachCard({ suggestion, status, children, still = false }: {
+  suggestion: string; status?: ReactNode; children?: ReactNode; still?: boolean;
 }) {
   const keyboard = useKeyboard();
   return (
-    <div className="coach p-5 sm:p-6">
-      <h2 className="text-[19px] font-medium leading-snug tracking-[-0.02em] sm:text-[21px]">
+    <div className="card p-5 sm:p-6">
+      <h2 className="text-[19px] font-medium leading-snug tracking-[-0.02em] text-ink sm:text-[21px]">
         {keyboard ? <>Hold <TalkKeys /> to {still ? "ask the books anything" : "talk"}</> : <>Hold the orb to {still ? "ask the books anything" : "talk"}</>}
       </h2>
-      <p className="mt-4 text-[12.5px] text-white/65">Then say this aloud:</p>
-      <blockquote className="mt-2 rounded-r-[10px] border-l-2 border-white/40 bg-white/[0.07] px-4 py-3 text-[17px] leading-snug text-white/95">&ldquo;{suggestion}&rdquo;</blockquote>
+      <p className="mt-4 text-[12.5px] text-secondary">Then say this aloud:</p>
+      <blockquote className="mt-2 rounded-r-[6px] border-l-2 border-accent bg-well px-4 py-3 text-[17px] leading-snug text-ink">&ldquo;{suggestion}&rdquo;</blockquote>
       {status ? (
-        <div className="mt-4 flex items-start gap-2.5 text-[13px] text-white/80" role="status" aria-live="polite">
-          <Mic size={15} strokeWidth={1.75} className="mt-px shrink-0 text-white/60" aria-hidden />
-          <div className="min-w-0">
-            {status}
-            {words ? <p className="mt-1 text-[14px] text-white">&ldquo;{words}&rdquo;</p> : null}
-          </div>
+        <div className="mt-4 flex items-start gap-2.5 text-[13px] text-secondary" role="status" aria-live="polite">
+          <Mic size={15} strokeWidth={1.75} className="mt-px shrink-0 text-faint" aria-hidden />
+          <div className="min-w-0">{status}</div>
         </div>
       ) : null}
       {children}
-      {onType ? (
-        <button type="button" onClick={onType} className="calm mt-4 inline-flex min-h-11 items-center gap-1.5 text-[13px] text-white/75 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 lg:min-h-0">
-          Type instead<ArrowRight size={13} strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -104,28 +103,23 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
   const a = useAsk();
   const { phase, setPhase, shown, notice, setNotice, heard, setHeard, ask, reset, listening } = a;
   const [open, setOpen] = useState(false);
-  const [typing_, setTyping] = useState(false);
-  const [typed, setTyped] = useState("");
-  const [words, setWords] = useState<string | null>(null);
   const [nth, setNth] = useState(0);
   // The keys are down: the popup says Listening at once, before the microphone has opened.
   const [pressed, setPressed] = useState(false);
   const voiceIn = useVoiceInput();
   const keyboard = useKeyboard();
   const root = useRef<HTMLDivElement>(null);
-  const field = useRef<HTMLInputElement>(null);
   const titleId = useId();
   const suggestion = RECORDED[nth % Math.max(1, RECORDED.length)]?.question ?? "";
 
   const talk = usePushToTalk({
     disabled: !voiceIn, blips: true,
     onPhase: (p) => {
-      if (p === "listening") { listening(); setWords(null); setTyping(false); }
+      if (p === "listening") listening();
       else if (p === "transcribing") setPhase("transcribing");
       else setPhase((cur) => (cur === "listening" || cur === "transcribing" ? "idle" : cur));
     },
-    onWords: setWords,
-    onText: (t) => { setHeard(t); setWords(t); void ask(t); },
+    onText: (t) => { setHeard(t); void ask(t); },
     onError: (m) => { setNotice(m); setPhase((cur) => (cur === "listening" ? "idle" : cur)); },
   });
   const live = useRef({ talk, open, voiceIn });
@@ -134,28 +128,24 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
   const close = useCallback(() => {
     live.current.talk.cancel();
     reset();
-    setOpen(false); setTyping(false); setWords(null); setPressed(false);
+    setOpen(false); setPressed(false);
   }, [reset]);
-  const startTyping = useCallback((prefill = "") => {
-    setTyping(true); setTyped(prefill);
-    requestAnimationFrame(() => { field.current?.focus(); field.current?.select(); });
-  }, []);
 
-  // Hold Control + Option (Ctrl + Alt) anywhere to talk; let go to ask. Ignored while another text field has focus.
+  // Hold Control + Option (Ctrl + Alt) anywhere to talk; let go to ask. Ignored while a text field has focus.
   useEffect(() => {
     let down = 0;
     const onDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && live.current.open) { close(); return; }
       if (down || e.repeat || !isCombo(e)) return;
       const el = document.activeElement;
-      if (typing(el) && !root.current?.contains(el)) return;
+      if (typing(el)) return;
       e.preventDefault();
       down = performance.now();
       if (!live.current.open) setNth((n) => n + 1);
       setOpen(true);
-      if (!live.current.voiceIn) { setNotice("This browser can't listen. Type your question instead."); return; }
+      if (!live.current.voiceIn) { setNotice(CANT_LISTEN); return; }
       // Holding again while it speaks interrupts it: the voice stops and the old answer goes.
-      setPressed(true); listening(); setWords(null); setTyping(false);
+      setPressed(true); listening();
       void live.current.talk.begin();
     };
     const release = () => {
@@ -176,31 +166,29 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
   // openAsk(): from a suggested question, the demo's hand-off or the floating button.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ question?: string; type?: boolean }>).detail ?? {};
+      const d = (e as CustomEvent<{ question?: string }>).detail ?? {};
       if (!live.current.open) setNth((n) => n + 1);
       setOpen(true);
-      if (d.question) { setTyping(false); setWords(null); setHeard(null); void ask(d.question); }
-      else if (d.type) startTyping();
+      if (d.question) { setHeard(null); void ask(d.question); }
       // Keyboard users land in the popup, so Escape and Tab start there.
       requestAnimationFrame(() => root.current?.focus({ preventScroll: true }));
     };
     window.addEventListener(OPEN, onOpen);
     return () => window.removeEventListener(OPEN, onOpen);
-  }, [ask, setHeard, startTyping]);
+  }, [ask, setHeard]);
 
   const state: OrbState = talk.phase === "listening" || (pressed && talk.phase === "idle") ? "listening" : talk.phase === "transcribing" ? "transcribing" : phase;
   const answering = !!shown;
   const busy = state === "thinking" || state === "transcribing";
-  const submit = () => { const q = typed.trim(); if (!q) return; setTyped(""); setTyping(false); setWords(null); setHeard(null); void ask(q); };
   const next = nextQuestions(shown?.question ?? null, 2);
 
-  const status = state === "listening" ? <><span className="font-medium text-white">Listening</span> · let go to ask</>
-    : state === "transcribing" ? <><span className="font-medium text-white">Got it</span> · writing down your question</>
-    : state === "thinking" ? <><span className="font-medium text-white">Reading the books</span>{heard ? null : " · every number comes from the data"}</>
-    : notice ? notice
+  const status = state === "listening" ? <><span className="font-medium text-ink">Listening</span> · let go to ask</>
+    : state === "transcribing" ? <><span className="font-medium text-ink">Got it</span> · writing down your question</>
+    : state === "thinking" ? <><span className="font-medium text-ink">Reading the books</span>{heard ? null : " · every number comes from the data"}</>
+    : notice ? voiceOnly(notice)
     : keyboard && voiceIn ? "Let go of the keys when you're done."
     : voiceIn ? "Hold the orb while you speak, then let go."
-    : "This browser can't listen. Type your question instead.";
+    : CANT_LISTEN;
 
   // The popup's head beside the small orb, once there is an answer: what the orb is doing, or how to ask again.
   const headLine = state === "listening" ? "Listening · let go to ask"
@@ -209,21 +197,7 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
     : state === "speaking" ? "Answering out loud"
     : keyboard && voiceIn ? <>Hold <TalkKeys /> or the orb to ask anything</>
     : voiceIn ? "Hold the orb to ask anything"
-    : "Type a question below";
-
-  const typeBox = (dark: boolean) => (
-    <form className="mt-4 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <label htmlFor={`${titleId}-q`} className="sr-only">Type a question</label>
-      <div className={`calm flex min-w-0 flex-1 items-center rounded-full border pl-4 pr-1 ${dark ? "border-white/25 bg-white/[0.08] focus-within:border-white/60" : "border-hairline bg-well focus-within:border-accent focus-within:bg-ground hover:border-strong"}`}>
-        <input ref={field} id={`${titleId}-q`} value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={240} placeholder="Type a question" autoComplete="off"
-          className={`min-h-11 min-w-0 flex-1 bg-transparent text-[14px] focus:outline-none lg:min-h-10 ${dark ? "text-white placeholder:text-white/50" : "text-ink placeholder:text-faint"}`} />
-        <button type="submit" disabled={!typed.trim() || busy} aria-label="Ask"
-          className={`calm grid size-10 shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 ${dark ? "bg-white text-ink hover:bg-white/90 focus-visible:outline-white/80 disabled:bg-white/15 disabled:text-white/40" : "bg-accent text-white hover:bg-accent-hover focus-visible:outline-accent disabled:bg-inset disabled:text-faint"}`}>
-          <ArrowUp size={16} strokeWidth={2} />
-        </button>
-      </div>
-    </form>
-  );
+    : CANT_LISTEN;
 
   return (
     <>
@@ -261,19 +235,31 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
                 <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
                   {answering ? (
                     <div className="card p-5 sm:p-6">
-                      <p className="text-[13px] text-secondary"><span className="text-faint">You asked</span> <span className="text-ink">{shown!.question}</span></p>
-                      <div className="mt-2" key={shown!.question + shown!.from}>
-                        <AnswerHead shown={shown!} state={state} onPlay={() => a.play(shown!)} onStop={a.stop} onReset={() => { a.reset(); setWords(null); }} captionClass="text-[clamp(18px,2vw,22px)]" />
+                      {/* Voice only: the answer is heard, not read. The card holds what it shows (the template, or
+                          the gateway's refusal), the controls for the voice, and where the answer came from. */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {state === "speaking" || state === "thinking" ? (
+                          <button type="button" onClick={a.stop} className={pill}>
+                            <Square size={10} strokeWidth={2} fill="currentColor" className="text-accent" />Stop
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => a.play(shown!)} disabled={!shown!.audio && !LIVE} className={pill}>
+                            <Play size={11} strokeWidth={2} fill="currentColor" className="text-accent" />Play again
+                          </button>
+                        )}
+                        <button type="button" onClick={() => a.reset()} className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium text-secondary hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8">
+                          <RotateCcw size={12} strokeWidth={1.75} />Ask again
+                        </button>
                       </div>
                       <AnimatePresence mode="wait" initial={false}>
-                        <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} />
+                        <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} className="mt-4" />
                       </AnimatePresence>
                       <div className="mt-5 border-t border-hairline pt-4">
                         <span className="eyebrow">Ask next</span>
                         <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
                           {next.map((p) => (
                             <li key={p.id} className="min-w-0">
-                              <button type="button" disabled={busy} onClick={() => { setHeard(null); setWords(null); void ask(p.question); }}
+                              <button type="button" disabled={busy} onClick={() => { setHeard(null); void ask(p.question); }}
                                 className="calm group/q flex h-full min-h-11 w-full items-center gap-3 rounded-[10px] border border-hairline bg-ground px-3.5 py-2 text-left text-[13px] leading-snug text-body hover:border-strong hover:bg-warm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50">
                                 <span className="min-w-0 flex-1">{p.question}</span>
                                 <ArrowRight aria-hidden size={14} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
@@ -281,19 +267,14 @@ export function AskOverlay({ fab = true }: { fab?: boolean }) {
                             </li>
                           ))}
                         </ul>
-                        {typing_ ? typeBox(false) : (
-                          <button type="button" onClick={() => startTyping()} className="calm mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12.5px] text-link hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-0">
-                            Type instead<ArrowRight size={12} strokeWidth={1.75} aria-hidden />
-                          </button>
-                        )}
-                        <p className="mt-3 text-[12px] text-faint">Read only: it can explain the books, never change them.</p>
+                        <p className="mt-4 text-[12px] text-faint">
+                          {shown!.from === "recorded" ? "Recorded answer" : "Live: Claude chose the query"} · {shown!.answer.checked ? "every number checked against the data" : "sentence written by code"} · read only
+                        </p>
                       </div>
                     </div>
                   ) : (
-                    <CoachCard suggestion={suggestion} status={status} words={state !== "idle" || notice ? words ?? heard : null}
-                      onType={typing_ ? undefined : () => startTyping(suggestion)}>
-                      {typing_ ? typeBox(true) : null}
-                      <p className="mt-4 text-[11.5px] text-white/55">Read only: it can explain the books, never change them. Esc closes.</p>
+                    <CoachCard suggestion={suggestion} status={status}>
+                      <p className="mt-4 border-t border-hairline pt-3 text-[12px] text-faint">Read only: it can explain the books, never change them. Esc closes.</p>
                     </CoachCard>
                   )}
                 </div>
