@@ -150,7 +150,7 @@ function Landing() {
         <Reveal className="relative" stagger={0.1}>
           <RevealItem><p className="mx-auto max-w-[600px] text-[15px] leading-relaxed text-secondary">Because everything is documented, everything is audit-ready by default.</p></RevealItem>
           <RevealItem><p className="display mx-auto mt-5 max-w-[900px] text-[clamp(30px,4.6vw,56px)]">It isn&apos;t a list the accounting team works through. It&apos;s a close that runs itself.</p></RevealItem>
-          <RevealItem><p className="mt-6 text-[12px] text-faint">Modelled on a real 14-store music retailer, the first design partner.</p></RevealItem>
+          <RevealItem><p className="mt-6 text-[12px] text-faint">Modelled on a real multi-store music retailer, the first design partner.</p></RevealItem>
         </Reveal>
       </section>
 
