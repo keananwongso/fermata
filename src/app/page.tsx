@@ -21,11 +21,13 @@ function Landing() {
         {/* One band of brand cells hangs from the top of the page, behind the header, and clears before the window. */}
         <BrandGrid top cols={24} rows={12} className="absolute left-1/2 -top-40 h-[680px] w-screen -translate-x-1/2 opacity-70 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)] lg:-top-44 lg:h-[820px]" />
         <Reveal className="relative mx-auto max-w-[880px] text-center" stagger={0.1}>
-          <RevealItem><Tag tone="neutral">Cash reconciliation for multi-store retail</Tag></RevealItem>
-          <RevealItem><h1 className="display mx-auto mt-5 max-w-[820px] text-[clamp(40px,6vw,72px)]">The cash clerk a multi-store retailer can actually hire.</h1></RevealItem>
-          <RevealItem><p className="mx-auto mt-5 max-w-[600px] text-[16px] leading-relaxed text-body">
-            Fermata closes the books by matching every bank transaction to the store and the sales it pays for. It learns the business from the books it already has,
-            holds and asks only about what nobody wrote down, and gets better every month.
+          <RevealItem><Tag tone="neutral">Autonomous finance for multi-store retail</Tag></RevealItem>
+          <RevealItem><h1 className="display mx-auto mt-5 max-w-[860px] text-[clamp(40px,6vw,72px)]">A close that runs itself, at any number of stores.</h1></RevealItem>
+          {/* Three beats, one per line: the moat, the job, the one thing it asks. */}
+          <RevealItem><p className="mx-auto mt-6 max-w-[640px] text-[16px] leading-relaxed text-body">
+            <span className="block">Learns from the books you already have.</span>
+            <span className="block">Matches every payment across banks, ERP and marketplaces.</span>
+            <span className="block">Asks only about what nobody wrote down.</span>
           </p></RevealItem>
           <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
@@ -59,6 +61,7 @@ function Landing() {
         <Reveal className="max-w-[760px]" stagger={0.08}>
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(34px,4.6vw,56px)]">Code settles. Claude investigates. People approve.</h2></RevealItem>
+          <RevealItem><p className="mt-4 text-[16px] text-secondary">Banks, ERP and marketplaces, in one place.</p></RevealItem>
           <RevealItem className="mt-5"><LinkArrow href="/demo?guide">Step through it in the demo</LinkArrow></RevealItem>
         </Reveal>
         <div>
@@ -90,12 +93,12 @@ function Landing() {
       {/* Closing: what it adds up to, the way in, and the one mention of the design partner. */}
       <section className="relative overflow-hidden rounded-[16px] border border-hairline bg-warm px-6 py-16 text-center lg:py-24">
         <Reveal className="relative" stagger={0.1}>
-          <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]">Not a list for the accounting team. A close that runs itself.</p></RevealItem>
+          <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]">Everything documented, so everything is audit-ready by default.</p></RevealItem>
           <RevealItem className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
             <LinkArrow href={CONSOLE_LINK.href}>{CONSOLE_LINK.label}</LinkArrow>
           </RevealItem>
-          <RevealItem><p className="mt-8 text-[12px] text-faint">Modelled on a real multi-store music retailer, the first design partner.</p></RevealItem>
+          <RevealItem><p className="mt-8 text-[12px] text-faint">Built with a multi-store retailer in Indonesia, the first design partner.</p></RevealItem>
         </Reveal>
       </section>
     </div>

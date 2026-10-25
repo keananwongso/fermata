@@ -64,9 +64,9 @@ export function HowLearns() {
         {group("From answers, this year", RULES.filter((x) => x.learnedInMonth))}
       </div>
       <div className="space-y-2">
-        {row("Rule", "a program, with a limit", <><div className="figure text-[24px] text-heading">{L.rule.figure}</div><div className="mt-0.5 text-[12.5px] text-secondary">{L.rule.sub}</div></>, 2)}
+        {row("Rule", "a hard do or don't, in code", <><div className="figure text-[24px] text-heading">{L.rule.figure}</div><div className="mt-0.5 text-[12.5px] text-secondary">{L.rule.sub}</div></>, 2)}
         <Arrow />
-        {row("Policy", "what it believes, in words", <div className="text-[15px] font-medium text-ink">{L.policy}</div>, 1)}
+        {row("Policy", "what it believes", <div className="text-[15px] font-medium text-ink">{L.policy}</div>, 1)}
         <Arrow />
         {row("Precedents", "decisions people made", <><div className={L.precedents.quote ? "text-[15px] font-medium text-ink" : "figure text-[24px] text-heading"}>{L.precedents.figure}</div><div className="mt-0.5 text-[12.5px] text-secondary">{L.precedents.sub}</div></>, 0)}
         <motion.p key={`${id}-check`} className="pt-2 text-[12.5px] text-faint sm:pl-[162px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>{L.check}</motion.p>
