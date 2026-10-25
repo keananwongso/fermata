@@ -315,20 +315,21 @@ function Dot({ at, i, label, selected, onClick }: { at: MotionValue<number>; i: 
 // Where each tile is on each beat. Beat 1: a source of sales or a bank account. Beat 2: a rule (its index in the
 // recording's rules), or merging into one (`into`). Beat 3: a seat in the case room (0 at the top, then clockwise), or
 // folded into the one question ("c"). Beat 4: a row of the record, or folded into its head. The paths keep a meaning
-// where they can: Shopee becomes the marketplace rule and Tokopedia merges into it, the school's virtual account becomes
-// the correction rule, head office becomes the lender rule the CFO's answer made, and the CFO answers on the record.
+// where they can: Shopee becomes the marketplace rule, the school's virtual account becomes the correction rule and its
+// receipts the rule for fees paid ahead, head office becomes the lender rule the CFO's answer made, and the CFO answers
+// on the record. A rule index past the year's rules folds into the head, so a shorter year still lays out.
 type Path = { b0: { src: number } | { bank: number }; b1: number | { into: number }; b2: number | "c"; b3: number | "c" };
 const PATHS: Path[] = [
   { b0: { bank: 0 }, b1: 0, b2: 0, b3: 1 },
   { b0: { src: 0 }, b1: 1, b2: 5, b3: 2 },
   { b0: { bank: 1 }, b1: 2, b2: 1, b3: 4 },
   { b0: { src: 1 }, b1: 3, b2: "c", b3: "c" },
-  { b0: { src: 2 }, b1: { into: 3 }, b2: "c", b3: "c" },
+  { b0: { src: 2 }, b1: 10, b2: "c", b3: "c" },
   { b0: { src: 3 }, b1: 4, b2: "c", b3: "c" },
   { b0: { src: 4 }, b1: 5, b2: "c", b3: "c" },
   { b0: { bank: 2 }, b1: 6, b2: 4, b3: 0 },
   { b0: { bank: 3 }, b1: 7, b2: 2, b3: "c" },
-  { b0: { src: 5 }, b1: { into: 7 }, b2: "c", b3: "c" },
+  { b0: { src: 5 }, b1: 9, b2: "c", b3: "c" },
   { b0: { bank: 4 }, b1: 8, b2: 3, b3: 3 },
 ];
 const SEATS = ["investigator", "auditor", "learner", "cfo", "engine", "manager"]; // from the top, clockwise

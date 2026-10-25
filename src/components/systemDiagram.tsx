@@ -233,7 +233,7 @@ function Line({ uid, id, seg, shown, dim, delay }: { uid: string; id: string; se
   const ink = INK[seg.flow];
   const end = seg.end ?? "arrow";
   return (
-    <motion.g initial={false} animate={{ opacity: shown ? (dim ? 0.3 : 1) : 0 }} transition={{ duration: 0.45 }}>
+    <motion.g initial={false} animate={{ opacity: shown ? (dim ? 0.55 : 1) : 0 }} transition={{ duration: 0.45 }}>
       <mask id={`${uid}-m-${id}`} maskUnits="userSpaceOnUse" x={0} y={0} width={DIAGRAM_W} height={DIAGRAM_H}>
         <motion.path d={route(stretch(pts, 10))} fill="none" stroke="white" strokeWidth={24}
           initial={{ pathLength: 0 }} animate={{ pathLength: shown ? 1 : 0 }} transition={{ duration: shown ? 0.55 : 0.2, delay: shown ? delay : 0, ease: EASE_OUT }} />
@@ -352,7 +352,7 @@ function Canvas({ step, focus, legend }: { step: number; focus: boolean; legend:
           return (
             <motion.div key={i} aria-hidden className={`absolute whitespace-nowrap text-[17px] font-medium leading-[22px] ${TEXT[l.flow]}`}
               style={l.right ? { right: DIAGRAM_W - l.x, top: l.y } : { left: l.x, top: l.y }}
-              initial={false} animate={{ opacity: shown ? (dimFlow(l.flow) ? 0.3 : 1) : 0 }} transition={{ duration: 0.4, delay: shown && !dimFlow(l.flow) ? order[l.flow].done - 0.2 : 0 }}>
+              initial={false} animate={{ opacity: shown ? (dimFlow(l.flow) ? 0.75 : 1) : 0 }} transition={{ duration: 0.4, delay: shown && !dimFlow(l.flow) ? order[l.flow].done - 0.2 : 0 }}>
               {l.text}
             </motion.div>
           );

@@ -344,7 +344,7 @@ the landing page. It takes `step` (how many flows show, 0 to 3), `size` (`stage`
   * Quiet connections (Claude to the three agents, Ask the books reading from the hub) are thin `mute` lines.
 * **Motion.** A flow's lines draw in along its route (a mask over each line, so dashes survive), then a packet (a 12px
   dot with a soft halo) travels the whole route on a loop at a calm, even speed, pausing inside each tile; the four sources'
-  packets leave so they merge on the bus. Only the newest flow moves: earlier flows recede to 30% so it reads on its own
+  packets leave so they merge on the bus. Only the newest flow moves: earlier flows recede (lines to 55%, labels to 75%) so it reads on its own while they stay legible
   (`focus`). Under reduced motion the lines are still and there are no packets.
 * **The legend** sits top right: the three flows in plain words, the upcoming ones at 35%, and one `faint` line saying
   where the roles come from.
