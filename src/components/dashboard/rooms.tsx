@@ -91,7 +91,7 @@ function RoomView({ room }: { room: Room }) {
 
 // The one question the room brought to a person, its options, and the answer the recording holds. Options the
 // recording did not take are greyed out.
-export function QuestionCard({ room }: { room: Room }) {
+function QuestionCard({ room }: { room: Room }) {
   const q = room.question!;
   const who = AGENT_LABEL[askedOf(room) ?? q.askOf];
   const open = isOpen(room);
