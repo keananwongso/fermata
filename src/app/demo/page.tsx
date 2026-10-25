@@ -9,6 +9,7 @@ import { num, rp, rpShort } from "../../../convex/lib/format";
 import { Avatar, ChatList, type ChatMessage } from "@/components/caseRoom";
 import { Button, LinkArrow, LinkButton, Pill } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
+import { records, ruleName } from "@/components/plain";
 import { openAsk } from "@/components/ask/overlay";
 import { Arrival, Reveal, RevealItem, Roll, scrollBoxToEnd } from "@/components/motion";
 import { AnimatePresence, motion } from "motion/react";
@@ -195,9 +196,9 @@ function DemoPage() {
       </RevealItem>
 
       <RevealItem className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
-        <Stat label="Bank lines processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
-        <Stat label="Settled automatically" value={processed ? <Roll value={settled / processed} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> : "—"} sub={`${num(settled)} lines`} tone="success" />
-        <Stat label="Case rooms opened" value={<Roll value={visibleRooms.length} />} sub="one per held story" tone="hold" />
+        <Stat label="Payments processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
+        <Stat label="Matched on its own" value={processed ? <Roll value={settled / processed} format={{ style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 }} /> : "—"} sub={`${num(settled)} payments`} tone="success" />
+        <Stat label="Case rooms opened" value={<Roll value={visibleRooms.length} />} sub="one per group that waits" tone="hold" />
         <Stat label="Questions to people" value={<Roll value={visibleRooms.length} />} sub={`${answered.length} answered by you`} />
         <Stat label="Rules learned" value={<Roll value={rules.length} />} sub={rules.length > 7 ? `${rules.length - 7} from answers` : "from last year"} />
       </RevealItem>
@@ -209,7 +210,7 @@ function DemoPage() {
         <div inert={!!room} className={`min-w-0 xl:flex xl:min-h-0 xl:overflow-hidden xl:transition-[opacity,padding] xl:duration-500 xl:ease-brand ${room ? "xl:pointer-events-none xl:pr-0 xl:opacity-0" : "xl:pr-4"}`}>
           <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} hint={tip("stream")} onLinger={() => show("stream")} onLeave={() => hide("stream")} />
         </div>
-        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Settled on its own, by month"}>
+        <section className="card flex min-h-[460px] min-w-0 flex-col overflow-hidden xl:min-h-0" aria-label={room ? "Case room" : "Matched on its own, by month"}>
           {room ? (
             <motion.div key={room.key} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
               <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-hairline px-4 py-3">
@@ -232,7 +233,7 @@ function DemoPage() {
             ) : (
               <motion.aside key="rooms" className="card flex min-h-0 flex-1 flex-col p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
                 <div className="eyebrow">Case rooms</div>
-                {visibleRooms.length === 0 ? <p className="mt-2 text-[12px] text-faint">Rooms open here when the engine holds something it can&apos;t explain.</p> : null}
+                {visibleRooms.length === 0 ? <p className="mt-2 text-[12px] text-faint">Rooms open here when a payment needs a person.</p> : null}
                 <ul className="scroll-quiet mt-2 max-h-[420px] min-h-0 flex-1 space-y-1 overflow-y-auto xl:max-h-none">
                   <AnimatePresence initial={false}>
                   {[...visibleRooms].reverse().map((r) => (
@@ -249,7 +250,7 @@ function DemoPage() {
                 {/* The hand-off: the guided path ends in the closed books, where the visitor explores on their own. */}
                 {phase === "done" ? (
                   <div className="enter mt-4 border-t border-hairline pt-4">
-                    <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} lines settled by rule, {num(R.rooms.length)} rooms, {num(DECISIONS)} decisions for people. Explore the closed books, or ask them anything.</p>
+                    <p className="text-[12.5px] text-secondary">The year is closed. {num(R.final.settled)} payments matched by rule, and {num(DECISIONS)} decisions for people. Explore the closed books, or ask them anything.</p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                       <span className="relative">
                         <LinkButton href="/dashboard">Explore the closed books</LinkButton>
@@ -281,7 +282,7 @@ const HINT_TEXT: Record<HintKey, string> = {
   start: "Start here. Fermata closes January to December in about two minutes.",
   answer: "Each option shows what it will do. Pick an answer to carry on.",
   explore: "Every figure, rule and case room from this year is in here.",
-  stream: "Click a line to see why it settled.",
+  stream: "Click a payment to see why it matched.",
 };
 // The first wait includes the splash on a cold load.
 const HINT_WAIT: Record<HintKey, number> = { start: 3500, answer: 5000, explore: 3000, stream: 1500 };
@@ -366,10 +367,10 @@ function Stream({ stream, month, running, onPick, picked, hint, onLinger, onLeav
       onPointerLeave={() => { clearTimeout(linger.current); onLeave(); }}>
       <Hint show={hint} className="absolute bottom-4 left-4 z-10">{HINT_TEXT.stream}</Hint>
       <div className="flex items-center justify-between">
-        <div className="eyebrow">The engine · {MONTH_LABELS[month - 1]}</div>
-        {running ? <span className="flex items-center gap-1.5 text-[11px] text-accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full bg-accent" />settling</span> : null}
+        <div className="eyebrow">Payments coming in · {MONTH_LABELS[month - 1]}</div>
+        {running ? <span className="flex items-center gap-1.5 text-[11px] text-accent"><span className="breathe-dot h-1.5 w-1.5 rounded-full bg-accent" />matching</span> : null}
       </div>
-      <p className="mt-1 text-[11.5px] text-faint">A sample of real lines. Click one to see why.</p>
+      <p className="mt-1 text-[11.5px] text-faint">Click one to see why it matched.</p>
       <ul className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_82%,transparent)]">
         {stream.length === 0 ? <li className="hatch rounded-[6px] border border-hairline px-3 py-8 text-center text-[12px] text-faint">Press Close the year</li> : null}
         {/* New lines slide in at the top; old ones leave at once under the fade, so a new month never overlaps the last. */}
@@ -382,9 +383,9 @@ function Stream({ stream, month, running, onPick, picked, hint, onLinger, onLeav
                 <span className="num shrink-0 text-[11.5px] text-ink">{rpShort(l.amount)}</span>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
-                {l.outcome === "settled" ? <span className="text-success">settled · {l.rule}</span> : l.outcome === "waiting" ? <span className="text-faint">waiting for its records</span> : <span className="text-hold-ink">held · to a case room</span>}
-                {l.store ? <span className="text-faint">· {l.store}</span> : null}
-                {l.fanout > 1 ? <span className="text-faint">· {num(l.fanout)} records</span> : null}
+                {l.outcome === "settled" ? <span className="truncate text-success">✓ {ruleName(l.rule)}</span> : l.outcome === "waiting" ? <span className="text-faint">waiting for its records</span> : <span className="text-hold-ink">waiting · sent to a case room</span>}
+                {l.store ? <span className="shrink-0 text-faint">· {l.store}</span> : null}
+                {l.fanout > 1 ? <span className="shrink-0 text-faint">· {records(l.fanout, l.matched)}</span> : null}
               </div>
             </button>
           </motion.li>
@@ -399,8 +400,8 @@ function Inspector({ line, onClose }: { line: Line; onClose: () => void }) {
   return (
     <div className="enter p-4 lg:p-5">
       <div className="flex items-center justify-between gap-2">
-        <div className="eyebrow">Why this line {line.outcome === "settled" ? "settled" : line.outcome === "waiting" ? "is waiting" : "was held"}</div>
-        <button onClick={onClose} className="text-[12px] text-link hover:text-accent">Back to the curve</button>
+        <div className="eyebrow">Why this payment {line.outcome === "settled" ? "matched" : "is waiting"}</div>
+        <button onClick={onClose} className="text-[12px] text-link hover:text-accent">Back to the chart</button>
       </div>
       <div className="num mt-2 break-all text-[13px] text-ink">{line.memo}</div>
       <div className="num mt-1 text-[12px] text-secondary">{line.date} · {line.account} · {rp(line.amount)}</div>
@@ -412,16 +413,16 @@ function Inspector({ line, onClose }: { line: Line; onClose: () => void }) {
               <div className="flex justify-between"><span className="font-medium">{v.store}</span><span className="num text-secondary">{v.score.toFixed(2)}</span></div>
               <div className="text-faint">{v.reasons.join(", ")}</div>
             </div>
-          )) : <div className="mt-2 text-[12px] text-faint">No store evidence.</div>}
+          )) : <div className="mt-2 text-[12px] text-faint">Nothing points to a store.</div>}
           {line.store ? <div className="mt-2 text-[12px] text-secondary">Placed at <span className="font-medium text-ink">{line.store}</span>, {(line.confidence * 100).toFixed(0)}% confident.</div> : null}
         </div>
         <div className="panel p-3">
           <div className="eyebrow">What it pays for</div>
           <div className="mt-2 text-[12.5px] text-body">{line.note}</div>
-          {line.outcome === "settled" ? <div className="mt-2 text-[12px] text-secondary">Matched to <span className="font-medium text-ink">{num(Math.max(1, line.fanout))}</span> {line.matched?.replace(/_/g, " ") ?? "records"}, settled under rule <span className="num font-medium text-ink">{line.rule}</span> within its approved limit.</div> : null}
+          {line.outcome === "settled" ? <div className="mt-2 text-[12px] text-secondary">Pays for <span className="font-medium text-ink">{records(Math.max(1, line.fanout), line.matched)}</span>. Matched by the <span className="font-medium text-ink">{ruleName(line.rule)}</span> rule, within its limit.</div> : null}
         </div>
       </div>
-      <p className="mt-4 text-[12px] text-faint">Every decision like this is written to the record with its evidence and the rule that allowed it. The engine never approves anything without an approved rule.</p>
+      <p className="mt-4 text-[12px] text-faint">Every match is recorded with its evidence and the rule behind it. Nothing matches without an approved rule.</p>
     </div>
   );
 }
@@ -437,7 +438,7 @@ function Curve({ curve, learnedIn, phase }: { curve: Rec["months"]; learnedIn: n
   const basePath = base.map((q, i) => `${i ? "L" : "M"}${x(q.m).toFixed(1)},${y(q.r).toFixed(1)}`).join(" ");
   return (
     <div className="p-4 lg:p-5">
-      <div className="flex items-baseline justify-between"><h2 className="title text-[20px]">Settled on its own</h2><span className="text-[11.5px] text-faint">first pass, by month</span></div>
+      <div className="flex items-baseline justify-between"><h2 className="title text-[20px]">Matched on its own</h2><span className="text-[11.5px] text-faint">by month</span></div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-secondary">
         <span className="flex items-center gap-1.5"><svg width="18" height="6" aria-hidden><line x1="0" x2="18" y1="3" y2="3" stroke="var(--color-accent)" strokeWidth="1.75" /></svg>With learning</span>
         <span className="flex items-center gap-1.5"><svg width="18" height="6" aria-hidden><line x1="0" x2="18" y1="3" y2="3" stroke="var(--color-mute)" strokeWidth="1.5" strokeDasharray="3 3" /></svg>Without learning, simulated</span>
@@ -450,7 +451,7 @@ function Curve({ curve, learnedIn, phase }: { curve: Rec["months"]; learnedIn: n
         {pts.map((q) => <g key={q.m}><circle cx={x(q.m)} cy={y(q.r)} r={3.5} fill="var(--color-ground)" stroke="var(--color-accent)" strokeWidth={1.75} /><text x={x(q.m)} y={y(q.r) + 16} textAnchor="middle" fontSize="10" fill="var(--color-secondary)">{(q.r * 100).toFixed(0)}</text></g>)}
         {learnedIn.map((mo) => { const q = pts.find((z) => z.m === mo); return q ? <text key={mo} x={x(mo)} y={y(q.r) - 10} textAnchor="middle" fontSize="15" fill="var(--color-hold)" style={{ fontFamily: "var(--font-music)" }}>𝄐</text> : null; })}
       </svg>
-      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year to watch each month settle." : "Each 𝄐 is an answer that became a rule. Without learning: the same year on the same engine with the rules frozen at onboarding, simulated."}</p>
+      <p className="mt-2 text-[12px] text-faint">{phase === "idle" ? "Press Close the year to watch each month match." : "Each 𝄐 is an answer that became a rule. Dashed: the same year without learning, simulated."}</p>
     </div>
   );
 }
@@ -481,7 +482,7 @@ function Ask({ room, onAnswer, hint }: { room: Room; onAnswer: () => void; hint:
             );
           })}
         </div>
-        <p className="mt-3 text-[11.5px] text-faint">Every answer works in the full console; here the year follows this one.</p>
+        <p className="mt-3 text-[11.5px] text-faint">Here the year follows the recorded answer.</p>
       </div>
       {/* Under the scroll box rather than in it, so it shows however far the options run; nothing above it moves. */}
       <Hint show={hint} className="mx-4 mb-4 shrink-0 lg:mx-5">{HINT_TEXT.answer}</Hint>

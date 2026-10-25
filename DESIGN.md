@@ -203,6 +203,8 @@ The transcript of the agents' meeting on one held story.
 * **The demo has one stop.** The year plays on its own; every room closes by itself except story B (a lender nobody
   knew), where the agents meet, an approval is refused in code, and the visitor answers the CFO's one question. That
   room is the demo's only `LIVE` room. Explaining is How it works' job on the landing page, not the demo's.
+* **Rule names on screen** come from `src/components/plain.ts` (`ruleName`, `records`): "✓ Marketplace payout · Store 2 · 43 orders",
+  never "settled · r4". Rule ids stay in code, the record and the dashboard's Rules view.
 * **Plain words on the site.** Say payments, not lines; waiting, not held; no "X: y, z" formula captions. Each caption is
   a sentence a shop owner would say.
 * **Copy is skimmable.** A title, caption or hint is one short phrase, readable at a glance. No paragraphs inside the
