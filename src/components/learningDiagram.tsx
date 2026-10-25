@@ -14,7 +14,7 @@ import { Avatar, PlainAvatars } from "./caseRoom";
 import { DAY_ZERO, fitFigure, type Seen } from "./dayZero";
 
 export const LEARN_W = 1680;
-export const LEARN_H = 700;
+export const LEARN_H = 720;
 
 type Program = { match?: string; params?: Record<string, unknown> };
 export type OnboardingRule = { id: string; program: Program; seen: Seen | null };
@@ -30,14 +30,14 @@ const TILE_W = 127;
 const colX = (i: number) => COL_X0 + i * COL_W;
 const cx = (i: number) => colX(i) + TILE_W / 2;
 const LAYERS_W = colX(8) - 6;
-const RULES = { y: 0, h: 144, tile: 12, tileH: 120 };
-const POLICIES = { y: 212, h: 146, card: 216, cardH: 138 };
-const PRECEDENTS = { y: 368, h: 216, fit: 374, dots: 410 };
-const STRIP_Y = 508; // the row where held stories gather
-const STREAM_Y = 632;
+const RULES = { y: 0, h: 158, tile: 12, tileH: 134 };
+const POLICIES = { y: 206, h: 180, card: 210, cardH: 172 };
+const PRECEDENTS = { y: 394, h: 204, fit: 400, dots: 434 };
+const STRIP_Y = 530; // the row where held stories gather
+const STREAM_Y = 646;
 const PEOPLE_X = 1280;
 const PEOPLE_W = LEARN_W - PEOPLE_X;
-const INSET = { x: PEOPLE_X, y: 470, w: PEOPLE_W, h: LEARN_H - 470 };
+const INSET = { x: PEOPLE_X, y: 488, w: PEOPLE_W, h: LEARN_H - 488 };
 
 // Step 3's timeline, in seconds after the click: the room meets, one question goes out, the answer becomes a rule.
 const T3 = { room: 0.2, row: 1.0, rowGap: 1.4, ask: 9.6, fly: 10.2, yes: 11.6, dot: 12.2, policy: 13.2, fit: 13.8, rule: 15.0, badge: 15.6, stamp: 16.8, flip: 17.4, close: 18.2 };
@@ -101,7 +101,7 @@ function Converge({ values, text, show, delay, x, y }: { values: number[]; text:
   const swing = Math.exp(-4 * p) * Math.cos(9 * p) * (1 - p);
   const now = values.map((v) => v + (Math.abs(v) * 0.6 || 1) * swing);
   return (
-    <motion.div className="num absolute whitespace-nowrap text-[18px] leading-[22px] text-accent" style={{ left: x, top: y }} initial={{ opacity: 0 }}
+    <motion.div className="num absolute whitespace-nowrap rounded-[4px] bg-warm px-1 text-[18px] leading-[22px] text-accent" style={{ left: x - 4, top: y }} initial={{ opacity: 0 }}
       animate={{ opacity: show ? 1 : 0 }} transition={{ duration: 0.35, delay: show ? delay : 0 }}>
       {text(now)}
     </motion.div>
@@ -164,7 +164,11 @@ function Story({ x, y, w, label, n, show, delay, settled = false, flipDelay = 0,
       style={{ left: x, top: y, width: w, ...lag }}
       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: show ? 1 : 0, scale: show ? 1 : 0.8 }} transition={{ duration: 0.45, delay: show ? delay : 0, ease: EASE_OUT }}>
       <span className="flex shrink-0 gap-1">{Array.from({ length: n }, (_, k) => <span key={k} className={`size-[10px] rounded-full transition-colors duration-500 ${settled ? "bg-accent" : "bg-hold"}`} style={lag} />)}</span>
-      <span className={`text-[18px] font-medium leading-[22px] transition-colors duration-500 ${settled ? "text-accent" : "text-hold-ink"}`} style={lag}>{settled ? "settled" : label}</span>
+      {/* Both words share one cell and cross-fade, so the label turns with the colour, after the same delay */}
+      <span className="grid text-[18px] font-medium leading-[22px]">
+        <span className={`col-start-1 row-start-1 text-hold-ink transition-opacity duration-500 ${settled ? "opacity-0" : "opacity-100"}`} style={lag}>{label}</span>
+        <span className={`col-start-1 row-start-1 text-accent transition-opacity duration-500 ${settled ? "opacity-100" : "opacity-0"}`} style={lag}>settled</span>
+      </span>
     </motion.div>
   );
 }
@@ -349,13 +353,13 @@ function Canvas({ step, rules, story, notOurs, measured }: { step: number; rules
                     <motion.div className="mt-1 h-[3px] origin-left rounded-full bg-accent" initial={{ scaleX: 0 }} animate={{ scaleX: step >= 3 ? 1 : 0 }} transition={{ duration: 1, delay: at(3, T3.badge), ease: EASE_OUT }} />
                   </div>
                 } />
-              {step >= 3 ? <Yes from={step === 3} to={[colX(sCol) + TILE_W - 26, PRECEDENTS.dots + 86]} /> : null}
+              {step >= 3 ? <Yes from={step === 3} to={[colX(sCol) + TILE_W / 2 - 7, STRIP_Y + 12]} /> : null}
             </>
           ) : null}
 
           {/* Step 4: a no stays held, and a rule that fails drops back to a policy */}
           {step >= 4 ? <Rise to={[colX(5) + 18, STRIP_Y + 14]} n={3} delay={0.2} /> : null}
-          <Story x={colX(5)} y={STRIP_Y} label={`not ours · ${num(notOurs)} lines, never booked`} n={3} show={step >= 4} delay={at(4, 0.8)} />
+          <Story x={colX(5)} y={STRIP_Y} label={`not ours · ${num(notOurs)} lines`} n={3} show={step >= 4} delay={at(4, 0.8)} />
           <motion.div className="absolute w-[127px] text-[18px] font-medium leading-[22px] text-hold-ink" style={{ left: colX(fallCol) + 6, top: RULES.tile + RULES.tileH + 14 }}
             initial={{ opacity: 0 }} animate={{ opacity: step >= 4 ? 1 : 0 }} transition={{ duration: 0.4, delay: at(4, 3) }}>
             back to a policy
@@ -364,7 +368,7 @@ function Canvas({ step, rules, story, notOurs, measured }: { step: number; rules
           {/* People and agents */}
           <Person who="cfo" y={RULES.tile} h={RULES.tileH} sub="approves each rule, once" />
           {(["investigator", "auditor", "learner"] as Role[]).map((r, i) => <Agent key={r} who={r} i={i} />)}
-          <Person who="accountant" y={PRECEDENTS.y} h={86} sub="matched last year by hand" />
+          <Person who="accountant" y={PRECEDENTS.y} h={80} sub="matched last year by hand" />
 
           {/* One honest line under the stream, per step */}
           <motion.p className="absolute text-[18px] text-faint" style={{ left: COL_X0, top: STREAM_Y + 26 }} initial={false} animate={{ opacity: step === 3 ? 1 : 0 }} transition={{ duration: 0.4 }}>
@@ -386,7 +390,7 @@ function Canvas({ step, rules, story, notOurs, measured }: { step: number; rules
 
         {/* Step 5: the measured result, over the dimmed diagram */}
         {measured ? (
-          <motion.div className="absolute z-40" style={{ left: COL_X0 - 40, top: 10, width: LAYERS_W - COL_X0 + 80 }}
+          <motion.div className="absolute z-40" style={{ left: 0, top: 10, width: LAYERS_W }}
             initial={{ opacity: 0, y: 18, filter: "blur(8px)" }} animate={step >= 5 ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: 18, filter: "blur(8px)" }}
             transition={{ duration: 0.6, delay: at(5, 0.4), ease: EASE_OUT }}>
             {measured}
@@ -428,8 +432,8 @@ function Yes({ from, to }: { from: boolean; to: [number, number] }) {
   const start: [number, number] = [PEOPLE_X - 380, RULES.tile + 110];
   return (
     <motion.span aria-hidden className="absolute left-0 top-0 z-20 size-[14px] rounded-full bg-heading-2 ring-4 ring-ground"
-      initial={from ? { x: start[0], y: start[1], opacity: 0 } : { x: to[0] + 100, y: to[1] - 30, opacity: 1 }}
-      animate={{ x: to[0] + 100, y: to[1] - 30, opacity: 1 }}
+      initial={from ? { x: start[0], y: start[1], opacity: 0 } : { x: to[0], y: to[1], opacity: 1 }}
+      animate={{ x: to[0], y: to[1], opacity: 1 }}
       transition={{ duration: 0.9, delay: from ? T3.dot : 0, ease: EASE_OUT }} />
   );
 }

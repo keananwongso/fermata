@@ -44,12 +44,12 @@ export function fitFigure(p: Program): { values: number[]; text: (v: number[]) =
   switch (p.match) {
     case "bank_fee": return { values: [Number(q.feeIdr ?? 0)], text: ([v]) => num(v) };
     case "cancel_pair": return { values: [0], text: ([v]) => `net ${num(v)}` };
-    case "card_batch": return { values: [Number(q.debitFee ?? 0), Number(q.creditFee ?? 0)], text: (v) => v.map((x) => pct(x, 1)).join(" · ") };
+    case "card_batch": return { values: [Number(q.debitFee ?? 0), Number(q.creditFee ?? 0)], text: (v) => v.map((x) => (x * 100).toFixed(1) + "%").join(" · ") };
     case "marketplace_payout": case "lender_sale": {
       const vs = rates(p.match === "lender_sale" ? q.lenders : q.commission);
       return { values: vs, text: (v) => v.map((x) => (x * 100).toFixed(1) + "%").join(" · ") };
     }
-    case "gateway_settlement": return { values: [Number(q.fee ?? 0)], text: ([v]) => pct(v, 1) };
+    case "gateway_settlement": return { values: [Number(q.fee ?? 0)], text: ([v]) => (v * 100).toFixed(1) + "%" };
     case "open_invoices": return { values: [Number(q.maxInvoices ?? 0)], text: ([v]) => `≤${num(v)} invoices` };
     default: return { values: [], text: () => "" };
   }
