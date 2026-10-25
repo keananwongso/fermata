@@ -8,7 +8,7 @@ import { motion } from "motion/react";
 import recording from "@/demo/recording.json";
 import { num, rpShort } from "../../convex/lib/format";
 import { LinkArrow } from "./ui";
-import { fitFigure, seenOf } from "./dayZero";
+import { seenOf } from "./dayZero";
 import { LY } from "./learningYear";
 
 type Rule = { id: string; title: string; learnedInMonth: number; program: { match?: string; params?: Record<string, unknown>; limitIdr: number }; seen?: { count: number; scope: string } | null };
@@ -17,35 +17,43 @@ type Room = { narrated: string | null; count: number; amount: number; messages: 
 const R = recording as unknown as { rules: Rule[]; fan: Fan | null; rooms: Room[] };
 const EASE = [0.22, 1, 0.36, 1] as const;
 const rule = (id: string | null | undefined) => R.rules.find((r) => r.id === id) ?? null;
-const fitted = (r: Rule | null) => { const f = r ? fitFigure(r.program) : null; return f?.values.length ? f.text(f.values) : ""; };
 
 type Step = { label: string; figure: ReactNode; sub: string };
 type Example = { key: string; tab: string; title: string; steps: Step[] };
 
-// Day 0: the marketplace payout the year's biggest fan-out came from, and the rule fitted on last year's payouts.
+// The one number a rule learned for a given party (a marketplace's commission, a lender's cut), as a percentage.
+const rate = (r: Rule | null, group: string, key: string) => {
+  const v = (r?.program.params?.[group] as Record<string, number> | undefined)?.[key];
+  return v == null ? "" : `${(v * 100).toFixed(1).replace(/\.0$/, "")}%`;
+};
+
+// From old books: one Shopee payout, the commission Fermata worked out from last year's hand-matched payouts, and what
+// happens to every Shopee payout after. Told as a story, no rule ids.
 function fromBooks(): Example | null {
   const f = R.fan, r = rule(f?.rule);
-  if (!f || !r) return null;
-  return { key: "books", tab: "From last year's books", title: "Last year's matching becomes a rule.", steps: [
-    { label: "The payment", figure: rpShort(f.amount), sub: f.memo },
-    { label: "What it pays for", figure: `${num(f.fanout)} orders`, sub: "minus the marketplace's commission" },
-    { label: "What it learned", figure: fitted(r), sub: `from ${num(seenOf(r)?.count ?? 0)} payouts matched by hand last year` },
-    { label: "The rule", figure: r.id, sub: `up to ${rpShort(r.program.limitIdr)} a payment · CFO approved once` },
+  const cut = rate(r, "commission", "SHOPEE");
+  if (!f || !r || !cut) return null;
+  return { key: "books", tab: "From old books", title: `Shopee keeps ${cut}. Fermata worked that out.`, steps: [
+    { label: "The bank shows", figure: rpShort(f.amount), sub: "one transfer from Shopee" },
+    { label: "It's really", figure: `${num(f.fanout)} orders`, sub: `minus Shopee's ${cut} cut` },
+    { label: "Fermata learned", figure: `Shopee keeps ${cut}`, sub: `from ${num(seenOf(r)?.count ?? 0)} payouts your team matched by hand last year` },
+    { label: "From then on", figure: "Matched on its own", sub: "every Shopee payout, once the CFO approves it" },
   ] };
 }
 
-// From an answer: story B, a lender nobody had seen, and the rule the CFO's yes became.
+// From an answer: story B, a lender nobody had seen, and the one question to the CFO that taught Fermata its cut.
 function fromAnswer(): Example | null {
   const room = R.rooms.find((x) => x.narrated === "B");
   const id = room?.messages.map((m) => /^(r\d+) approved/.exec(m.text)?.[1]).find(Boolean);
   const r = rule(id), lr = LY.rules.find((x) => x.id === id);
-  const yes = room?.question?.options.find((o) => o.id === room.question?.answer)?.label;
-  if (!room || !r || !lr || !yes) return null;
-  return { key: "answer", tab: "From an answer", title: "One answer becomes a rule.", steps: [
-    { label: "The payments", figure: `${num(room.count)} waiting`, sub: `${rpShort(room.amount)} from a lender no rule knows` },
-    { label: "What they pay for", figure: `${num(room.count)} sales`, sub: "the agents find one sale per payout, a cut short" },
-    { label: "What it learned", figure: fitted(r), sub: `the CFO: "${yes}"` },
-    { label: "The rule", figure: r.id, sub: `backtest ${num(lr.backtest.covered - lr.backtest.wrong)} of ${num(lr.backtest.covered)} right · CFO approved` },
+  const cut = rate(r, "lenders", "FIN_Z");
+  if (!room || !r || !lr || !cut) return null;
+  const lender = "FIN_Z";
+  return { key: "answer", tab: "From an answer", title: `${lender} keeps ${cut}. The CFO said so once.`, steps: [
+    { label: "The bank shows", figure: `${num(room.count)} payouts`, sub: `${rpShort(room.amount)} from ${lender}, a lender nobody had seen` },
+    { label: "It's really", figure: `${num(room.count)} sales`, sub: `each paid by ${lender}, minus a ${cut} cut` },
+    { label: "Fermata learned", figure: `${lender} keeps ${cut}`, sub: "from one yes to one question to the CFO" },
+    { label: "From then on", figure: "Matched on its own", sub: `tested first: ${num(lr.backtest.covered - lr.backtest.wrong)} of ${num(lr.backtest.covered)} right` },
   ] };
 }
 
@@ -76,13 +84,13 @@ export function HowLearns() {
               <span className="num grid size-6 place-items-center rounded-full bg-accent text-[12px] font-medium text-white">{k + 1}</span>
               <span className="eyebrow">{s.label}</span>
             </div>
-            <div className={`figure mt-3 text-[28px] leading-tight ${k === 3 ? "text-accent" : "text-heading"}`}>{s.figure}</div>
+            <div className={`figure mt-3 text-[26px] leading-tight ${k === 3 ? "text-accent" : "text-heading"}`}>{s.figure}</div>
             <div className="mt-1 text-[13px] leading-snug text-secondary">{s.sub}</div>
           </motion.li>
         ))}
       </ol>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-secondary">
-        <span>Every rule is this: a shape, a learned number, a limit.</span>
+        <span>Every rule works this way: a kind of payment, and the number that explains it.</span>
         <LinkArrow href="/dashboard?view=rules">See all {R.rules.length} rules</LinkArrow>
       </div>
     </div>
