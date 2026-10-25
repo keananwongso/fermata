@@ -65,7 +65,7 @@ function Landing() {
         <Reveal className="relative" stagger={0.1}>
           <RevealItem><p className="display mx-auto max-w-[900px] text-[clamp(30px,4.6vw,56px)]"><Roll value={LY.fewer} suffix="×" /> fewer lines left for people, once Fermata learns from their answers.</p></RevealItem>
           <RevealItem><p className="mx-auto mt-6 max-w-[600px] text-[15px] leading-relaxed text-secondary">
-            <span className="num text-ink">{num(LY.heldLearned)}</span> lines left for people at year end as Fermata closed it, learning from their answers. The same year on the same engine with the rules frozen at onboarding, simulated: <span className="num text-ink">{num(LY.heldBaseline)}</span>.
+            <span className="num text-ink">{num(LY.heldLearned)}</span> lines left for people at year end as Fermata closed it, learning from their answers. The same year on the same engine with the rules frozen at day one, simulated: <span className="num text-ink">{num(LY.heldBaseline)}</span>.
           </p></RevealItem>
         </Reveal>
       </section>
@@ -119,7 +119,7 @@ function Landing() {
             <RevealItem><Tag tone="neutral">Proof</Tag></RevealItem>
             <RevealItem><h2 className="title mt-4 text-[clamp(26px,2.6vw,36px)]">Learning is what keeps the work small.</h2></RevealItem>
             <RevealItem><p className="mt-4 max-w-[460px] text-[15px] leading-relaxed text-body">
-              A year of the mess that keeps coming back, closed by Fermata learning from people&apos;s answers, against the same year on the same engine with the rules frozen at onboarding, simulated.
+              A year of the mess that keeps coming back, closed by Fermata learning from people&apos;s answers, against the same year on the same engine with the rules frozen at day one, simulated.
             </p></RevealItem>
           </div>
           <RevealItem className="grid grid-cols-2 gap-6 self-end">
