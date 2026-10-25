@@ -380,6 +380,17 @@ uses the same tokens, type classes, components and motion as the screens it intr
 * **One idea per slide.** A slide is a `Frame` (chapter eyebrow top left, the mark and page number below), a
   `.title` heading in sentence case, then one visual. Chapters use the judges' words (Why, How it works,
   How it learns, Case rooms, How it's built, Self improving, Proves every step, The result).
+* **Five beats, about three minutes.** 1 My family's business (`mess`: the channels, shared accounts and the books'
+  balances; then the systems that disagree; then the head office balance as one piece of evidence, struck through).
+  2 Not just us (`everyone`: the same tiles, named for any retailer, the store grid grows). 3 The title. 4 How it
+  works, How it learns, Case rooms, How it's built, Self improving, Proof, then Stack and How we measure (optional,
+  skipped in the video). 5 The close (`scale`: stores multiply while the policies and rules row and the decisions
+  for people stay put, then the two closing lines) and the end card. Spoken notes for beats 1, 2, 3 and 5 are the
+  approved script, word for word.
+* **Grown grids are a shape, not a measurement.** Where stores multiply (beats 2 and 5) no count is printed on the
+  larger grid, and the close says the recorded year has the stores `D` has.
+* **Day 0 rules are fitted, not backtested.** They are fitted on last year's rows and approved once; only learned
+  rules carry a backtest. No slide or note says otherwise.
 * **Every figure comes from the recording or the learning year** through `pitch/data.ts` (`D.learning` is
   `learningYear.ts`); assumptions (minutes per match, per decision) are printed on the slide that uses them. Something
   not yet measured shows a `.hatch` placeholder, never a typed number. Spoken notes that quote a figure interpolate it
