@@ -185,7 +185,7 @@ The transcript of the agents' meeting on one held story.
   hero scroll to it, and `/how` redirects there). A `Tag`, one `.display` line, a link to the guided demo, then two
   parts with a `.title` each: **How it's built** (`HowDiagram`: eleven boxes on one canvas. **Whole flow** is the default:
   once the diagram is on screen it plays every path in turn from Day 0, the playing path's tab filling as it holds;
-  pick a path, Day 0, Settles, Holds, Learns or Refused, and only its boxes and lines light up, numbered, in the path's colour,
+  pick a path, Day 0, Matches, Waits, Learns or Blocked, and only its boxes and lines light up, numbered, in the path's colour,
   with the steps listed under it; click a box for two or three lines of what it is underneath. On a phone the steps
   list and box chips stand in for the canvas) and **Inside a case room** (`HowRoom`: story B's real meeting, played on its own while on screen: a message at a
   time with the transcript following it, the question to the CFO, the recorded answer picked, the rest of the room, a
@@ -206,6 +206,8 @@ The transcript of the agents' meeting on one held story.
   staged self-approval, blocked, labelled Staged) and the result. Each stop is a `Pill`, a one-phrase `.display` title,
   a small picture that builds in steps, and one primary button named for the next step ("Find the store", "Approve as
   CFO"); Space, Enter or → presses it, so a recording can step through with the keyboard. Hints are off in the guide.
+* **Plain words on the site.** Say payments, not lines; waiting, not held; no "X: y, z" formula captions. Each caption is
+  a sentence a shop owner would say.
 * **Copy is skimmable.** A title, caption or hint is one short phrase, readable at a glance. No paragraphs inside the
   demo or a stop; when something needs more words, it needs a picture instead.
 * Grid children that hold truncating text need `min-w-0`, or they push the page wider than the phone.

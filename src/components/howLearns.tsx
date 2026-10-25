@@ -27,7 +27,7 @@ function fromBooks(): Example | null {
   const f = R.fan, r = rule(f?.rule);
   if (!f || !r) return null;
   return { key: "books", tab: "From last year's books", title: "Last year's matching becomes a rule.", steps: [
-    { label: "The bank line", figure: rpShort(f.amount), sub: f.memo },
+    { label: "The payment", figure: rpShort(f.amount), sub: f.memo },
     { label: "What it pays for", figure: `${num(f.fanout)} orders`, sub: "minus the marketplace's commission" },
     { label: "What it learned", figure: fitted(r), sub: `from ${num(seenOf(r)?.count ?? 0)} payouts matched by hand last year` },
     { label: "The rule", figure: r.id, sub: `up to ${rpShort(r.program.limitIdr)} a payment · CFO approved once` },
@@ -42,7 +42,7 @@ function fromAnswer(): Example | null {
   const yes = room?.question?.options.find((o) => o.id === room.question?.answer)?.label;
   if (!room || !r || !lr || !yes) return null;
   return { key: "answer", tab: "From an answer", title: "One answer becomes a rule.", steps: [
-    { label: "The bank lines", figure: `${num(room.count)} held`, sub: `${rpShort(room.amount)} from a lender no rule knows` },
+    { label: "The payments", figure: `${num(room.count)} waiting`, sub: `${rpShort(room.amount)} from a lender no rule knows` },
     { label: "What they pay for", figure: `${num(room.count)} sales`, sub: "the agents find one sale per payout, a cut short" },
     { label: "What it learned", figure: fitted(r), sub: `the CFO: "${yes}"` },
     { label: "The rule", figure: r.id, sub: `backtest ${num(lr.backtest.covered - lr.backtest.wrong)} of ${num(lr.backtest.covered)} right · CFO approved` },

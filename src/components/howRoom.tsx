@@ -53,7 +53,7 @@ export function HowRoom() {
       <div className="card overflow-hidden">
         <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline px-5 py-4 lg:px-6">
           <Pill tone="accent">Claude</Pill>
-          <span className="eyebrow">{MONTH_LABELS[ROOM.month - 1]} {R.year} · {num(ROOM.count)} lines · {rpShort(ROOM.amount)}</span>
+          <span className="eyebrow">{MONTH_LABELS[ROOM.month - 1]} {R.year} · {num(ROOM.count)} payments · {rpShort(ROOM.amount)}</span>
           <h4 className="title w-full text-[20px] leading-tight lg:text-[22px]">{ROOM.title}</h4>
         </header>
         <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-5">

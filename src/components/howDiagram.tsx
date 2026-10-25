@@ -21,8 +21,8 @@ const R8 = LY.rules[0];
 
 // Every box: where it sits, its name, one line under it, and what it is underneath (three short lines).
 const NODES: Record<Id, { c: number; r: number; name: string; sub: string; tag: string; detail: string[]; dark?: boolean }> = {
-  history: { c: 0, r: 0, name: "Last year's books", sub: "matched by hand", tag: "Data", detail: ["Years of lines a person already matched", "A labelled dataset nobody had to label"] },
-  mining: { c: 1, r: 0, name: "Day 0 mining", sub: "one pass over the lines", tag: "Code", detail: ["Groups last year's lines by shape", "Fits each shape: fee, commission, cut", `${DAY0} rules before the first month`] },
+  history: { c: 0, r: 0, name: "Last year's books", sub: "matched by hand", tag: "Data", detail: ["Every payment a person matched by hand", "A labelled dataset nobody had to label"] },
+  mining: { c: 1, r: 0, name: "Day 0 mining", sub: "learns from old books", tag: "Code", detail: ["Groups last year's payments by kind", "Fits each shape: fee, commission, cut", `${DAY0} rules before the first month`] },
   rules: { c: 2, r: 0, name: "Rules", sub: "approved, with limits", tag: "Data", detail: ["Each rule is a small program", "A per-payment limit it never exceeds", "Versioned; a failing rule drops back"] },
   backtest: { c: 3, r: 0, name: "Backtest", sub: "on last year's books", tag: "Code", detail: ["Every proposed rule runs on past books first", R8 ? `${R8.id}: ${num(R8.backtest.covered - R8.backtest.wrong)} of ${num(R8.backtest.covered)} right` : "Right and wrong, counted", "A person sees the result, not a guess"] },
   sources: { c: 0, r: 1, name: "Sources", sub: "bank · ERP · shops", tag: "Sync", detail: ["5 shared bank accounts, every line", "Store sales, Shopee, Tokopedia, dealers, school", "Read in, never edited"] },
@@ -38,32 +38,32 @@ type Tone = "accent" | "hold" | "danger";
 type Path = { key: string; label: string; tone: Tone; title: string; steps: [Id, Id, string][] };
 export const PATHS: Path[] = [
   { key: "day0", label: "Day 0", tone: "accent", title: "Last year's books become rules.", steps: [
-    ["history", "mining", "one pass over matched lines"],
-    ["mining", "rules", "fitted, approved once by the CFO"],
+    ["history", "mining", "reads last year's matched payments"],
+    ["mining", "rules", "turns them into rules the CFO approves once"],
   ] },
-  { key: "settle", label: "Settles", tone: "accent", title: "Most lines: no person, no AI.", steps: [
-    ["sources", "engine", "every bank line syncs in"],
+  { key: "settle", label: "Matches", tone: "accent", title: "Most payments match on their own.", steps: [
+    ["sources", "engine", "every payment comes in"],
     ["rules", "engine", "an approved rule explains it"],
-    ["engine", "hub", "settled, within its limit"],
-    ["hub", "gateway", "approved, so posted"],
-    ["gateway", "books", "written with its audit row"],
+    ["engine", "hub", "matched, within the rule's limit"],
+    ["hub", "gateway", "posted to the books"],
+    ["gateway", "books", "recorded for the audit"],
   ] },
-  { key: "hold", label: "Holds", tone: "hold", title: "No rule fits: held, never guessed.", steps: [
-    ["sources", "engine", "every bank line syncs in"],
+  { key: "hold", label: "Waits", tone: "hold", title: "When nothing explains it, it waits for a person.", steps: [
+    ["sources", "engine", "every payment comes in"],
     ["engine", "hub", "no rule explains it"],
-    ["hub", "room", "held as a story, one room"],
-    ["room", "people", "one checked question"],
+    ["hub", "room", "grouped and sent to a case room"],
+    ["room", "people", "one question to a person"],
   ] },
   { key: "learn", label: "Learns", tone: "hold", title: "One answer becomes a tested rule.", steps: [
     ["people", "room", "the answer"],
     ["room", "hub", "the Learner drafts a rule"],
-    ["hub", "backtest", "run on last year's books"],
-    ["backtest", "rules", "passes: the CFO approves"],
-    ["rules", "engine", "settles that shape from now on"],
+    ["hub", "backtest", "tested on last year's books"],
+    ["backtest", "rules", "the CFO approves it"],
+    ["rules", "engine", "matches payments like it from now on"],
   ] },
-  { key: "refuse", label: "Refused", tone: "danger", title: "Agents propose. Only people approve.", steps: [
+  { key: "refuse", label: "Blocked", tone: "danger", title: "Agents can't approve their own work.", steps: [
     ["room", "hub", "an agent tries to approve"],
-    ["hub", "books", "blocked in code, and recorded"],
+    ["hub", "books", "blocked by code, and recorded"],
   ] },
 ];
 
