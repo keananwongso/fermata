@@ -74,7 +74,7 @@ function Landing() {
           <HowRoom />
         </div>
         <div>
-          <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns. Two examples.</h3>
+          <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns: from your old books, and from your answers.</h3>
           <HowLearns />
         </div>
       </section>

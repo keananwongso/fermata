@@ -449,7 +449,7 @@ function RoomLive(step: number) {
 function LearnsLive(step: number) {
   return (
     <Frame chapter="How it learns" n={5}>
-      <In><h2 className="title text-[60px]">It learns from the books, and from one answer.</h2></In>
+      <In><h2 className="title text-[60px]">It learns two ways: from your old books, and from your answers.</h2></In>
       <In delay={0.2} className="mt-12"><div style={BIG}><HowLearns example={Math.min(step, 1)} /></div></In>
     </Frame>
   );
