@@ -69,7 +69,7 @@ function Landing() {
           <HowDiagram />
         </div>
         <div>
-          <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns. Every rule starts as a decision a person made.</h3>
+          <h3 className="title mb-6 text-[clamp(24px,2.6vw,32px)]">How it learns. Two examples.</h3>
           <HowLearns />
         </div>
       </section>
