@@ -10,13 +10,16 @@ import { motion } from "motion/react";
 import { useId } from "react";
 import { MONTH_LABELS } from "../../convex/lib/domain";
 import { pct } from "../../convex/lib/format";
+import { LY } from "./learningYear";
 
 export type ChartRun = { months: { month: number; total: number; firstSettled: number; waiting?: number }[]; learned: { id: string; month: number }[] };
 
 // Required wherever the chart appears: what each line is. Two simulated runs (What if) take SIM_CAPTION; the learning
 // year as Fermata closed it against its frozen baseline takes CLOSE_CAPTION, so the baseline is always labelled simulated.
+// CLOSE_CAPTION says where each part of the climb came from, its figures read from the recording through learningYear.ts.
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 export const SIM_CAPTION = "Simulated on the same engine: the same year, with and without learning.";
-export const CLOSE_CAPTION = "With learning: the year as Fermata closed it. Without: the same year on the same engine with the rules frozen at onboarding, simulated.";
+export const CLOSE_CAPTION = `${pct(LY.first, 0)} on day one came from mining last year. The climb to ${pct(LY.last, 0)} came from ${WORDS[LY.rules.length] ?? LY.rules.length} ${LY.rules.length === 1 ? "rule" : "rules"} learned from people's answers. The flat line is the same year with the rules frozen at day one, simulated on the same engine.`;
 
 const EASE = [0.645, 0.045, 0.355, 1] as const;
 const MUSIC = { fontFamily: "var(--font-music)" };
