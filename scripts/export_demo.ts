@@ -136,6 +136,8 @@ async function convexRun() {
   const rules = (await c.query(api.queries.rules, {})).filter((r) => !r.scenario).map((r) => ({
     id: r.ruleId, title: r.title, origin: r.origin, learnedInMonth: r.learnedInMonth ?? 0, real: r.real, fittedBy: r.fittedBy ?? null, state: r.state,
     program: JSON.parse(r.program) as RuleProgram, backtest: r.backtest ?? null, audit: r.audit ? { result: r.audit.result, note: r.audit.note } : null,
+    // How many of last year's lines an onboarding rule was fitted on, and over what (learner.deriveSeedRules).
+    seen: r.seen ?? null,
   }));
   const ov = await c.query(api.queries.overview, {});
   // The latest evaluation run (held out week, wrong stores, fuzzer), for the pitch's proof slide. Run it from the
