@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LinkArrow, LinkButton, Tag } from "@/components/ui";
 import { CONSOLE_LINK } from "@/components/nav";
-import { HowItWorks, LearnedRules, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
+import { DAY_ZERO, DayZero, HowItWorks, LearnedRules, MiniRoom, RecordSample, Rules, Sources, fanText } from "@/components/landing";
 import { CLOSE_CAPTION, LearningChart } from "@/components/learningChart";
 import { LY } from "@/components/learningYear";
 import { usdApprox } from "@/components/money";
@@ -17,7 +17,11 @@ import { AskHint } from "@/components/ask/overlay";
 const HEAD_OFFICE = (recording as unknown as { headOffice: number }).headOffice;
 // The questions a visitor answers in the demo: one per case room the agents meet live.
 const LIVE_ROOMS = (recording as unknown as { rooms: { live: boolean }[] }).rooms.filter((r) => r.live).length;
-const COUNT_WORD = ["no", "one", "two", "three", "four", "five", "six"];
+const COUNT_WORD = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const countWord = (n: number) => COUNT_WORD[n] ?? num(n);
+// Who wrote the rules learned from answers this year.
+const BY_CLAUDE = LY.rules.filter((r) => r.by === "claude").length;
+const BY_CODE = LY.rules.filter((r) => r.by === "code").length;
 const signedRp = (n: number) => (n < 0 ? `−${rpShort(-n)}` : rpShort(n));
 
 export default function Page() {
@@ -72,18 +76,23 @@ function Landing() {
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">From messy books to a closed year.</h2></RevealItem>
         </Reveal>
+        {/* Five beats, the number the morph in landing.tsx is laid out for (MORPH_BEATS): day 0, settle, hold and ask,
+            learn, the record. */}
         <HowItWorks beats={[
-          { tag: "Runs on the books you have", title: "Connects every place money comes from.",
-            body: <>Fourteen stores, Shopee and Tokopedia (Southeast Asia&apos;s Amazon and eBay), a website, dealers and a music school, all landing in five shared bank accounts. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">{signedRp(HEAD_OFFICE)}</span> <span className="text-faint">({usdApprox(HEAD_OFFICE)})</span>.</>,
+          { tag: "Day 0", title: "Reads last year before it closes a month.",
+            body: <>Before it closes a single month, Fermata mines last year&apos;s matched lines in one pass, in code, not a model. What it finds becomes {countWord(DAY_ZERO)} policies, each fitted as a rule with a limit and backtested on last year, and the CFO approves them once. So <span className="num text-ink">{pct(LY.first, 0)}</span> of January settles on its own.</>,
+            visual: <DayZero /> },
+          { tag: "Settles on its own", title: "Matches every line to the store and the sales it pays for.",
+            body: <>Fourteen stores, Shopee and Tokopedia (Southeast Asia&apos;s Amazon and eBay), a website, dealers and a music school, all landing in five shared bank accounts. Fermata settles every line a rule explains, such as {fanText}. The books pretend each store has its own account, so they show balances no bank holds: one account sits at <span className="num text-hold-ink">{signedRp(HEAD_OFFICE)}</span> <span className="text-faint">({usdApprox(HEAD_OFFICE)})</span>.</>,
             visual: <Sources /> },
-          { tag: "Learns your business", title: "Learns how the money really moves, then keeps learning.",
-            body: <>It starts by learning last year&apos;s books: card fees, marketplace commissions, lender cuts. Every rule is a small program, tested on last year before anyone sees it. When an accountant corrects something, it becomes a rule too.</>,
-            visual: <Rules /> },
-          { tag: "Agents do the work", title: "Does the work, and asks for input only when it must.",
-            body: <>The engine settles what it can explain, such as {fanText}. What it can&apos;t, the agents meet on: one investigates, one tries to break the case, one drafts the rule. A meeting manager written in code keeps them honest, and brings one question to one person.</>,
+          { tag: "Holds and asks", title: "Holds what nobody wrote down, and asks one person.",
+            body: <>What no rule explains is held, never guessed. The agents meet on each held story: one investigates, one tries to break it, one drafts the rule. A meeting manager written in code keeps them honest, and asks one person one question.</>,
             visual: <MiniRoom /> },
-          { tag: "Audit-ready by default", title: "Every step on record, including what was refused.",
-            body: <>Every change is written in the same step as the change itself: the evidence, the rule that allowed it, who approved it. No agent can approve or post anything, and when one tries, the refusal is on record too.</>,
+          { tag: "Learns from every answer", title: "Precedents, then policies, then rules.",
+            body: <>Every answer is a precedent, like every line matched last year. When precedents repeat, Fermata writes a policy: what it believes about the business, in words, with its evidence. When Claude or code can fit it as a small program with a limit and the backtest passes, it proposes a rule, and the CFO approves it once. A rule that misses on new data drops back. This year {countWord(LY.rules.length)} rules came from answers: {countWord(BY_CLAUDE)} written by Claude, {countWord(BY_CODE)} fitted in code.</>,
+            visual: <Rules /> },
+          { tag: "On the record", title: "Every step on record, including what was refused.",
+            body: <>Every change is written in the same step as the change itself: the evidence, the rule that allowed it, who approved it. Agents propose and only people approve; when an agent tries, the refusal is on the record too.</>,
             visual: <RecordSample /> },
         ]} />
       </section>
