@@ -17,15 +17,17 @@ npm install
 cp .env.example .env.local          # fill in values locally, never commit them
 npx convex dev                       # creates or links a deployment, writes NEXT_PUBLIC_CONVEX_URL to .env.local
 npx convex env set ANTHROPIC_API_KEY <your key>   # agents run in Convex actions and read it there
-npm run seed                         # generates the synthetic year and loads it (about 300k rows)
+npm run seed -- --preset learning    # generates the learning year and loads it (about 400k rows); plain `npm run seed` loads the earlier default world
 npm run dev                          # http://localhost:3000
 ```
 
-Then open **Run** and press **Close the year**. The close pauses in March (an Accountant correction becomes a rule) and in June (a question for the CFO). Switch between Accountant and CFO in the header. Tick **Autopilot** for a hands-free recording; autopilot answers are labelled as such in the record.
+Then open **Run** and press **Close the year**. Where the close pauses follows from the stories, not the calendar: it waits at a month's close while a question there could teach a rule. In the learning year that is January (school fees whose receipts sit at another store, met live by Claude, and cash deposits after a reversed voucher), March (school credits that pay several months at once) and June (a new lender, met live by Claude). Switch between Accountant and CFO in the header. Tick **Autopilot** for a hands-free run: it answers every question from the generator's answer key, approves each rule as the CFO once its backtest is in, and its answers are labelled as such in the record.
+
+To record the demo: close the learning year on autopilot, run the evaluation from the **Evaluation** screen, then `npx tsx --env-file=.env.local scripts/export_demo.ts --preset learning`. It writes `src/demo/recording.json`: the rooms, questions, rules and evaluation from the run, the engine's months replayed offline with the run's own rules (it checks them against the run month by month), and the same year with the rules frozen at onboarding as the simulated baseline. Every figure on the site reads this one file.
 
 Other scripts:
 
-- `npm run simulate` runs the same engine offline over a year, with learning and without, and prints both curves. Its default world is the learning year (`learningMess` in `convex/lib/generate.ts`): no first-pass rate is planted, so the gap between the curves is what learning did. Knobs answer what-ifs, e.g. `npm run simulate -- --advance 500 --lender 0.038@3 --learn r9@8` (the console's **What if** screen runs the same thing with knobs and a chart); `--preset default` runs the recorded demo's world, whose late records are planted to hit the brief's rates. The simulator's Learner is deterministic code: answers come from the generator's answer key, and each rule's parameters are fitted from the data and backtested before it applies. `npx tsx scripts/export_demo.ts --preset learning` writes the learning year's months and learned rules, with its baseline, to `src/demo/learning.json` (the recording is untouched).
+- `npm run simulate` runs the same engine offline over a year, with learning and without, and prints both curves. Its default world is the learning year (`learningMess` in `convex/lib/generate.ts`): no first-pass rate is planted, so the gap between the curves is what learning did. Knobs answer what-ifs, e.g. `npm run simulate -- --advance 500 --lender 0.038@3 --learn r9@8` (the console's **What if** screen runs the same thing with knobs and a chart); `--preset default` runs the recorded demo's world, whose late records are planted to hit the brief's rates. The simulator's Learner is deterministic code: answers come from the generator's answer key, and each rule's parameters are fitted from the data and backtested before it applies. The live close learns the same rules in the same months: r10 and r11 are fitted by the same code (`convex/lib/learn.ts`), r8 and r9 are written by Claude in their case rooms.
 - `npm run reset` clears everything the close produced so it can run again on the same synced data.
 
 ### Deploying the frontend

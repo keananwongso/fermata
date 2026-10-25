@@ -16,7 +16,8 @@ export default function EvaluationPage() {
   const r = runs?.[0]?.result;
   const n = (k: string) => (typeof r?.[k] === "number" ? (r[k] as number) : 0);
   const lines = o?.counters.processed ?? 0;
-  const manualHours = (104820 * 2) / 60;
+  const total = o ? o.months.reduce((a, m) => a + (m.stats.total ?? 0), 0) : 0;
+  const manualHours = (total * 2) / 60;
   const answered = o ? o.counters.questions : 0;
   const fermataHours = (answered * 5 + 2 * 10) / 60;
   return (
@@ -33,7 +34,7 @@ export default function EvaluationPage() {
         <div>
           <Eyebrow>Time</Eyebrow>
           <div className="display mt-3 text-[clamp(36px,5vw,56px)] tabular-nums">~3,500 hours <span className="text-accent">→</span> ~<Count value={Math.max(1, Math.round(fermataHours))} /> hours</div>
-          <p className="mt-4 text-[13px] text-secondary">Assumes 2 minutes per manual match for 104,820 bank lines ({num(Math.round(manualHours))} hours), against about 5 minutes per question ({answered} so far) and 10 minutes per rule approval for people using Fermata.</p>
+          <p className="mt-4 text-[13px] text-secondary">Assumes 2 minutes per manual match for {num(total)} bank lines ({num(Math.round(manualHours))} hours), against about 5 minutes per question ({answered} so far) and 10 minutes per rule approval for people using Fermata.</p>
         </div>
         <div className="grid grid-cols-2 gap-6">
           <Metric label="Wrong postings" value={r ? num(n("wrongStore")) : "—"} sub={r ? `of ${num(n("withStore"))} settled with a store` : "run the checks"} tone={r && n("wrongStore") === 0 ? "success" : undefined} />
