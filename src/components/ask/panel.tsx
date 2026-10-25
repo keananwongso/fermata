@@ -1,35 +1,39 @@
 "use client";
 // Ask the books: hold the orb to ask a question about the books, hear the answer, see it in one of five templates.
-// Not a chat: one question and its answer at a time, a caption of what was said, at most three recent questions,
-// and four suggested questions at a time. A suggested question (or anything that matches one) is answered from the
-// recording with no Claude call; anything else goes to the live, rate limited path when this build has a Convex URL.
+// Not a chat: one question and its answer at a time. A suggested question (or anything that matches one) is answered
+// from the recording with no Claude call; anything else goes to the live, rate limited path when this build has a
+// Convex URL.
 //
-// The flow: invite (a large orb and four suggestions) → listening (the orb follows the microphone) → writing down
-// the question → reading the books → speaking (the orb shrinks beside the answer, which is captioned in time with the
-// voice) → done (the answer's template, with ask again). The orb is one element the whole way, so a press that
-// starts on it always ends on it.
+// The same glass as the dock (overlay.tsx), laid out for a whole view: before an answer, the orb large and centred with
+// one phrase under it; with one, the orb small beside the question, the spoken caption and the template. Under both,
+// a row of suggestions as glass pills and one glass bar to type in. The orb is one element the whole way, so a press
+// that starts on it always ends on it.
 //
-// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books"). The dock on every page (overlay.tsx) shares its
-// question and answer (useAsk), its answer (answer.tsx) and its orb.
+// Mount anywhere: <AskPanel /> (see DESIGN.md, "Ask the books"). It brings no surface of its own; the page gives it one.
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowUp, RefreshCw } from "lucide-react";
-import { AnswerBody, AnswerHead } from "./answer";
-import { RECORDED, PER_SET, SETS, fromRecording, useAsk, type Shown } from "./useAsk";
+import { ArrowUp, ArrowUpRight, Play, RefreshCw, RotateCcw, Square } from "lucide-react";
+import { AnswerBody } from "./answer";
+import { SpokenCaption } from "./caption";
+import { LevelBars } from "./level";
+import { PER_SET, RECORDED, SETS, fromRecording, nextQuestions, useAsk } from "./useAsk";
 import { usePushToTalk, useVoiceInput } from "./pushToTalk";
 import { OrbButton } from "./orbButton";
 import { useHideDock } from "./overlay";
+import { LIVE } from "./voice";
 import type { OrbState } from "./orb";
 
 type Phase = OrbState;
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const chip = "glass-chip calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:min-h-9";
 
 export function AskPanel({ className = "" }: { className?: string }) {
   const a = useAsk();
   const { phase, setPhase, shown, setShown, notice, setNotice, heard, setHeard, ask } = a;
   const [typed, setTyped] = useState("");
   const [set, setSet] = useState(0);
+  const [words, setWords] = useState("");
   // False on the server and where this browser cannot take a spoken question.
   const voiceIn = useVoiceInput();
   // The panel is its own orb, so the dock's resting pill steps aside while it's on screen.
@@ -39,10 +43,11 @@ export function AskPanel({ className = "" }: { className?: string }) {
   const talk = usePushToTalk({
     disabled: !voiceIn || busy, blips: true,
     onPhase: (p) => {
-      if (p === "listening") a.listening();
+      if (p === "listening") { setWords(""); a.listening(); }
       else if (p === "transcribing") setPhase("transcribing");
       else setPhase((cur) => (cur === "listening" || cur === "transcribing" ? "idle" : cur));
     },
+    onWords: setWords,
     onText: (t) => { setHeard(t); void ask(t); },
     onError: (m) => setNotice(m),
   });
@@ -68,125 +73,119 @@ export function AskPanel({ className = "" }: { className?: string }) {
   }, []);
 
   const state: Phase = forced ?? (talk.phase === "listening" ? "listening" : talk.phase === "transcribing" ? "transcribing" : phase);
-  const answer = shown?.answer ?? null;
-  const answering = !!(shown && answer);
-  const status = statusText(state, voiceIn, heard);
+  const answering = !!shown;
   const ready = !(state === "thinking" || state === "transcribing" || state === "listening");
+  const line = statusLine(state, voiceIn, heard, words);
 
   const submitTyped = () => { const q = typed; setTyped(""); setHeard(null); void ask(q); };
   const pick = (q: string) => { setHeard(null); void ask(q); };
+  const suggestions = answering ? nextQuestions(shown.question, 3) : RECORDED.slice(set * PER_SET, set * PER_SET + PER_SET);
 
   return (
-    <section className={`card overflow-hidden p-5 lg:p-7 ${className}`} aria-label="Ask the books">
+    <section className={`relative ${className}`} aria-label="Ask the books">
       {/* One announcement per turn: the question and the whole answer, or what the orb is doing. */}
-      <div className="sr-only" aria-live="polite" role="status">{answering ? `${shown!.question}. ${answer!.spoken}` : status.title}</div>
+      <div className="sr-only" aria-live="polite" role="status">{answering ? `${shown.question}. ${shown.answer.spoken}` : line.title}</div>
 
-      {/* Answering, on a phone: the small orb beside the question, the answer under both at full width.
-          Wider: the orb in its own column beside all of it. */}
-      <div className={answering ? "grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-3.5 gap-y-3 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-start sm:gap-x-6 sm:gap-y-0" : "flex flex-col items-center pt-2 text-center lg:pt-4"}>
-        <motion.div layout transition={{ duration: 0.5, ease: EASE }} className={`relative shrink-0 ${answering ? "sm:row-span-2" : ""}`}>
-          <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={busy} small={answering} className={answering ? "size-14 sm:size-[88px]" : "size-[156px] sm:size-[188px]"} />
+      <div className={answering ? "flex items-center gap-3.5" : "flex flex-col items-center pt-4 text-center lg:pt-8"}>
+        <motion.div layout transition={{ duration: 0.5, ease: EASE }} className="shrink-0">
+          <OrbButton talk={talk} state={state} voiceIn={voiceIn} busy={busy} className={answering ? "size-14" : "size-[148px] sm:size-[176px]"} />
         </motion.div>
-
-        {answering ? (
-          <motion.p layout="position" transition={{ duration: 0.5, ease: EASE }} className="min-w-0 text-[13px] text-secondary sm:pt-1">
-            <span className="text-faint">You asked</span> <span className="text-ink">{shown!.question}</span>
-          </motion.p>
-        ) : null}
-        <motion.div layout="position" transition={{ duration: 0.5, ease: EASE }} className={`min-w-0 ${answering ? "col-span-2 sm:col-span-1 sm:col-start-2" : "mt-5 max-w-[520px]"}`}>
+        <motion.div layout="position" transition={{ duration: 0.5, ease: EASE }} className={`min-w-0 ${answering ? "" : "mt-6"}`}>
           {answering ? (
-            <div key={shown!.question + shown!.from}>
-              <AnswerHead shown={shown!} state={state} onPlay={() => a.play(shown!)} onStop={a.stop} onReset={a.reset} captionClass="text-[clamp(19px,2.1vw,24px)] sm:mt-2" />
-            </div>
+            <>
+              <p className="text-[12.5px] text-faint">{state === "idle" || state === "speaking" ? "You asked" : line.title}</p>
+              <p className="truncate text-[14px] text-ink">{heard ?? shown.question}</p>
+            </>
           ) : (
-            <div>
-              <p className="title text-[22px] lg:text-[26px]">{status.title}</p>
-              <p className="mt-1.5 text-[13px] text-secondary">{status.sub}</p>
-            </div>
+            <>
+              <p className="title text-[24px] lg:text-[28px]">{line.title}</p>
+              <p className={`mt-2 flex min-h-5 items-center justify-center gap-2 text-[13.5px] ${words && state === "listening" ? "text-ink" : "text-secondary"}`}>
+                {state === "listening" ? <LevelBars active /> : null}{line.sub}
+              </p>
+            </>
           )}
         </motion.div>
       </div>
 
       {notice && !answering ? (
-        <div className="enter mx-auto mt-5 max-w-[520px] rounded-[6px] border border-hairline bg-well px-3 py-2 text-center text-[13px] text-secondary" role="status">{notice}</div>
+        <p className="enter mx-auto mt-4 max-w-[520px] text-center text-[13px] text-secondary" role="status">{notice}</p>
       ) : null}
 
       <AnimatePresence mode="wait" initial={false}>
-        {answering ? <AnswerBody key={shown!.question + shown!.from} shown={shown!} state={state} /> : null}
+        {answering ? (
+          <motion.div key={shown.question + shown.from} className="mt-5"
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3, ease: EASE }}>
+            <SpokenCaption text={shown.answer.spoken} live={state === "speaking"} className="title text-[clamp(19px,2.1vw,24px)] leading-[1.3]" />
+            <div className="mt-3.5 flex flex-wrap items-center gap-2">
+              {state === "speaking" || state === "thinking" ? (
+                <button type="button" onClick={a.stop} className={chip}><Square size={10} strokeWidth={2} fill="currentColor" className="text-accent" />Stop</button>
+              ) : (
+                <button type="button" onClick={() => a.play(shown)} disabled={!shown.audio && !LIVE} className={chip}><Play size={11} strokeWidth={2} fill="currentColor" className="text-accent" />Play again</button>
+              )}
+              <button type="button" onClick={a.reset} className={chip}><RotateCcw size={12} strokeWidth={1.75} className="text-secondary" />Ask again</button>
+              <span className="text-[11.5px] text-faint">
+                {shown.from === "recorded" ? "Recorded" : "Live: Claude chose the query"} · {shown.answer.checked ? "every number from the books" : "written by code"}
+              </span>
+            </div>
+            <AnswerBody shown={shown} state={state} className="mt-5" />
+          </motion.div>
+        ) : null}
       </AnimatePresence>
 
-      <Dock center={!answering} disabled={!ready} current={shown?.question ?? null} set={set} onMore={() => setSet((s) => (s + 1) % SETS)} onPick={pick}
-        typed={typed} onTyped={setTyped} onSubmit={submitTyped}
-        recent={a.history.filter((h) => h.question !== shown?.question).slice(0, 3)} onRecent={a.recall} />
+      <Composer center={!answering} disabled={!ready} suggestions={suggestions} label={answering ? "Ask next" : null}
+        onMore={!answering && SETS > 1 ? () => setSet((s) => (s + 1) % SETS) : null} onPick={pick}
+        typed={typed} onTyped={setTyped} onSubmit={submitTyped} />
     </section>
   );
 }
 
-function statusText(state: Phase, voiceIn: boolean, heard: string | null): { title: string; sub: string } {
-  if (state === "listening") return { title: "Listening", sub: "Ask your question, then let go." };
-  if (state === "transcribing") return { title: "Writing down your question", sub: "One moment." };
-  if (state === "thinking") return { title: "Reading the books", sub: heard ? `You asked: "${heard}"` : "Every number comes from the data, not from the model." };
-  if (state === "speaking") return { title: "Speaking", sub: "" };
-  if (!voiceIn) return { title: "What do you want to know?", sub: "Voice questions need a browser that can listen. Pick one below to hear its answer." };
-  return { title: "Hold to ask", sub: "Press and hold the orb, ask out loud, then let go. Space works too." };
+function statusLine(state: Phase, voiceIn: boolean, heard: string | null, words: string): { title: string; sub: string } {
+  if (state === "listening") return { title: "Listening", sub: words || "Let go when you're done." };
+  if (state === "transcribing") return { title: "Got it", sub: words };
+  if (state === "thinking") return { title: "Reading the books", sub: heard ? `"${heard}"` : "" };
+  if (state === "speaking") return { title: "Answering", sub: "" };
+  if (!voiceIn) return { title: "What do you want to know?", sub: "Pick a question, or type one." };
+  return { title: "Hold to ask", sub: "Hold the orb, ask out loud, let go." };
 }
 
-const chip = "calm group/q flex h-full min-h-11 w-full items-center gap-3 rounded-[10px] border px-3.5 py-2 text-left text-[13px] leading-snug focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50";
-
-// Under the orb or the answer: four suggestions, the typed field, a short recent list and the read only promise.
-function Dock({ center, disabled, current, set, onMore, onPick, typed, onTyped, onSubmit, recent, onRecent }: {
-  center: boolean; disabled: boolean; current: string | null; set: number; onMore: () => void; onPick: (q: string) => void;
-  typed: string; onTyped: (v: string) => void; onSubmit: () => void; recent: Shown[]; onRecent: (s: Shown) => void;
+// Under the orb or the answer: suggestions as glass pills and one glass bar to type in.
+function Composer({ center, disabled, suggestions, label, onMore, onPick, typed, onTyped, onSubmit }: {
+  center: boolean; disabled: boolean; suggestions: { id: string; question: string }[]; label: string | null; onMore: (() => void) | null;
+  onPick: (q: string) => void; typed: string; onTyped: (v: string) => void; onSubmit: () => void;
 }) {
-  const shownSet = RECORDED.slice(set * PER_SET, set * PER_SET + PER_SET);
   const field = useId();
   return (
-    <div className={`mt-7 ${center ? "mx-auto flex max-w-[600px] flex-col items-center text-center" : "border-t border-hairline pt-5"}`}>
-      <div className={`flex w-full items-center gap-3 ${center ? "justify-center" : "justify-between"}`}>
-        <span className="eyebrow">{center ? "Try asking" : "Ask another"}</span>
-        {SETS > 1 ? (
-          <button type="button" onClick={onMore} className="calm inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[12px] text-secondary hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-7">
-            <RefreshCw size={12} strokeWidth={1.75} />More questions
-          </button>
+    <div className={center ? "mx-auto mt-8 flex max-w-[640px] flex-col items-center" : "mt-6 border-t border-hairline pt-5"}>
+      {label ? <span className="eyebrow">{label}</span> : null}
+      <ul className={`flex flex-wrap gap-2 ${center ? "justify-center" : "mt-2.5"}`}>
+        {suggestions.map((p) => (
+          <li key={p.id} className="min-w-0">
+            <button type="button" disabled={disabled} onClick={() => onPick(p.question)}
+              className="glass-chip calm group/q inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-left text-[13px] leading-snug text-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 lg:min-h-9">
+              <span className="min-w-0">{p.question}</span>
+              <ArrowUpRight aria-hidden size={13} strokeWidth={1.75} className="shrink-0 text-faint group-hover/q:text-accent" />
+            </button>
+          </li>
+        ))}
+        {onMore ? (
+          <li>
+            <button type="button" onClick={onMore} aria-label="More questions" title="More questions"
+              className="calm grid size-11 place-items-center rounded-full text-faint hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:size-9">
+              <RefreshCw size={13} strokeWidth={1.75} />
+            </button>
+          </li>
         ) : null}
-      </div>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.ul key={set} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}
-          className={`mt-2.5 grid w-full gap-2 text-left sm:grid-cols-2 ${center ? "" : "lg:grid-cols-4"}`}>
-          {shownSet.map((p) => (
-            <li key={p.id} className="min-w-0">
-              <button type="button" disabled={disabled} onClick={() => onPick(p.question)}
-                className={`${chip} ${current === p.question ? "border-accent bg-accent-tint text-accent" : "border-hairline bg-ground text-body hover:border-strong hover:bg-warm"}`}>
-                <span className="min-w-0 flex-1">{p.question}</span>
-                <ArrowRight aria-hidden size={14} strokeWidth={1.75} className="shrink-0 text-faint transition-transform duration-300 group-hover/q:translate-x-0.5 group-hover/q:text-accent" />
-              </button>
-            </li>
-          ))}
-        </motion.ul>
-      </AnimatePresence>
+      </ul>
 
-      <form className={`mt-3 flex w-full items-center gap-2 ${center ? "" : "max-w-[640px]"}`} onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+      <form className={`glass mt-3 flex w-full items-center rounded-full pl-5 pr-1.5 ${center ? "" : "max-w-[640px]"}`} onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
         <label htmlFor={field} className="sr-only">Or type a question</label>
-        <div className="calm flex min-w-0 flex-1 items-center rounded-full border border-hairline bg-well pl-4 pr-1 focus-within:border-accent focus-within:bg-ground hover:border-strong">
-          <input id={field} value={typed} onChange={(e) => onTyped(e.target.value)} maxLength={240} placeholder="Or type a question" autoComplete="off"
-            className="min-h-11 min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-faint focus:outline-none lg:min-h-10" />
-          <button type="submit" disabled={!typed.trim() || disabled} aria-label="Ask"
-            className="calm grid size-10 shrink-0 place-items-center rounded-full bg-accent text-white hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:bg-inset disabled:text-faint">
-            <ArrowUp size={16} strokeWidth={2} />
-          </button>
-        </div>
+        <input id={field} value={typed} onChange={(e) => onTyped(e.target.value)} maxLength={240} placeholder="Or type a question" autoComplete="off"
+          className="min-h-12 min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-faint focus:outline-none" />
+        <button type="submit" disabled={!typed.trim() || disabled} aria-label="Ask"
+          className="calm grid size-9 shrink-0 place-items-center rounded-full bg-accent text-white hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:bg-transparent disabled:text-mute">
+          <ArrowUp size={16} strokeWidth={2} />
+        </button>
       </form>
-
-      {recent.length ? (
-        <p className="mt-3 text-[12px] text-faint">
-          <span>Recent: </span>
-          {recent.map((h, i) => (
-            <span key={h.question}>{i ? <span aria-hidden> · </span> : null}<button type="button" onClick={() => onRecent(h)} className="calm text-link hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{h.question}</button></span>
-          ))}
-        </p>
-      ) : null}
-
-      <p className="mt-4 text-[12px] text-faint">Read only: it can explain the books, never change them.</p>
     </div>
   );
 }
