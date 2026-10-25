@@ -213,6 +213,13 @@ The transcript of the agents' meeting on one held story.
   visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
   moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
   recorded, scripted or a replay.
+* **How it works is its own page** (`/how`; the header's How it works link, the landing hero and section, and the
+  dashboard all point there). Three sections, each a `Tag` and a one-phrase `.display`: **How it's built**
+  (`HowDiagram`: eleven boxes on one canvas, quiet by default; pick a path, Day 0, Settles, Holds, Learns or Refused, and
+  only its boxes and lines light up, numbered, in the path's colour, with the steps listed under it; click a box for
+  two or three lines of what it is underneath. On a phone the steps list and box chips stand in for the canvas),
+  **How it learns** (`HowLearns`: pick any rule and see it as rule, policy and precedents, stacked) and **Proof** (three
+  figures and the learning chart). The landing page's How it works stays as the teaser.
 * **The demo is one fixed screen** on wide screens (1280px and up): no heading, no footer, no page scroll. The controls
   and the months share the top row, the stats sit under them, and the workspace takes whatever height is left, each panel
   scrolling inside itself. The page marks itself `data-fixed-page`; `globals.css` hides the footer and the page scroll

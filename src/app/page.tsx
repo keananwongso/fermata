@@ -44,7 +44,7 @@ function Landing() {
           </p></RevealItem>
           <RevealItem className="mt-7 flex flex-wrap items-center justify-center gap-4">
             <LinkButton href="/demo">Watch the live demo</LinkButton>
-            <LinkArrow href="#how">See how it works</LinkArrow>
+            <LinkArrow href="/how">See how it works</LinkArrow>
           </RevealItem>
           <RevealItem><AskHint className="mt-1" /></RevealItem>
         </Reveal>
@@ -74,7 +74,7 @@ function Landing() {
         <Reveal className="max-w-[640px]">
           <RevealItem><Tag tone="neutral">How it works</Tag></RevealItem>
           <RevealItem><h2 className="display mt-4 text-[clamp(32px,4vw,48px)]">From messy books to a closed year.</h2></RevealItem>
-          <RevealItem className="mt-4"><LinkArrow href="/demo?guide">Step through it, under the hood</LinkArrow></RevealItem>
+          <RevealItem className="mt-4 flex flex-wrap gap-x-6 gap-y-2"><LinkArrow href="/how">See how it&apos;s built</LinkArrow><LinkArrow href="/demo?guide">Step through it in the demo</LinkArrow></RevealItem>
         </Reveal>
         {/* Five beats, the number the morph in landing.tsx is laid out for (MORPH_BEATS): day 0, settle, hold and ask,
             learn, the record. */}

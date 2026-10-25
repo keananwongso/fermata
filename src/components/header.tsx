@@ -12,7 +12,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 export function Header() {
   const path = usePathname();
   // The landing page, the public demo and the dashboard get the site navigation; the console gets its tabs and role switch.
-  const site = path === "/" || ["/demo", "/dashboard", "/ask", "/pitch"].some((p) => path.startsWith(p));
+  const site = path === "/" || ["/how", "/demo", "/dashboard", "/ask", "/pitch"].some((p) => path.startsWith(p));
   const links = site ? SITE_LINKS : TABS;
   // The live demo is the call to action everywhere but the demo itself, where running it is the action.
   const cta = site && !path.startsWith("/demo");
