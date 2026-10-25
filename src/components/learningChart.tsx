@@ -3,9 +3,9 @@
 // the rules frozen at onboarding. Learning is accent, solid, with points; the baseline is mute and dashed. A 𝄐 sits
 // over each month in which an answer became a rule, and that month turns accent on the axis. Shared by the landing
 // page's proof, the pitch and the What if screen, so the comparison looks the same wherever it is shown.
-// Three notes read the flat stretch as the point rather than a stall, all worked out from the data: the gap between
-// the lines is shaded as what learning did; a month where the baseline drops and only learning recovers is called
-// out; and when records arrive late, the band above the ceiling says so (they settle the next month either way).
+// Two notes read the flat stretch as the point rather than a stall, both worked out from the data: the gap between
+// the lines is shaded as what learning did, and a month where the baseline drops and only learning recovers is called
+// out.
 import { motion } from "motion/react";
 import { useId } from "react";
 import { MONTH_LABELS } from "../../convex/lib/domain";
@@ -70,9 +70,6 @@ function Plot({ L, B, W, H }: { L: ChartRun; B: ChartRun; W: number; H: number }
   const gapI = Array.from({ length: Math.max(1, end - 1 - Math.ceil(end / 2)) }, (_, k) => Math.ceil(end / 2) + k).reduce((a, i) => (gapAt(i) > gapAt(a) ? i : a), Math.ceil(end / 2));
   // Something new: the first month the baseline drops by more than a point and a half while learning recovers next month.
   const dip = B.months.findIndex((m, i) => i > 0 && i < end && share(m) < share(B.months[i - 1]) - 0.015 && share(L.months[i + 1]) > share(L.months[i]) + 0.015);
-  // The ceiling: records that arrive late settle the next month, so first pass can't pass 1 minus their share.
-  const lastL = L.months[end];
-  const ceiling = lastL.waiting != null && lastL.waiting > 0 ? 1 - lastL.waiting / lastL.total : null;
   const said = (r: ChartRun) => r.months.map((m, i) => `${MONTH_LABELS[i]} ${pct(share(m))}`).join(", ");
   const view = { once: true, margin: "0px 0px -10% 0px" } as const;
   const clip = `draw-${useId().replace(/:/g, "")}`;
@@ -85,12 +82,6 @@ function Plot({ L, B, W, H }: { L: ChartRun; B: ChartRun; W: number; H: number }
           <text x={left - 8} y={y(g) + 4} textAnchor="end" className="num" fontSize={fs} fill="var(--color-faint)">{pct(g, 0)}</text>
         </g>
       ))}
-      {ceiling != null && ceiling < hi ? (
-        <g>
-          <rect x={left} y={y(hi)} width={W - left - right} height={y(ceiling) - y(hi)} fill="var(--color-warm)" opacity={0.7} />
-          {small ? null : <text x={left + 10} y={y(hi) + fs + 6} fontSize={fs} fill="var(--color-faint)">{pct(1 - ceiling, 0)} of records arrive late and settle the next month, so the ceiling is {pct(ceiling, 0)}</text>}
-        </g>
-      ) : null}
       {MONTH_LABELS.map((m, i) => <text key={m} x={x(i)} y={H - 8} textAnchor="middle" fontSize={fs} fill={marked.has(i) ? "var(--color-accent)" : "var(--color-faint)"}>{small ? m[0] : m}</text>)}
       {/* Both lines draw in left to right behind a growing clip, which keeps the baseline's dashes (pathLength would
           overwrite them). */}
