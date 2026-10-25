@@ -153,7 +153,7 @@ function Sidebar({ nav, go, ids }: TabsProps) {
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] bg-heading text-[15px] text-white" style={MUSIC} aria-hidden><span style={{ transform: "translateY(0.22em)" }}>♪</span></span>
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-[12.5px] font-medium text-ink">Music retailer</span>
-          <span className="block truncate text-[11px] text-faint">{STORES.length} stores · fictional</span>
+          <span className="block truncate text-[11px] text-faint">{STORES.length} stores</span>
         </span>
       </div>
       <div role="tablist" aria-label="Dashboard sections" aria-orientation="vertical" onKeyDown={keys} className="mt-4 space-y-0.5">

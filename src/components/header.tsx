@@ -27,14 +27,11 @@ export function Header() {
     <>
       <div aria-hidden onClick={() => setOpen(false)}
         className={`fixed inset-0 z-20 bg-ink/25 transition-opacity duration-350 ease-out lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
-      {/* The notice bar and the header stick together, so the header sits in the same place at every scroll position. */}
-      <div className="sticky top-0 z-30">
-      <div className="bg-night px-4 py-2 text-center text-[12px] text-white/75">
-        A fictional Indonesian music retailer. Every store, amount and person here is synthetic.
-      </div>
+      {/* The header floats over the page. Only its card takes the pointer, so controls beside it stay clickable. */}
+      <div className="pointer-events-none sticky top-0 z-30">
       <header className="mt-3 px-4 lg:px-6">
         {/* On the site the card hugs its contents, centred; the console's tabs and role switch keep the page width. */}
-        <div className={`mx-auto max-w-[calc(var(--container-page)-60px)] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)] ${site ? "lg:w-fit" : ""}`}>
+        <div className={`pointer-events-auto mx-auto max-w-[calc(var(--container-page)-60px)] rounded-[8px] border border-hairline bg-ground shadow-[0_1px_2px_rgb(85_40_20/0.05),0_10px_30px_-18px_rgb(85_40_20/0.18)] ${site ? "lg:w-fit" : ""}`}>
           <div className={`flex h-14 items-center pl-4 pr-2 ${site ? "gap-3 lg:pr-2.5" : "gap-6 lg:pr-3"}`}>
             <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2" aria-label="Fermata, home">
               <span className="text-[20px] leading-none text-hold" aria-hidden>𝄐</span>

@@ -63,7 +63,7 @@ export function Tour({ stop, onDone, onSkip }: { stop: Stop; onDone: () => void;
 
   const n = STOPS.indexOf(stop);
   return (
-    <motion.section key={stop} className="card flex min-h-[460px] flex-col overflow-hidden xl:h-[max(520px,calc(100dvh-21.5rem))]" aria-label={c.tag}
+    <motion.section key={stop} className="card flex min-h-[460px] flex-col overflow-hidden xl:min-h-0 xl:flex-1" aria-label={c.tag}
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}>
       <header className="flex shrink-0 items-start justify-between gap-4 border-b border-hairline px-5 py-4 lg:px-7 lg:py-5">
         <div className="min-w-0">

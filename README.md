@@ -8,7 +8,7 @@ Picture fourteen stores sharing five bank accounts, with money coming in from ma
 
 Fermata does that on its own. It settles every bank line it can explain, holds the rest, and asks the right person one question. Each answer becomes a tested rule, so the same question never comes back.
 
-Shown on a fictional music retailer. All data is synthetic.
+All data is synthetic.
 
 ## What it does
 

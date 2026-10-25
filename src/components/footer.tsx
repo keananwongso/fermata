@@ -3,7 +3,7 @@ import { FOOTER_LINKS, PUBLIC_SITE, TABS } from "./nav";
 
 export function Footer() {
   return (
-    <footer className="relative overflow-hidden bg-heading text-white">
+    <footer className="site-footer relative overflow-hidden bg-heading text-white">
       <span aria-hidden className="pointer-events-none absolute -bottom-16 -left-6 select-none text-[240px] leading-none text-white/[0.06] lg:-bottom-24 lg:text-[360px]" style={{ fontFamily: "var(--font-music)" }}>𝄐</span>
       <div className="relative mx-auto grid max-w-page gap-10 px-4 py-12 lg:grid-cols-[1fr_auto] lg:px-10 lg:py-16">
         <div>

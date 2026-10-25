@@ -209,7 +209,7 @@ type Beat = { tag: string; title: string; body: ReactNode; visual: ReactNode };
 // the case room's cast around its one question, then every rule, then the record). Scrolling is plain Lenis with no resistance. When a scroll
 // comes to rest near a beat a magnet eases the page onto it; anywhere else the page stays where it was left, and a fling
 // passes straight through. On narrow screens, and under reduced motion, the beats simply stack.
-const HEAD = 104; // the sticky notice bar and header
+const HEAD = 72; // the floating header
 const STEP = 0.8; // screen heights of scrolling per beat
 const TAIL = 0.15; // screen heights the last beat holds before the page lets go
 const MAGNET = 0.35; // a scroll that comes to rest within this share of a step of a beat eases onto it

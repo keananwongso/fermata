@@ -47,7 +47,6 @@ function Landing() {
             <LinkArrow href="#how">See how it works</LinkArrow>
           </RevealItem>
           <RevealItem><AskHint className="mt-1" /></RevealItem>
-          <RevealItem><p className="mt-6 text-[12px] text-faint">Shown on a fictional 14-store music retailer. Every number here comes from a real run on synthetic books.</p></RevealItem>
         </Reveal>
         <div className="relative mt-12 lg:mt-16">
           <Reveal className="relative min-w-0" delay={0.35}><RevealItem><Dashboard /></RevealItem></Reveal>

@@ -201,20 +201,18 @@ function DemoPage() {
   const rules = R.rules.filter((r) => r.learnedInMonth === 0 || (phase !== "idle" && closed(r.learnedInMonth)));
 
   return (
-    <Reveal className="space-y-5" stagger={0.08}>
-      <RevealItem className="relative z-10 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2"><Pill tone="accent">Live demo</Pill></div>
-          <h1 className="display mt-3 text-[clamp(30px,3.6vw,44px)]">Watch Fermata close a year</h1>
-          <p className="mt-2 max-w-[640px] text-[13.5px] text-secondary">
-            {num(R.total)} bank lines, six channels, five shared accounts. You answer what it can&apos;t.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    // On wide screens the demo is one fixed screen: no page scroll and no footer (globals.css, `data-fixed-page`);
+    // the workspace takes whatever height is left and each panel scrolls inside itself.
+    <div data-fixed-page className="xl:h-[calc(100dvh-110px)]">
+    <Reveal className="space-y-5 xl:flex xl:h-full xl:flex-col xl:gap-4 xl:space-y-0" stagger={0.08}>
+      {/* One row of controls with the months beside them; no page heading, the year is the page. */}
+      <RevealItem className="relative z-10 flex flex-wrap items-center gap-x-6 gap-y-4 xl:flex-nowrap">
+        <h1 className="sr-only">Watch Fermata close a year</h1>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {phase === "idle" ? (
             <span className="relative">
               <Button variant="primary" onClick={start}>Close the year</Button>
-              <Hint show={tip("start")} className="absolute left-0 top-full z-10 mt-2.5 lg:left-auto lg:right-0 lg:[--tip-x:calc(100%-36px)]">{HINT_TEXT.start}</Hint>
+              <Hint show={tip("start")} className="absolute left-0 top-full z-10 mt-2.5">{HINT_TEXT.start}</Hint>
             </span>
           )
             : phase === "done" ? <Button onClick={restart}>Play again</Button>
@@ -230,9 +228,8 @@ function DemoPage() {
             </button>
           ) : null}
         </div>
+        <div ref={stage} className="min-w-0 flex-1 basis-full scroll-mt-32 xl:basis-auto"><Timeline month={month} phase={phase} p={p} answered={answered} /></div>
       </RevealItem>
-
-      <RevealItem><div ref={stage} className="scroll-mt-32"><Timeline month={month} phase={phase} p={p} answered={answered} /></div></RevealItem>
 
       <RevealItem className="card grid grid-cols-2 gap-4 p-4 sm:grid-cols-5 lg:p-5">
         <Stat label="Bank lines processed" value={<Roll value={processed} format={WHOLE} />} sub={`of ${num(R.total)}`} />
@@ -248,7 +245,7 @@ function DemoPage() {
       {/* While a room meets, the engine (paused anyway) steps aside so the conversation gets the width, and the
           question takes the right column beside it. The columns resize rather than jump; spacing lives inside the
           columns so a collapsed column leaves no gap. */}
-      <RevealItem className={`${stop ? "hidden! " : ""}grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:h-[max(520px,calc(100dvh-21.5rem))] xl:gap-x-0 xl:grid-rows-[minmax(0,1fr)] xl:transition-[grid-template-columns] xl:duration-700 xl:ease-brand ${asking ? "xl:grid-cols-[0px_minmax(0,1fr)_456px]" : room ? "xl:grid-cols-[0px_minmax(0,1fr)_296px]" : "xl:grid-cols-[336px_minmax(0,1fr)_296px]"}`}>
+      <RevealItem className={`${stop ? "hidden! " : ""}grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:flex-1 xl:gap-x-0 xl:grid-rows-[minmax(0,1fr)] xl:transition-[grid-template-columns] xl:duration-700 xl:ease-brand ${asking ? "xl:grid-cols-[0px_minmax(0,1fr)_456px]" : room ? "xl:grid-cols-[0px_minmax(0,1fr)_296px]" : "xl:grid-cols-[336px_minmax(0,1fr)_296px]"}`}>
         <div inert={!!room} className={`min-w-0 xl:flex xl:min-h-0 xl:overflow-hidden xl:transition-[opacity,padding] xl:duration-500 xl:ease-brand ${room ? "xl:pointer-events-none xl:pr-0 xl:opacity-0" : "xl:pr-4"}`}>
           <Stream stream={stream} month={month} running={phase === "running"} onPick={setLine} picked={line} hint={tip("stream")} onLinger={() => show("stream")} onLeave={() => hide("stream")} />
         </div>
@@ -310,6 +307,7 @@ function DemoPage() {
         </div>
       </RevealItem>
     </Reveal>
+    </div>
   );
 }
 

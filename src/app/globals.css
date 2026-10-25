@@ -65,6 +65,12 @@
 @layer base {
   html, body { background: var(--color-canvas); color: var(--color-ink); }
   body { font-family: var(--font-sans); font-size: 14px; line-height: 1.45; letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; overflow-x: clip; }
+  /* A fixed screen (the demo): no footer, and on wide screens no page scroll; the page sizes itself to the window. */
+  body:has([data-fixed-page]) .site-footer { display: none; }
+  @media (min-width: 1280px) {
+    html:has([data-fixed-page]) { overflow: hidden; }
+    body:has([data-fixed-page]) main { padding-top: 20px !important; padding-bottom: 20px !important; } /* over main's padding utilities */
+  }
 }
 
 @layer components {

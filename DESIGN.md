@@ -29,7 +29,7 @@ All colours are tokens in `@theme` in `globals.css`. Use the Tailwind names (`bg
 | Hover | `hover` #f4eee6 | Hover fill on ghost controls and rows |
 | Lines | `hairline` #e9ddd1 · `strong` #e0d0c1 · `mute` #cfbba8 | Borders, hovered borders, neutral bars |
 | Text | `ink` #272320 · `body` #3f3a34 · `secondary` #5f564d · `faint` #897d71 | Primary, body, supporting, labels |
-| Headings | `heading` #0a2d66 · `heading-2` #0f3d7a · `night` #0b1d3a | Display and titles; footer; top notice bar |
+| Headings | `heading` #0a2d66 · `heading-2` #0f3d7a · `night` #0b1d3a | Display and titles; footer |
 | Action and data | `accent` #1f5fc0 · `accent-hover` #17499a · `accent-tint` #eaf1fb · `link` | Buttons, links, active tabs, charts, selected states |
 | Brand second colour | `cyan` #17bebb | Only the brand button's tab. Never for meaning |
 | Hold | `hold` #b27d10 · `hold-tint` #fbf0d6 · `hold-tint-strong` | Held, needs an answer, waiting on a person |
@@ -213,6 +213,10 @@ The transcript of the agents' meeting on one held story.
   visit, never over the agents' transcript, never taking a click, and gone the moment the visitor acts or the phase
   moves on. `?tips=off` turns them off for the visit, for recording. Hint copy never calls the demo canned,
   recorded, scripted or a replay.
+* **The demo is one fixed screen** on wide screens (1280px and up): no heading, no footer, no page scroll. The controls
+  and the months share the top row, the stats sit under them, and the workspace takes whatever height is left, each panel
+  scrolling inside itself. The page marks itself `data-fixed-page`; `globals.css` hides the footer and the page scroll
+  from that. Below 1280px the panels stack and the page scrolls as usual (still no footer).
 * **The guided demo** (`/demo?guide`, `src/app/demo/tour.tsx`; the "Show how it works" switch before the year starts,
   and the landing page's How it works links to it). The year holds at six stops, and each stop takes the workspace's
   place until it is left: Day 0 (the mined rules, approved as CFO), settle (one real line: store, rule, settled), hold
@@ -448,19 +452,21 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
   The columns resize with a `grid-template-columns` transition; spacing lives inside the columns so a 0px column
   leaves no gap.
 * The desktop/mobile switch is `lg` = 1025px and up. Design mobile first; no horizontal page scroll.
-* Header: a navy notice bar ("every store, amount and person here is synthetic"), then a floating
+* Header: a floating
   white header card with the 𝄐 Fermata wordmark, the tabs (`nav.ts`), and the Acting as switch
   (Accountant / CFO). On the site pages the card hugs its contents and sits centred (wordmark, two links, the GitHub
   icon, the demo button, with modest gaps), never stretched to the page; the console's card keeps the page width
   (60px narrower) for its six tabs and the switch. On mobile both are full width and the links fold into a menu.
-  The bar and the card stick to the top as one unit, so the header never moves when you scroll or jump
-  to an anchor; give anchor targets `scroll-mt-36` so they land below it.
+  The card sticks to the top, so the header never moves when you scroll or jump to an anchor; give anchor targets
+  `scroll-mt-36` so they land below it. Only the card takes the pointer (its full-width wrapper is
+  `pointer-events-none`), so controls that scroll beside it, like the demo's Pause, stay clickable. No notice bar, and
+  no "fictional" on screen: the footer's synthetic-data line is the one disclosure.
 * Footer: navy, a large faint 𝄐, the tagline, the screens, and the synthetic-data line.
 * Tabs live in `src/components/nav.ts`; add a screen there once and the header and footer pick it up.
 
 ## Rules that carry the product
 
-* **Every number is synthetic, and the UI says so** (notice bar, footer). Never put real company
+* **Every number is synthetic, and the UI says so once** (the footer). Never put real company
   names, people or figures on screen, in the code or in comments.
 * **Honest claims about learning.** The recording is the learning year: nothing in its generator plants a first pass
   rate, so its curve climbs only where an answer became a rule, and the same year with the rules frozen (the baseline,
