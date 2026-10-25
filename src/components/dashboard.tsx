@@ -34,8 +34,8 @@ const PANELS: Record<string, { id: string; Panel: View["Panel"]; count?: ReactNo
 function Ask() {
   return (
     <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-6">
-      <ViewHead title="Ask the books">Ask out loud or type. The answer is spoken and shown, and every number comes from the books.</ViewHead>
-      <AskPanel className="!p-4 lg:!p-5" />
+      <ViewHead title="Ask the books">Ask out loud or type. Read only, and every number comes from the books.</ViewHead>
+      <AskPanel className="pb-4" />
     </div>
   );
 }
@@ -50,7 +50,9 @@ const valid = (n?: Nav): Nav => (n && VIEWS.some((v) => v.id === n.view) && (!n.
 
 // `initial` opens a view directly; `onNavigate` hears every move (the /dashboard page mirrors it into the URL).
 // The landing page's hero passes neither, so its state stays local.
-export function Dashboard({ className = "", initial, onNavigate }: { className?: string; initial?: Nav; onNavigate?: (n: Nav) => void }) {
+// `fill`: the window takes its parent's height on wide screens (1280px and up) and every view, the overview included,
+// scrolls inside it (the /dashboard page, one fixed screen).
+export function Dashboard({ className = "", initial, onNavigate, fill = false }: { className?: string; initial?: Nav; onNavigate?: (n: Nav) => void; fill?: boolean }) {
   const [nav, setNav] = useState<Nav>(() => valid(initial));
   const win = useRef<HTMLDivElement>(null);
   const uid = useId();
@@ -72,15 +74,15 @@ export function Dashboard({ className = "", initial, onNavigate }: { className?:
   return (
     <DashboardNav.Provider value={go}>
       <PlainAvatars.Provider value>
-      <div ref={win} className={`frame ${className}`} role="group" aria-label={`Fermata dashboard for ${R.year}, read from a recorded run`}>
-        <div className="card grid overflow-hidden lg:grid-cols-[212px_minmax(0,1fr)]">
+      <div ref={win} className={`frame ${fill ? "xl:h-full" : ""} ${className}`} role="group" aria-label={`Fermata dashboard for ${R.year}, read from a recorded run`}>
+        <div className={`card grid overflow-hidden lg:grid-cols-[212px_minmax(0,1fr)] ${fill ? "xl:h-full xl:grid-rows-[minmax(0,1fr)]" : ""}`}>
           <Sidebar nav={nav} go={go} ids={ids} />
-          <div className="min-w-0 bg-canvas">
+          <div className={`min-w-0 bg-canvas ${fill ? "xl:flex xl:min-h-0 xl:flex-col" : ""}`}>
             <MobileBar nav={nav} go={go} ids={ids} />
             {/* The overview always sets the window's height on wide screens; other views sit over it and scroll inside,
                 so switching never moves the page. On a phone each view takes its own height instead. */}
-            <div className="relative min-w-0">
-              <div {...(home ? panel : {})} className={home ? "" : "max-lg:hidden lg:invisible"} inert={!home}><Overview /></div>
+            <div className={`relative min-w-0 ${fill ? "xl:min-h-0 xl:flex-1" : ""}`}>
+              <div {...(home ? panel : {})} {...(fill ? { "data-lenis-prevent": true } : {})} className={`${home ? "" : "max-lg:hidden lg:invisible"} ${fill ? "scroll-quiet xl:absolute xl:inset-0 xl:overflow-y-auto" : ""}`} inert={!home}><Overview /></div>
               {home ? null : (
                 <div key={`${view.id}:${nav.room ?? ""}`} {...panel} data-lenis-prevent
                   className="enter scroll-quiet min-w-0 focus:outline-none lg:absolute lg:inset-0 lg:overflow-y-auto">
@@ -97,11 +99,11 @@ export function Dashboard({ className = "", initial, onNavigate }: { className?:
 }
 
 // /dashboard: the same window, opened from `?view=` and `?room=` and kept in step with the address bar.
-export function DashboardFromUrl({ className = "" }: { className?: string }) {
+export function DashboardFromUrl({ className = "", fill = false }: { className?: string; fill?: boolean }) {
   const params = useSearchParams();
   const [initial] = useState(() => navFromQuery(params.get("view"), params.get("room")));
   const mirror = useCallback((n: Nav) => window.history.replaceState(window.history.state, "", `${window.location.pathname}${navQuery(n)}`), []);
-  return <Dashboard className={className} initial={initial} onNavigate={mirror} />;
+  return <Dashboard className={className} initial={initial} onNavigate={mirror} fill={fill} />;
 }
 
 function Brand() {

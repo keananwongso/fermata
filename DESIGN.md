@@ -213,6 +213,10 @@ The transcript of the agents' meeting on one held story.
 The product as an app window: the landing page's hero and the calm overview page at `/dashboard`. It reads only the
 recording, so it works on the hosted site with no Convex, and a re-export updates every figure.
 
+* **`/dashboard` is one fixed screen** on wide screens (1280px and up), like the demo: no heading, no footer, no page
+  scroll. The window fills what the header leaves (`Dashboard fill`, `data-fixed-page`) and every view, the overview
+  included, scrolls inside it. Below 1280px the page scrolls as usual. On the landing page the window keeps its own height.
+
 * **Two colours with jobs** (see Colour): blue for the active tab, links and data; amber for what waits on a person;
   everything else neutral. The window provides `PlainAvatars`, so every `Avatar` and @mention inside it (the case room
   transcripts too) is the one neutral tile; room states, rule states (`StateBadge quiet`), audit results and the
@@ -479,17 +483,18 @@ toggles (the menu icon), `--ease-exit` for leaving. Everything is disabled under
 
 A voice first, read only way to ask about the books. `/ask` shows it alone; `AskPanel` (`ask/panel.tsx`) mounts anywhere.
 
-* **Not a chat.** One question and its answer at a time, at most three recent questions as small links, and four
-  suggested questions at a time. No message list, no bubbles.
-* **One flow, driven by the orb** (`ask/panel.tsx`): **invite** (a large orb, "Hold to ask", four suggestions in a two by two
-  grid with More questions to step through the rest, the typed field) → **listening** (the orb follows the microphone) →
-  **writing down the question** → **reading the books** → **speaking** (the orb shrinks beside the answer and the
-  spoken sentence is the caption) → **done** (the answer's template under it, with Play and Ask again). A new question
-  clears the old answer back to the large orb. The orb moves with a `motion` layout animation and is one element the
-  whole way, so a press that starts on it always ends on it.
+* **Not a chat.** One question and its answer at a time and a few suggested questions. No message list, no bubbles.
+* **One flow, driven by the orb** (`ask/panel.tsx`), in the dock's glass and with no surface of its own (the page gives
+  it one: the dashboard window, or a `.card` on `/ask`): **invite** (the large glass orb, "Hold to ask" and one short
+  line under it) → **listening** (level bars and the words as they are heard) → **Got it** → **Reading the books** →
+  **speaking** (the orb shrinks beside "You asked" and the question; the spoken sentence is the caption, then Play again
+  or Stop, Ask again and one faint provenance line, then the template). Under both: the suggestions as `.glass-chip`
+  pills (four, with a small refresh icon to step through the rest; "Ask next" and three once there is an answer) and
+  one `.glass` bar to type in. The orb moves with a `motion` layout animation and is one element the whole way, so a
+  press that starts on it always ends on it.
 * **The orb is the push to talk control** (`ThinkingOrb`, `ask/orb.tsx`, behaviour from `usePushToTalk` in
-  `ask/pushToTalk.tsx`): hold it (or focus it and hold Space or Enter), speak, let go. A small round badge on its lower
-  edge says what it does: a blue mic, a blue stop square while listening, a grey crossed mic when there is no voice input.
+  `ask/pushToTalk.tsx`): hold it (or focus it and hold Space or Enter), speak, let go. It sits in a `.glass` circle with
+  no badge: the words beside it say what it does.
   It is ported from **Speaking Orb** in Ship Notes components (github.com/aqualang89/shipnotes-components, MIT; the notice
   is in the file), not installed: a sphere of points drawn with WebGL (canvas fallback) whose shape blends between
   states. Our port draws for a cream page (solid points with normal blending; the nearest points deepen to `heading` navy
@@ -507,10 +512,10 @@ A voice first, read only way to ask about the books. `/ask` shows it alone; `Ask
   timings, so they are estimated from each word's spoken length (figures count longer) and stretched over the audio's real
   duration. The template rises in shortly after the caption starts. Screen readers get the question and the whole
   answer once, from an `aria-live` region; the word by word caption is hidden from them.
-* **Labels stay on every answer:** "Recorded answer" or "Live: Claude chose the query", and "Every number checked against
-  the data" or "Sentence written by code", as neutral pills beside Play and Ask again. Inside the templates, settled lines,
-  a passed audit and "Written by Claude" are neutral too; held stays amber and a refusal red. The typed field is secondary, a quiet
-  rounded field under the suggestions. Under it, once and quietly: "Read only: it can explain the books, never change them."
+* **Labels stay on every answer**, as one faint line beside Play: Recorded or Live (Claude chose the query), and every
+  number from the books or written by code. Inside the templates, settled lines, a passed audit and "Written by Claude"
+  are neutral; held stays amber and a refusal red. Read only is said once, in the view's line ("Read only, and every
+  number comes from the books").
 * **Five templates** (`ask/views.tsx`), each inside a `.frame` around a `.card`, each ending with its source:
   * **Figure**: one number in `.display` that `Roll`s in, a comparison beside it in `.figure`, an optional note.
   * **Trend**: twelve months as a line (shares) or bars (counts), with learned rules as accent pills. Never 𝄐.

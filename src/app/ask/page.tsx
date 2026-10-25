@@ -8,10 +8,9 @@ export default function Page() {
   return (
     <div className="space-y-8">
       <PageHead title="Ask the books">
-        Ask about this year&apos;s books out loud, or type it. The answer is spoken and shown, and every number on screen comes from the
-        books, never from the model.
+        Ask out loud or type. Read only, and every number comes from the books.
       </PageHead>
-      <AskPanel />
+      <AskPanel className="card p-5 sm:p-8 lg:p-10" />
     </div>
   );
 }
